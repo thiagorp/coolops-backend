@@ -2,43 +2,10 @@ module Auth.Database where
 
 import RIO
 
-import Data.Pool
 import Database.PostgreSQL.Simple
-import Database.PostgreSQL.Simple.Migration
 
 import Auth.Domain
-
-class HasPostgresConnection m where
-  getPostgresConn :: m Connection
-
-class (Monad m, HasPostgresConnection m, MonadIO m) =>
-      HasPostgres m
-  where
-  runDb :: (ToRow a) => Query -> a -> m Int64
-  runDb q a = do
-    conn <- getPostgresConn
-    liftIO $ execute conn q a
-  runDb' :: (ToRow a) => Query -> a -> m ()
-  runDb' q a = void (runDb q a)
-  runQuery :: (ToRow a, FromRow b) => Query -> a -> m [b]
-  runQuery q a = do
-    conn <- getPostgresConn
-    liftIO $ query conn q a
-
-migrateDb :: Pool Connection -> IO ()
-migrateDb pool =
-  withResource pool $ \conn ->
-    void $ withTransaction conn (runMigration (ctx conn))
-  where
-    ctx = MigrationContext cmd False
-    cmd =
-      MigrationCommands
-        [MigrationInitialization, MigrationDirectory "migrations"]
-
-runTransaction :: (HasPostgresConnection m, MonadIO m) => IO a -> m a
-runTransaction tx = do
-  conn <- getPostgresConn
-  liftIO $ withTransaction conn tx
+import Common.Database
 
 createUser :: (HasPostgres m) => User -> m ()
 createUser User {..} = runDb' q values

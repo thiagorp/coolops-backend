@@ -6,6 +6,7 @@ import qualified Database.PostgreSQL.Simple as PG
 
 import Auth.Classes
 import qualified Auth.Database as DB
+import qualified Common.Database as DB
 
 newtype Env = Env
   { pgConn :: PG.Connection
