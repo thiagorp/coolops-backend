@@ -1,17 +1,19 @@
 module Api.Types
   ( WebError(..)
   , WebMonad
+  , buildRequest
   ) where
 
 import RIO
 
+import Data.Aeson (FromJSON)
 import Web.Scotty.Trans
 
+import Api.Validation
 import Common.App
-import Util.Validation
 
 data WebError
-  = ValidationError [(Text, [ValidationError])]
+  = ValidationError WebValidationError
   | StrError String
 
 instance ScottyError WebError where
@@ -23,3 +25,12 @@ instance Show WebError where
   show (StrError string) = string
 
 type WebMonad = ActionT WebError AppT
+
+buildRequest :: (FromJSON a) => (a -> WebValidation b) -> WebMonad b
+buildRequest builder = jsonData >>= parseRequest builder
+
+parseRequest :: (a -> WebValidation b) -> a -> WebMonad b
+parseRequest fn payload =
+  case fn payload of
+    Invalid e -> raise (ValidationError e)
+    Valid b -> return b

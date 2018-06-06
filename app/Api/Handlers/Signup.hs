@@ -63,48 +63,29 @@ instance ToJSON Response where
       , "company_id" .= resCompanyId
       ]
 
-parseRequest :: Request -> WebMonad App.Signup
-parseRequest Request {..} =
-  case p of
-    Invalid e -> raise (ValidationError e)
-    Valid s -> return s
+builder :: Request -> WebValidation App.Signup
+builder Request {..} =
+  App.Signup <$> firstName <*> lastName <*> email <*> password <*> companyName
   where
-    password =
-      onField Password $ validateRequired reqPassword `andThen` buildPassword
-    firstName =
-      onField FirstName $ validateRequired reqFirstName `andThen` buildUserName
-    lastName =
-      onField LastName $ validateRequired reqLastName `andThen` buildUserName
-    email =
-      onField Email $ validateRequired reqEmail `andThen` buildEmailAddress
-    companyName =
-      onField CompanyName $
-      validateRequired reqCompanyName `andThen` buildCompanyName
-    p =
-      App.Signup <$> firstName <*> lastName <*> email <*> password <*>
-      companyName
-
-buildParams :: WebMonad App.Signup
-buildParams = jsonData >>= parseRequest
+    password = required Password reqPassword >>> buildPassword
+    firstName = required FirstName reqFirstName >>> buildUserName
+    lastName = required LastName reqLastName >>> buildUserName
+    email = required Email reqEmail >>> buildEmailAddress
+    companyName = required CompanyName reqCompanyName >>> buildCompanyName
 
 buildResponse :: (User, Company) -> WebMonad Response
 buildResponse (User {..}, Company {..}) = do
-  uToken <- accessTokenTextM userAccessToken
-  cToken <- accessTokenTextM companyToken
-  let uId = keyText userId
-  let cId = keyText companyId
-  return $
-    Response
-      { resUserId = uId
-      , resUserToken = uToken
-      , resCompanyId = cId
-      , resCompanyToken = cToken
-      }
+  resUserToken <- accessTokenTextM userAccessToken
+  resCompanyToken <- accessTokenTextM companyToken
+  let resUserId = keyText userId
+  let resCompanyId = keyText companyId
+  return Response {..}
 
-signup :: WebMonad ()
-signup = do
-  requestData <- buildParams
-  result <- lift $ App.signup requestData
+respond :: Either App.SignupError (User, Company) -> WebMonad ()
+respond result =
   case result of
     Left App.UserAlreadyExists -> status status409 >> text "User already exists"
     Right value -> buildResponse value >>= json
+
+signup :: WebMonad ()
+signup = buildRequest builder >>= lift . App.signup >>= respond

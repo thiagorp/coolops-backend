@@ -42,30 +42,22 @@ data Response = Response
 instance ToJSON Response where
   toJSON Response {..} = object ["access_token" .= resAccessToken]
 
-parseRequest :: Request -> WebMonad App.Login
-parseRequest Request {..} =
-  case p of
-    Invalid e -> raise (ValidationError e)
-    Valid s -> return s
+builder :: Request -> WebValidation App.Login
+builder Request {..} = App.Login <$> email <*> password
   where
-    email =
-      onField Email $ validateRequired reqEmail `andThen` buildEmailAddress
-    password =
-      onField Password $ validateRequired reqPassword `andThen` buildPassword
-    p = App.Login <$> email <*> password
-
-buildParams :: WebMonad App.Login
-buildParams = jsonData >>= parseRequest
+    email = required Email reqEmail >>> buildEmailAddress
+    password = required Password reqPassword >>> buildPassword
 
 buildResponse :: User -> WebMonad Response
 buildResponse User {..} = do
-  token <- accessTokenTextM userAccessToken
-  return $ Response {resAccessToken = token}
+  resAccessToken <- accessTokenTextM userAccessToken
+  return Response {..}
 
-login :: WebMonad ()
-login = do
-  requestData <- buildParams
-  result <- lift $ App.login requestData
+respond :: Maybe User -> WebMonad ()
+respond result =
   case result of
     Just u -> buildResponse u >>= json
     Nothing -> status unauthorized401
+
+login :: WebMonad ()
+login = buildRequest builder >>= lift . App.login >>= respond

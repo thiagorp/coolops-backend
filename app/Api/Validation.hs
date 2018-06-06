@@ -1,7 +1,10 @@
 module Api.Validation
   ( module Util.Validation
   , HasFieldName(..)
-  , onField
+  , WebValidation
+  , WebValidationError
+  , (>>>)
+  , required
   ) where
 
 import RIO
@@ -12,10 +15,25 @@ type FieldName = Text
 
 type DomainValidation a = Validation [ValidationError] a
 
-type WebValidation a = Validation [(FieldName, [ValidationError])] a
+type WebValidationError = [(FieldName, [ValidationError])]
+
+type WebValidation a = Validation WebValidationError a
 
 class HasFieldName field where
   fieldName :: field -> Text
+
+required :: (HasFieldName f) => f -> Maybe a -> (f, WebValidation a)
+required field value = (field, onField field (validateRequired value))
+
+(>>>) ::
+     (HasFieldName f)
+  => (f, WebValidation a)
+  -> (a -> DomainValidation b)
+  -> WebValidation b
+(>>>) (field, preValidated) builder =
+  case preValidated of
+    Invalid e -> Invalid e
+    Valid a -> onField field (builder a)
 
 onField :: (HasFieldName f) => f -> DomainValidation a -> WebValidation a
 onField field validated =
