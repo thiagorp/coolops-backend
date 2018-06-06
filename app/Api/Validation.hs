@@ -1,4 +1,4 @@
-module Api.Validation
+module Validation
   ( module Util.Validation
   , HasFieldName(..)
   , WebValidation

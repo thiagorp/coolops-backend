@@ -1,4 +1,4 @@
-module Api.Handlers.Signup
+module Handlers.Signup
   ( signup
   ) where
 
@@ -8,10 +8,10 @@ import Data.Aeson hiding (json)
 import Network.HTTP.Types.Status (status409)
 import Web.Scotty.Trans
 
-import Api.Types
-import Api.Validation
 import Auth.Domain
 import qualified Auth.UseCases.Signup as App
+import Types
+import Validation
 
 data Fields
   = FirstName

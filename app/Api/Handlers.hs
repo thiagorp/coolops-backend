@@ -1,7 +1,7 @@
-module Api.Handlers
+module Handlers
   ( signup
   , login
   ) where
 
-import Api.Handlers.Login (login)
-import Api.Handlers.Signup (signup)
+import Handlers.Login (login)
+import Handlers.Signup (signup)

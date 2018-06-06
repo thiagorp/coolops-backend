@@ -1,4 +1,4 @@
-module Api.Authorization where
+module Authorization where
 
 import RIO hiding (some)
 import RIO.Text (pack)
@@ -9,9 +9,9 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import Web.Scotty.Trans
 
-import Api.Types
 import Auth.Classes
 import Auth.Domain
+import Types
 
 data AuthorizedCompany =
   AuthorizedCompany CompanyID

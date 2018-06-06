@@ -1,4 +1,4 @@
-module Api.Handlers.Login
+module Handlers.Login
   ( login
   ) where
 
@@ -8,10 +8,10 @@ import Data.Aeson hiding (json)
 import Network.HTTP.Types.Status (unauthorized401)
 import Web.Scotty.Trans
 
-import Api.Types
-import Api.Validation
 import Auth.Domain
 import qualified Auth.UseCases.Login as App
+import Types
+import Validation
 
 data Fields
   = Email

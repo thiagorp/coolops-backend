@@ -1,4 +1,4 @@
-module Api.Types
+module Types
   ( WebError(..)
   , WebMonad
   , buildRequest
@@ -9,8 +9,8 @@ import RIO
 import Data.Aeson (FromJSON)
 import Web.Scotty.Trans
 
-import Api.Validation
 import Common.App
+import Validation
 
 data WebError
   = ValidationError WebValidationError

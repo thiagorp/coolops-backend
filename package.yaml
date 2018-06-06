@@ -67,7 +67,7 @@ library:
 executables:
   api-exe:
     main:                Main.hs
-    source-dirs:         app
+    source-dirs:         app/Api
     ghc-options:
     - -threaded
     - -rtsopts
@@ -78,6 +78,8 @@ executables:
     - http-types
     - megaparsec
     - scotty
+    - wai
+    - wai-cors
 
 tests:
   api-test:
