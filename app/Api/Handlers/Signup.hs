@@ -81,11 +81,10 @@ buildResponse (User {..}, Company {..}) = do
   let resCompanyId = keyText companyId
   return Response {..}
 
-respond :: Either App.SignupError (User, Company) -> WebMonad ()
-respond result =
+signup :: WebMonad ()
+signup = do
+  requestData <- jsonData >>= parseRequest builder
+  result <- lift $ App.signup requestData
   case result of
     Left App.UserAlreadyExists -> status status409 >> text "User already exists"
     Right value -> buildResponse value >>= json
-
-signup :: WebMonad ()
-signup = buildRequest builder >>= lift . App.signup >>= respond

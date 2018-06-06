@@ -53,11 +53,10 @@ buildResponse User {..} = do
   resAccessToken <- accessTokenTextM userAccessToken
   return Response {..}
 
-respond :: Maybe User -> WebMonad ()
-respond result =
+login :: WebMonad ()
+login = do
+  requestData <- jsonData >>= parseRequest builder
+  result <- lift $ App.login requestData
   case result of
     Just u -> buildResponse u >>= json
     Nothing -> status unauthorized401
-
-login :: WebMonad ()
-login = buildRequest builder >>= lift . App.login >>= respond

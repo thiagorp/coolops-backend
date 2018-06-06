@@ -1,12 +1,11 @@
 module Types
   ( WebError(..)
   , WebMonad
-  , buildRequest
+  , parseRequest
   ) where
 
 import RIO
 
-import Data.Aeson (FromJSON)
 import Web.Scotty.Trans
 
 import Common.App
@@ -25,9 +24,6 @@ instance Show WebError where
   show (StrError string) = string
 
 type WebMonad = ActionT WebError AppT
-
-buildRequest :: (FromJSON a) => (a -> WebValidation b) -> WebMonad b
-buildRequest builder = jsonData >>= parseRequest builder
 
 parseRequest :: (a -> WebValidation b) -> a -> WebMonad b
 parseRequest fn payload =
