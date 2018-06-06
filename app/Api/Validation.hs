@@ -5,6 +5,7 @@ module Validation
   , WebValidationError
   , (>>>)
   , required
+  , validationToString
   ) where
 
 import RIO
@@ -40,3 +41,10 @@ onField field validated =
   case validated of
     Valid a -> Valid a
     Invalid b -> Invalid [(fieldName field, b)]
+
+validationToString :: ValidationError -> String
+validationToString v =
+  case v of
+    ValidationTooShort m -> "must cointain at least " <> show m <> " characters"
+    ValidationRequired -> "is required"
+    ValidationInvalidEmail -> "is not a valid email"
