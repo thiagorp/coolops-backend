@@ -11,6 +11,7 @@ import Network.Wai.Middleware.Cors
 import Web.Scotty.Trans
 
 import qualified Handlers.CreateProject as CreateProject
+import qualified Handlers.ListProjects as ListProjects
 import qualified Handlers.Login as Handlers
 import qualified Handlers.Signup as Handlers
 
@@ -49,3 +50,4 @@ routes = do
   post "/signup" Handlers.signup
   post "/tokens" Handlers.login
   post "/projects" $ userAuth CreateProject.call
+  get "/projects" $ userAuth ListProjects.call
