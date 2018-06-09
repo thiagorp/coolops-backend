@@ -1,5 +1,5 @@
 module Auth.UseCases.Login
-  ( Login(..)
+  ( Params(..)
   , login
   ) where
 
@@ -8,9 +8,9 @@ import RIO
 import Auth.Classes (UserRepo, findUserByEmail)
 import Auth.Domain (RawPassword, User, UserEmail, authenticate)
 
-data Login = Login
-  { loginEmail :: !UserEmail
-  , loginPassword :: !RawPassword
+data Params = Params
+  { paramEmail :: !UserEmail
+  , paramPassword :: !RawPassword
   }
 
 verify :: RawPassword -> User -> Maybe User
@@ -19,7 +19,7 @@ verify password user =
     True -> Just user
     False -> Nothing
 
-login :: (UserRepo m, Monad m) => Login -> m (Maybe User)
-login Login {..} = do
-  maybeUser <- findUserByEmail loginEmail
-  return $ maybeUser >>= verify loginPassword
+login :: (UserRepo m, Monad m) => Params -> m (Maybe User)
+login Params {..} = do
+  maybeUser <- findUserByEmail paramEmail
+  return $ maybeUser >>= verify paramPassword

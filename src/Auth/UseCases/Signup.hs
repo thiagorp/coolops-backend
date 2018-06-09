@@ -1,5 +1,5 @@
 module Auth.UseCases.Signup
-  ( Signup(..)
+  ( Params(..)
   , SignupError(..)
   , SignupMonad
   , signup
@@ -10,7 +10,7 @@ import RIO
 import Auth.Classes
 import Auth.Domain
 
-data Signup = Signup
+data Params = Params
   { signupUserFirstName :: !UserName
   , signupUserLastName :: !UserName
   , signupUserEmail :: !UserEmail
@@ -21,7 +21,7 @@ data Signup = Signup
 data SignupError =
   UserAlreadyExists
 
-signupToUser :: (MonadIO m) => CompanyID -> Signup -> m User
+signupToUser :: (MonadIO m) => CompanyID -> Params -> m User
 signupToUser userCompanyId p = do
   let userFirstName = signupUserFirstName p
   let userLastName = signupUserLastName p
@@ -31,7 +31,7 @@ signupToUser userCompanyId p = do
   userId <- genID
   return User {..}
 
-signupToCompany :: (MonadIO m) => Signup -> m Company
+signupToCompany :: (MonadIO m) => Params -> m Company
 signupToCompany p = do
   let companyName = signupCompanyName p
   companyToken <- genAccessToken
@@ -40,7 +40,7 @@ signupToCompany p = do
 
 type SignupMonad m = (MonadIO m, UserRepo m, CompanyRepo m, HasDBTransaction m)
 
-signup :: SignupMonad m => Signup -> m (Either SignupError (User, Company))
+signup :: SignupMonad m => Params -> m (Either SignupError (User, Company))
 signup params = do
   existingUser <- findUserByEmail (signupUserEmail params)
   case existingUser of

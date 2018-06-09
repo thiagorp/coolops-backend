@@ -5,15 +5,15 @@ import RIO
 import Deployments.Classes (ProjectRepo, updateProject)
 import Deployments.Domain (Project(..), ProjectName)
 
-data UpdateProject = UpdateProject
-  { updateProjectName :: !ProjectName
+data Params = Params
+  { paramProjectName :: !ProjectName
   }
 
-apply :: Project -> UpdateProject -> Project
-apply project (UpdateProject {..}) = do
-  project {projectName = updateProjectName}
+apply :: Project -> Params -> Project
+apply project (Params {..}) = do
+  project {projectName = paramProjectName}
 
-call :: (ProjectRepo m) => Project -> UpdateProject -> m Project
+call :: (ProjectRepo m) => Project -> Params -> m Project
 call project params = do
   let updatedProject = apply project params
   updateProject updatedProject
