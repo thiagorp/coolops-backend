@@ -15,6 +15,7 @@ import qualified Handlers.GetProject as GetProject
 import qualified Handlers.ListProjects as ListProjects
 import qualified Handlers.Login as Handlers
 import qualified Handlers.Signup as Handlers
+import qualified Handlers.UpdateProject as UpdateProject
 
 import Authorization (userAuth)
 import Common.App (AppT)
@@ -53,3 +54,4 @@ routes = do
   post "/projects" $ userAuth CreateProject.call
   get "/projects" $ userAuth ListProjects.call
   get "/projects/:id" $ userAuth GetProject.call
+  patch "/projects/:id" $ userAuth UpdateProject.call
