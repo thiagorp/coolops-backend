@@ -2,6 +2,7 @@ module Deployments.Database
   ( createProject
   , getProject
   , listProjects
+  , updateProject
   ) where
 
 import RIO
@@ -18,6 +19,13 @@ createProject Project {..} = runDb' q values
       "insert into projects (id, name, company_id, created_at, updated_at) values\
         \ (?, ?, ?, NOW(), NOW())"
     values = (projectId, projectName, projectCompanyId)
+
+updateProject :: (HasPostgres m) => Project -> m ()
+updateProject Project {..} = runDb' q (projectName, projectId)
+  where
+    q =
+      "update projects set (name, updated_at) =\
+        \ (?, NOW()) where id = ?"
 
 listProjects :: (HasPostgres m) => CompanyID -> m [Project]
 listProjects companyId =

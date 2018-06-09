@@ -37,6 +37,7 @@ instance CompanyRepo AppT where
 
 instance ProjectRepo AppT where
   createProject = DB.createProject
+  updateProject = DB.updateProject
   listProjects = DB.listProjects
   getProject = DB.getProject
 
