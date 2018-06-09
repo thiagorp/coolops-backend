@@ -10,9 +10,11 @@ import Network.Wai (Middleware)
 import Network.Wai.Middleware.Cors
 import Web.Scotty.Trans
 
+import qualified Handlers.CreateProject as CreateProject
 import qualified Handlers.Login as Handlers
 import qualified Handlers.Signup as Handlers
 
+import Authorization (userAuth)
 import Common.App (AppT)
 import Types (WebError(..))
 import Validation (WebValidationError, validationToString)
@@ -46,3 +48,4 @@ routes = do
   defaultHandler errorHandler
   post "/signup" Handlers.signup
   post "/tokens" Handlers.login
+  post "/projects" $ userAuth CreateProject.call

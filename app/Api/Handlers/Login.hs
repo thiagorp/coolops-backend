@@ -10,7 +10,7 @@ import Web.Scotty.Trans
 
 import Auth.Domain
 import qualified Auth.UseCases.Login as App
-import Types
+import Types (WebMonad, parseRequest)
 import Validation
 
 data Fields

@@ -5,8 +5,11 @@ import RIO
 import qualified Database.PostgreSQL.Simple as PG
 
 import Auth.Classes
+import Deployments.Classes
+
 import qualified Auth.Database as DB
 import qualified Common.Database as DB
+import qualified Deployments.Database as DB
 
 newtype Env = Env
   { pgConn :: PG.Connection
@@ -27,10 +30,13 @@ instance DB.HasPostgres AppT
 instance UserRepo AppT where
   createUser = DB.createUser
   findUserByEmail = DB.findUserByEmail
+  findUserByAccessToken = DB.findUserByAccessToken
 
 instance CompanyRepo AppT where
   createCompany = DB.createCompany
-  findCompanyByAccessToken = DB.findCompanyByAccessToken
+
+instance ProjectRepo AppT where
+  createProject = DB.createProject
 
 instance HasDBTransaction AppT where
   runTransaction tx = ask >>= DB.runTransaction . run tx

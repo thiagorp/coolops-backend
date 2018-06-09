@@ -43,13 +43,15 @@ createCompany Company {..} = runDb' q values
         \ (?, ?, ?, NOW(), NOW())"
     values = (companyId, companyName, companyToken)
 
-findCompanyByAccessToken :: (HasPostgres m) => Text -> m (Maybe Company)
-findCompanyByAccessToken token = do
+findUserByAccessToken :: (HasPostgres m) => Text -> m (Maybe User)
+findUserByAccessToken token = do
   result <- runQuery q (Only token)
   case result of
-    [(key, name, accessToken)] -> return $ Just $ Company key name accessToken
+    [(key, firstName, lastName, email, password, accessToken, companyId)] ->
+      return $
+      Just $ User key firstName lastName email password accessToken companyId
     _ -> return Nothing
   where
     q =
-      "select id, name, access_token from companies\
+      "select id, first_name, last_name, email, password, access_token, company_id from users\
       \ where access_token = ? limit 1"

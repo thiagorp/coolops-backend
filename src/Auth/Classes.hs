@@ -10,7 +10,7 @@ class HasDBTransaction m where
 class UserRepo m where
   createUser :: User -> m ()
   findUserByEmail :: UserEmail -> m (Maybe User)
+  findUserByAccessToken :: Text -> m (Maybe User)
 
 class CompanyRepo m where
   createCompany :: Company -> m ()
-  findCompanyByAccessToken :: Text -> m (Maybe Company)
