@@ -8,10 +8,10 @@ import Data.Aeson hiding (json)
 import Web.Scotty.Trans
 
 import Authorization (AuthenticatedUser(..), User(..))
-import Deployments.Domain (Project(..), buildProjectName, projectNameText)
+import Deployments.Domain (buildProjectName)
 import qualified Deployments.UseCases.CreateProject as App
+import Resources
 import Types
-import Util.Key (keyText)
 import Validation
 
 data Fields =
@@ -32,28 +32,14 @@ instance FromJSON Request where
       reqProjectName <- o .:? (fieldName Name)
       return Request {..}
 
-data Response = Response
-  { resProjectId :: !Text
-  , resProjectName :: !Text
-  }
-
-instance ToJSON Response where
-  toJSON Response {..} = object ["id" .= resProjectId, "name" .= resProjectName]
-
 builder :: User -> Request -> WebValidation App.CreateProject
 builder (User {..}) (Request {..}) =
   App.CreateProject <$> projectName <*> (pure userCompanyId)
   where
     projectName = required Name reqProjectName >>> buildProjectName
 
-buildResponse :: Project -> WebMonad Response
-buildResponse Project {..} = do
-  let resProjectId = keyText projectId
-  let resProjectName = projectNameText projectName
-  return Response {..}
-
 call :: AuthenticatedUser -> WebMonad ()
-call (AuthenticatedUser uId) = do
-  requestData <- jsonData >>= parseRequest (builder uId)
+call (AuthenticatedUser user) = do
+  requestData <- jsonData >>= parseRequest (builder user)
   project <- lift $ App.call requestData
-  buildResponse project >>= json
+  json $ projectResource project

@@ -37,6 +37,7 @@ instance CompanyRepo AppT where
 
 instance ProjectRepo AppT where
   createProject = DB.createProject
+  listProjects = DB.listProjects
 
 instance HasDBTransaction AppT where
   runTransaction tx = ask >>= DB.runTransaction . run tx
