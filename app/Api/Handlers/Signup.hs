@@ -63,9 +63,9 @@ instance ToJSON Response where
       , "company_id" .= resCompanyId
       ]
 
-builder :: Request -> WebValidation App.Signup
+builder :: Request -> WebValidation App.Params
 builder Request {..} =
-  App.Signup <$> firstName <*> lastName <*> email <*> password <*> companyName
+  App.Params <$> firstName <*> lastName <*> email <*> password <*> companyName
   where
     password = required Password reqPassword >>> buildPassword
     firstName = required FirstName reqFirstName >>> buildUserName

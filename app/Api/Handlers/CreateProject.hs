@@ -32,9 +32,9 @@ instance FromJSON Request where
       reqProjectName <- o .:? (fieldName Name)
       return Request {..}
 
-builder :: User -> Request -> WebValidation App.CreateProject
+builder :: User -> Request -> WebValidation App.Params
 builder (User {..}) (Request {..}) =
-  App.CreateProject <$> projectName <*> (pure userCompanyId)
+  App.Params <$> projectName <*> (pure userCompanyId)
   where
     projectName = required Name reqProjectName >>> buildProjectName
 

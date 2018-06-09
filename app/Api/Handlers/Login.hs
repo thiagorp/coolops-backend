@@ -42,8 +42,8 @@ data Response = Response
 instance ToJSON Response where
   toJSON Response {..} = object ["access_token" .= resAccessToken]
 
-builder :: Request -> WebValidation App.Login
-builder Request {..} = App.Login <$> email <*> password
+builder :: Request -> WebValidation App.Params
+builder Request {..} = App.Params <$> email <*> password
   where
     email = required Email reqEmail >>> buildEmailAddress
     password = required Password reqPassword >>> buildPassword
