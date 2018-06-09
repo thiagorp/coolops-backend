@@ -1,5 +1,6 @@
 module Deployments.Database
   ( createProject
+  , getProject
   , listProjects
   ) where
 
@@ -25,6 +26,17 @@ listProjects companyId =
     q =
       "select id, name, company_id from projects\
         \ where company_id = ?"
+
+getProject :: (HasPostgres m) => CompanyID -> Text -> m (Maybe Project)
+getProject companyId projectId = do
+  result <- runQuery q (companyId, projectId)
+  case result of
+    [] -> return Nothing
+    row:_ -> return . Just $ buildProject row
+  where
+    q =
+      "select id, name, company_id from projects\
+        \ where company_id = ? AND id = ?"
 
 type ProjectRow = (ProjectID, ProjectName, CompanyID)
 
