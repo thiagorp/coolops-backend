@@ -1,4 +1,8 @@
-module Authorization where
+module Authorization
+  ( AuthenticatedUser(..)
+  , User(..)
+  , userAuth
+  ) where
 
 import RIO hiding (some)
 import RIO.Text (pack)
@@ -10,23 +14,23 @@ import Text.Megaparsec.Char
 import Web.Scotty.Trans
 
 import Auth.Classes
-import Auth.Domain
-import Types
+import Auth.Domain (User(..))
+import Types (WebMonad)
 
-data AuthorizedCompany =
-  AuthorizedCompany CompanyID
+data AuthenticatedUser =
+  AuthenticatedUser User
 
 unauthorized :: WebMonad a
 unauthorized = do
   status status401
   finish
 
-companyAuth :: (AuthorizedCompany -> WebMonad ()) -> WebMonad ()
-companyAuth handler = do
+userAuth :: (AuthenticatedUser -> WebMonad ()) -> WebMonad ()
+userAuth handler = do
   authToken <- readToken
-  maybeCompany <- lift $ findCompanyByAccessToken authToken
-  case maybeCompany of
-    Just Company {companyId = key} -> handler (AuthorizedCompany key)
+  maybeUser <- lift $ findUserByAccessToken authToken
+  case maybeUser of
+    Just user -> handler (AuthenticatedUser user)
     Nothing -> unauthorized
 
 readToken :: WebMonad Text
