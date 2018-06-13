@@ -43,7 +43,9 @@ errorHandler e =
 corsMiddleware :: Middleware
 corsMiddleware = cors $ const (Just policy)
   where
-    policy = simpleCorsResourcePolicy {corsRequestHeaders = ["content-type"]}
+    policy =
+      simpleCorsResourcePolicy
+        {corsRequestHeaders = ["content-type", "authorization"]}
 
 routes :: ScottyT WebError AppT ()
 routes = do
