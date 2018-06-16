@@ -2,6 +2,7 @@ name:                api
 version:             0.1.0.0
 
 dependencies:
+- aeson
 - base >= 4.7 && < 5
 - base58-bytestring
 - email-validate
@@ -73,7 +74,6 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - aeson
     - api
     - http-types
     - megaparsec

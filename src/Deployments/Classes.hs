@@ -11,3 +11,8 @@ class (Monad m) =>
   updateProject :: Project -> m ()
   getProject :: CompanyID -> Text -> m (Maybe Project)
   listProjects :: CompanyID -> m [Project]
+
+class (Monad m) =>
+      EnvironmentRepo m
+  where
+  createEnvironment :: Environment -> m ()

@@ -57,3 +57,6 @@ validateRequired value =
   case value of
     Nothing -> Invalid [ValidationRequired]
     Just a -> Valid a
+
+valid :: a -> Validated a
+valid = Valid
