@@ -28,3 +28,27 @@ projectResource Project {..} =
       resProjectDeploymentImage =
         projectDeploymentImageText projectDeploymentImage
    in ProjectResource {..}
+
+data EnvironmentResource = EnvironmentResource
+  { resEnvironmentId :: !Text
+  , resEnvironmentName :: !Text
+  , resEnvironmentProjectId :: !Text
+  , resEnvironmentEnvVars :: !(HashMap Text Text)
+  }
+
+instance ToJSON EnvironmentResource where
+  toJSON EnvironmentResource {..} =
+    object
+      [ "id" .= resEnvironmentId
+      , "name" .= resEnvironmentName
+      , "project_id" .= resEnvironmentProjectId
+      , "env_vars" .= resEnvironmentEnvVars
+      ]
+
+environmentResource :: Environment -> EnvironmentResource
+environmentResource Environment {..} =
+  let resEnvironmentId = keyText environmentId
+      resEnvironmentName = environmentNameText environmentName
+      resEnvironmentProjectId = keyText environmentProjectId
+      resEnvironmentEnvVars = environmentEnvVars
+   in EnvironmentResource {..}

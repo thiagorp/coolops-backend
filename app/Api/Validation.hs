@@ -6,11 +6,13 @@ module Validation
   , (>>>)
   , required
   , validationToString
+  , Validation.valid
   ) where
 
 import RIO
 
-import Util.Validation
+import qualified Util.Validation as Validation
+import Util.Validation (Validation(..), ValidationError(..), validateRequired)
 
 type FieldName = Text
 

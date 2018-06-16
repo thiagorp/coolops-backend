@@ -5,6 +5,7 @@ module Handlers.CreateProject
 import RIO
 
 import Data.Aeson hiding (json)
+import Network.HTTP.Types.Status (created201)
 import Web.Scotty.Trans
 
 import Authorization (AuthenticatedUser(..), User(..))
@@ -49,4 +50,5 @@ call :: AuthenticatedUser -> WebMonad ()
 call (AuthenticatedUser user) = do
   requestData <- jsonData >>= parseRequest (builder user)
   project <- lift $ App.call requestData
+  status created201
   json $ projectResource project

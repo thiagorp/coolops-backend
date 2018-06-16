@@ -10,6 +10,7 @@ import Network.Wai (Middleware)
 import Network.Wai.Middleware.Cors
 import Web.Scotty.Trans
 
+import qualified Handlers.CreateEnvironment as CreateEnvironment
 import qualified Handlers.CreateProject as CreateProject
 import qualified Handlers.GetProject as GetProject
 import qualified Handlers.ListProjects as ListProjects
@@ -57,3 +58,4 @@ routes = do
   get "/projects" $ userAuth ListProjects.call
   get "/projects/:id" $ userAuth GetProject.call
   patch "/projects/:id" $ userAuth UpdateProject.call
+  post "/projects/:project_id/environments" $ userAuth CreateEnvironment.call

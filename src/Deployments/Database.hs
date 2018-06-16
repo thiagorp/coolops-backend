@@ -1,5 +1,6 @@
 module Deployments.Database
   ( createProject
+  , createEnvironment
   , getProject
   , listProjects
   , updateProject
@@ -7,6 +8,7 @@ module Deployments.Database
 
 import RIO
 
+import Data.Aeson (toJSON)
 import Database.PostgreSQL.Simple
 
 import Common.Database
@@ -52,3 +54,15 @@ type ProjectRow = (ProjectID, ProjectName, ProjectDeploymentImage, CompanyID)
 buildProject :: ProjectRow -> Project
 buildProject (projectId, projectName, projectDeploymentImage, projectCompanyId) =
   Project {..}
+
+createEnvironment :: (HasPostgres m) => Environment -> m ()
+createEnvironment Environment {..} = runDb' q values
+  where
+    q =
+      "insert into environments (id, name, project_id, env_vars, created_at, updated_at) values\
+        \ (?, ?, ?, ?, NOW(), NOW())"
+    values =
+      ( environmentId
+      , environmentName
+      , environmentProjectId
+      , toJSON environmentEnvVars)

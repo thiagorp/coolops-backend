@@ -41,5 +41,8 @@ instance ProjectRepo AppT where
   listProjects = DB.listProjects
   getProject = DB.getProject
 
+instance EnvironmentRepo AppT where
+  createEnvironment = DB.createEnvironment
+
 instance HasDBTransaction AppT where
   runTransaction tx = ask >>= DB.runTransaction . run tx
