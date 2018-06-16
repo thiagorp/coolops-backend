@@ -5,7 +5,7 @@ module Handlers.CreateEnvironment
 import RIO
 
 import Data.Aeson hiding (json)
-import Network.HTTP.Types.Status (notFound404)
+import Network.HTTP.Types.Status (created201, notFound404)
 import Web.Scotty.Trans
 
 import Authorization (AuthenticatedUser(..), User(..))
@@ -52,4 +52,4 @@ call (AuthenticatedUser user) = do
   maybeProject <- lift $ App.call requestData
   case maybeProject of
     Left App.ProjectNotFound -> status notFound404
-    Right project -> json $ environmentResource project
+    Right project -> status created201 >> (json $ environmentResource project)
