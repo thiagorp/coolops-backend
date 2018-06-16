@@ -3,15 +3,19 @@ module Deployments.UseCases.UpdateProject where
 import RIO
 
 import Deployments.Classes (ProjectRepo, updateProject)
-import Deployments.Domain (Project(..), ProjectName)
+import Deployments.Domain (Project(..), ProjectDeploymentImage, ProjectName)
 
 data Params = Params
   { paramProjectName :: !ProjectName
+  , paramProjectDeploymentImage :: !ProjectDeploymentImage
   }
 
 apply :: Project -> Params -> Project
 apply project (Params {..}) = do
-  project {projectName = paramProjectName}
+  project
+    { projectName = paramProjectName
+    , projectDeploymentImage = paramProjectDeploymentImage
+    }
 
 call :: (ProjectRepo m) => Project -> Params -> m Project
 call project params = do
