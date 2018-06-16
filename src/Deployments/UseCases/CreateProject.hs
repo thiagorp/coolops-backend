@@ -3,10 +3,11 @@ module Deployments.UseCases.CreateProject where
 import RIO
 
 import Deployments.Classes (ProjectRepo, createProject)
-import Deployments.Domain (CompanyID, Project(..), ProjectName, genProjectId)
+import Deployments.Domain
 
 data Params = Params
   { projectName :: !ProjectName
+  , projectDeploymentImage :: !ProjectDeploymentImage
   , companyId :: !CompanyID
   }
 

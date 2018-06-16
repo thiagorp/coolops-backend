@@ -2,9 +2,12 @@ module Deployments.Domain
   ( Project(..)
   , ProjectID
   , ProjectName
+  , ProjectDeploymentImage
   , CompanyID
+  , buildProjectDeploymentImage
   , buildProjectName
   , genProjectId
+  , projectDeploymentImageText
   , projectNameText
   ) where
 
@@ -28,9 +31,19 @@ instance ToField ProjectName where
 instance FromField ProjectName where
   fromField f bs = ProjectName <$> (fromField f bs)
 
+newtype ProjectDeploymentImage =
+  ProjectDeploymentImage Text
+
+instance ToField ProjectDeploymentImage where
+  toField (ProjectDeploymentImage image) = toField image
+
+instance FromField ProjectDeploymentImage where
+  fromField f bs = ProjectDeploymentImage <$> (fromField f bs)
+
 data Project = Project
   { projectId :: !ProjectID
   , projectName :: !ProjectName
+  , projectDeploymentImage :: !ProjectDeploymentImage
   , projectCompanyId :: !CompanyID
   }
 
@@ -42,3 +55,10 @@ buildProjectName name = ProjectName <$> validateMinLength 1 name
 
 projectNameText :: ProjectName -> Text
 projectNameText (ProjectName name) = name
+
+buildProjectDeploymentImage :: Text -> Validated ProjectDeploymentImage
+buildProjectDeploymentImage image =
+  ProjectDeploymentImage <$> validateMinLength 1 image
+
+projectDeploymentImageText :: ProjectDeploymentImage -> Text
+projectDeploymentImageText (ProjectDeploymentImage text) = text
