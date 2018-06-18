@@ -2,7 +2,9 @@ module Deployments.Classes where
 
 import RIO
 
-import Deployments.Domain
+import Deployments.Domain.Build
+import Deployments.Domain.Environment
+import Deployments.Domain.Project
 
 class (Monad m) =>
       ProjectRepo m

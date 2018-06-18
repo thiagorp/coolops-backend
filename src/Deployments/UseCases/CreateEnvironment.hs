@@ -7,24 +7,30 @@ module Deployments.UseCases.CreateEnvironment
 import RIO
 
 import Deployments.Classes
-import Deployments.Domain
+import qualified Deployments.Domain.Environment as Environment
+import qualified Deployments.Domain.Project as Project
 
 data Params = Params
-  { environmentName :: !EnvironmentName
+  { environmentName :: !Environment.Name
   , environmentEnvVars :: !(HashMap Text Text)
   , pId :: !Text
-  , cId :: !CompanyID
+  , cId :: !Project.CompanyID
   }
 
 data Error =
   ProjectNotFound
 
-build :: (MonadIO m) => ProjectID -> Params -> m Environment
+build ::
+     (MonadIO m) => Environment.ProjectID -> Params -> m Environment.Environment
 build environmentProjectId Params {..} = do
-  environmentId <- genEnvironmentId
-  return Environment {..}
+  environmentId <- Environment.genId
+  return Environment.Environment {..}
 
-create :: (EnvironmentRepo m, MonadIO m) => ProjectID -> Params -> m Environment
+create ::
+     (EnvironmentRepo m, MonadIO m)
+  => Environment.ProjectID
+  -> Params
+  -> m Environment.Environment
 create projectId params = do
   environment <- build projectId params
   createEnvironment environment
@@ -33,9 +39,9 @@ create projectId params = do
 call ::
      (MonadIO m, EnvironmentRepo m, ProjectRepo m)
   => Params
-  -> m (Either Error Environment)
+  -> m (Either Error Environment.Environment)
 call params = do
   maybeProject <- getProject (cId params) (pId params)
   case maybeProject of
     Nothing -> return (Left ProjectNotFound)
-    Just project -> Right <$> create (projectId project) params
+    Just project -> Right <$> create (Project.projectId project) params

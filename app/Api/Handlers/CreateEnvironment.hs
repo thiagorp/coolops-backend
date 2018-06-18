@@ -9,7 +9,7 @@ import Network.HTTP.Types.Status (created201, notFound404)
 import Web.Scotty.Trans
 
 import Authorization (AuthenticatedUser(..), User(..))
-import Deployments.Domain (buildEnvironmentName)
+import Deployments.Domain.Environment (buildName)
 import qualified Deployments.UseCases.CreateEnvironment as App
 import Resources
 import Types
@@ -42,7 +42,7 @@ builder (User {..}) projectId (Request {..}) =
   App.Params <$> environmentName <*> environmentEnvVars <*> (pure projectId) <*>
   (pure userCompanyId)
   where
-    environmentName = required Name reqEnvironmentName >>> buildEnvironmentName
+    environmentName = required Name reqEnvironmentName >>> buildName
     environmentEnvVars = required EnvVars reqEnvironmentEnvVars >>> valid
 
 call :: AuthenticatedUser -> WebMonad ()

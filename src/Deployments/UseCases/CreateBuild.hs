@@ -6,21 +6,22 @@ module Deployments.UseCases.CreateBuild
 import RIO
 
 import Deployments.Classes
-import Deployments.Domain
+import qualified Deployments.Domain.Build as Build
+import qualified Deployments.Domain.Project as Project
 
 data Params = Params
-  { buildName :: !BuildName
+  { buildName :: !Build.Name
   , buildParams :: !(HashMap Text Text)
-  , buildProject :: !Project
+  , buildProject :: !Project.Project
   }
 
-entity :: (MonadIO m) => Params -> m Build
+entity :: (MonadIO m) => Params -> m Build.Build
 entity Params {..} = do
-  buildId <- genBuildId
-  let buildProjectId = projectId buildProject
-  return Build {..}
+  buildId <- Build.genId
+  let buildProjectId = Project.projectId buildProject
+  return Build.Build {..}
 
-call :: (MonadIO m, BuildRepo m) => Params -> m Build
+call :: (MonadIO m, BuildRepo m) => Params -> m Build.Build
 call params = do
   build <- entity params
   createBuild build

@@ -9,7 +9,7 @@ import Network.HTTP.Types.Status (created201)
 import Web.Scotty.Trans
 
 import Authorization (AuthenticatedUser(..), User(..))
-import Deployments.Domain (buildProjectDeploymentImage, buildProjectName)
+import Deployments.Domain.Project (buildDeploymentImage, buildName)
 import qualified Deployments.UseCases.CreateProject as App
 import Resources
 import Types
@@ -41,10 +41,10 @@ builder :: User -> Request -> WebValidation App.Params
 builder (User {..}) (Request {..}) =
   App.Params <$> projectName <*> projectDeploymentImage <*> (pure userCompanyId)
   where
-    projectName = required Name reqProjectName >>> buildProjectName
+    projectName = required Name reqProjectName >>> buildName
     projectDeploymentImage =
       required DeploymentImage reqProjectDeploymentImage >>>
-      buildProjectDeploymentImage
+      buildDeploymentImage
 
 call :: AuthenticatedUser -> WebMonad ()
 call (AuthenticatedUser user) = do

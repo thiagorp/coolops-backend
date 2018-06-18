@@ -9,7 +9,7 @@ import Network.HTTP.Types.Status (created201)
 import Web.Scotty.Trans
 
 import Authorization (AuthenticatedProject(..), Project(..))
-import Deployments.Domain (buildBuildName)
+import Deployments.Domain.Build (buildBuildName)
 import qualified Deployments.UseCases.CreateBuild as App
 import Types
 import Validation

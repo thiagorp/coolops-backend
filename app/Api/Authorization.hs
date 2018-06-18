@@ -19,7 +19,7 @@ import Web.Scotty.Trans
 import Auth.Classes
 import Auth.Domain (User(..))
 import Deployments.Classes (findProjectByAccessToken)
-import Deployments.Domain (Project(..))
+import Deployments.Domain.Project (Project(..))
 import Types (WebMonad)
 
 data AuthenticatedUser =
