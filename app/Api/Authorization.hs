@@ -1,7 +1,10 @@
 module Authorization
   ( AuthenticatedUser(..)
+  , AuthenticatedProject(..)
   , User(..)
+  , Project(..)
   , userAuth
+  , projectAuth
   ) where
 
 import RIO hiding (some)
@@ -15,10 +18,15 @@ import Web.Scotty.Trans
 
 import Auth.Classes
 import Auth.Domain (User(..))
+import Deployments.Classes (findProjectByAccessToken)
+import Deployments.Domain (Project(..))
 import Types (WebMonad)
 
 data AuthenticatedUser =
   AuthenticatedUser User
+
+data AuthenticatedProject =
+  AuthenticatedProject Project
 
 unauthorized :: WebMonad a
 unauthorized = do
@@ -31,6 +39,14 @@ userAuth handler = do
   maybeUser <- lift $ findUserByAccessToken authToken
   case maybeUser of
     Just user -> handler (AuthenticatedUser user)
+    Nothing -> unauthorized
+
+projectAuth :: (AuthenticatedProject -> WebMonad ()) -> WebMonad ()
+projectAuth handler = do
+  authToken <- readToken
+  maybeProject <- lift $ findProjectByAccessToken authToken
+  case maybeProject of
+    Just project -> handler (AuthenticatedProject project)
     Nothing -> unauthorized
 
 readToken :: WebMonad Text

@@ -14,6 +14,7 @@ data Params = Params
 build :: (MonadIO m) => Params -> m Project
 build Params {..} = do
   projectId <- genProjectId
+  projectAccessToken <- genProjectAccessToken
   let projectCompanyId = companyId
   return Project {..}
 

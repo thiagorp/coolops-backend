@@ -40,9 +40,13 @@ instance ProjectRepo AppT where
   updateProject = DB.updateProject
   listProjects = DB.listProjects
   getProject = DB.getProject
+  findProjectByAccessToken = DB.findProjectByAccessToken
 
 instance EnvironmentRepo AppT where
   createEnvironment = DB.createEnvironment
+
+instance BuildRepo AppT where
+  createBuild = DB.createBuild
 
 instance HasDBTransaction AppT where
   runTransaction tx = ask >>= DB.runTransaction . run tx

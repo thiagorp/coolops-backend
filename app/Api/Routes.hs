@@ -10,6 +10,7 @@ import Network.Wai (Middleware)
 import Network.Wai.Middleware.Cors
 import Web.Scotty.Trans
 
+import qualified Handlers.CreateBuild as CreateBuild
 import qualified Handlers.CreateEnvironment as CreateEnvironment
 import qualified Handlers.CreateProject as CreateProject
 import qualified Handlers.GetProject as GetProject
@@ -18,7 +19,7 @@ import qualified Handlers.Login as Handlers
 import qualified Handlers.Signup as Handlers
 import qualified Handlers.UpdateProject as UpdateProject
 
-import Authorization (userAuth)
+import Authorization (projectAuth, userAuth)
 import Common.App (AppT)
 import Types (WebError(..))
 import Validation (WebValidationError, validationToString)
@@ -59,3 +60,4 @@ routes = do
   get "/projects/:id" $ userAuth GetProject.call
   patch "/projects/:id" $ userAuth UpdateProject.call
   post "/projects/:project_id/environments" $ userAuth CreateEnvironment.call
+  post "/builds" $ projectAuth CreateBuild.call

@@ -11,6 +11,7 @@ data ProjectResource = ProjectResource
   { resProjectId :: !Text
   , resProjectName :: !Text
   , resProjectDeploymentImage :: !Text
+  , resProjectAccessToken :: !Text
   }
 
 instance ToJSON ProjectResource where
@@ -19,12 +20,14 @@ instance ToJSON ProjectResource where
       [ "id" .= resProjectId
       , "name" .= resProjectName
       , "deployment_image" .= resProjectDeploymentImage
+      , "access_token" .= resProjectAccessToken
       ]
 
 projectResource :: Project -> ProjectResource
 projectResource Project {..} =
   let resProjectId = keyText projectId
       resProjectName = projectNameText projectName
+      resProjectAccessToken = projectAccessTokenText projectAccessToken
       resProjectDeploymentImage =
         projectDeploymentImageText projectDeploymentImage
    in ProjectResource {..}
