@@ -9,7 +9,10 @@ import Deployments.Classes
 
 import qualified Auth.Database as DB
 import qualified Common.Database as DB
-import qualified Deployments.Database as DB
+
+import qualified Deployments.Database.Build as DB
+import qualified Deployments.Database.Environment as DB
+import qualified Deployments.Database.Project as DB
 
 newtype Env = Env
   { pgConn :: PG.Connection

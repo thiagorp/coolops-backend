@@ -1,7 +1,5 @@
-module Deployments.Database
-  ( createBuild
-  , createProject
-  , createEnvironment
+module Deployments.Database.Project
+  ( createProject
   , findProjectByAccessToken
   , getProject
   , listProjects
@@ -10,19 +8,10 @@ module Deployments.Database
 
 import RIO
 
-import Data.Aeson (toJSON)
 import Database.PostgreSQL.Simple
 
 import Common.Database
 import Deployments.Domain
-
-createBuild :: (HasPostgres m) => Build -> m ()
-createBuild Build {..} = runDb' q values
-  where
-    q =
-      "insert into builds (id, name, params, project_id, created_at, updated_at) values\
-        \ (?, ?, ?, ?, NOW(), NOW())"
-    values = (buildId, buildName, toJSON buildParams, buildProjectId)
 
 createProject :: (HasPostgres m) => Project -> m ()
 createProject Project {..} = runDb' q values
@@ -85,15 +74,3 @@ type ProjectRow
 buildProject :: ProjectRow -> Project
 buildProject (projectId, projectName, projectDeploymentImage, projectCompanyId, projectAccessToken) =
   Project {..}
-
-createEnvironment :: (HasPostgres m) => Environment -> m ()
-createEnvironment Environment {..} = runDb' q values
-  where
-    q =
-      "insert into environments (id, name, project_id, env_vars, created_at, updated_at) values\
-        \ (?, ?, ?, ?, NOW(), NOW())"
-    values =
-      ( environmentId
-      , environmentName
-      , environmentProjectId
-      , toJSON environmentEnvVars)
