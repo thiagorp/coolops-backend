@@ -11,7 +11,7 @@ import RIO
 import Database.PostgreSQL.Simple
 
 import Common.Database
-import Deployments.Domain
+import Deployments.Domain.Project
 
 createProject :: (HasPostgres m) => Project -> m ()
 createProject Project {..} = runDb' q values
@@ -64,12 +64,7 @@ findProjectByAccessToken accessToken = do
       "select id, name, deployment_image, company_id, access_token from projects\
         \ where access_token = ?"
 
-type ProjectRow
-   = ( ProjectID
-     , ProjectName
-     , ProjectDeploymentImage
-     , CompanyID
-     , ProjectAccessToken)
+type ProjectRow = (ID, Name, DeploymentImage, CompanyID, AccessToken)
 
 buildProject :: ProjectRow -> Project
 buildProject (projectId, projectName, projectDeploymentImage, projectCompanyId, projectAccessToken) =

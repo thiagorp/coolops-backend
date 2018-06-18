@@ -5,7 +5,7 @@ module Deployments.Database.Environment
 import Data.Aeson (toJSON)
 
 import Common.Database
-import Deployments.Domain
+import Deployments.Domain.Environment
 
 createEnvironment :: (HasPostgres m) => Environment -> m ()
 createEnvironment Environment {..} = runDb' q values

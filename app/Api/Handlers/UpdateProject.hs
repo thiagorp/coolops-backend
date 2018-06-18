@@ -10,11 +10,7 @@ import Web.Scotty.Trans
 
 import Authorization (AuthenticatedUser(..), User(..))
 import Deployments.Classes (getProject)
-import Deployments.Domain
-  ( Project
-  , buildProjectDeploymentImage
-  , buildProjectName
-  )
+import Deployments.Domain.Project (Project, buildDeploymentImage, buildName)
 import qualified Deployments.UseCases.UpdateProject as App
 import Resources
 import Types
@@ -45,10 +41,10 @@ instance FromJSON Request where
 builder :: Request -> WebValidation App.Params
 builder Request {..} = App.Params <$> projectName <*> projectDeploymentImage
   where
-    projectName = required Name reqProjectName >>> buildProjectName
+    projectName = required Name reqProjectName >>> buildName
     projectDeploymentImage =
       required DeploymentImage reqProjectDeploymentImage >>>
-      buildProjectDeploymentImage
+      buildDeploymentImage
 
 update :: Project -> WebMonad ()
 update project = do

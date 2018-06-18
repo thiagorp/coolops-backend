@@ -3,22 +3,22 @@ module Deployments.UseCases.CreateProject where
 import RIO
 
 import Deployments.Classes (ProjectRepo, createProject)
-import Deployments.Domain
+import qualified Deployments.Domain.Project as Project
 
 data Params = Params
-  { projectName :: !ProjectName
-  , projectDeploymentImage :: !ProjectDeploymentImage
-  , companyId :: !CompanyID
+  { projectName :: !Project.Name
+  , projectDeploymentImage :: !Project.DeploymentImage
+  , companyId :: !Project.CompanyID
   }
 
-build :: (MonadIO m) => Params -> m Project
+build :: (MonadIO m) => Params -> m Project.Project
 build Params {..} = do
-  projectId <- genProjectId
-  projectAccessToken <- genProjectAccessToken
+  projectId <- Project.genId
+  projectAccessToken <- Project.genAccessToken
   let projectCompanyId = companyId
-  return Project {..}
+  return Project.Project {..}
 
-call :: (MonadIO m, ProjectRepo m) => Params -> m Project
+call :: (MonadIO m, ProjectRepo m) => Params -> m Project.Project
 call params = do
   project <- build params
   createProject project

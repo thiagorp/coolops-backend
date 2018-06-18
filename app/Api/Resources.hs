@@ -4,7 +4,8 @@ import RIO
 
 import Data.Aeson hiding (json)
 
-import Deployments.Domain
+import qualified Deployments.Domain.Environment as Environment
+import qualified Deployments.Domain.Project as Project
 import Util.Key (keyText)
 
 data ProjectResource = ProjectResource
@@ -23,13 +24,13 @@ instance ToJSON ProjectResource where
       , "access_token" .= resProjectAccessToken
       ]
 
-projectResource :: Project -> ProjectResource
-projectResource Project {..} =
+projectResource :: Project.Project -> ProjectResource
+projectResource Project.Project {..} =
   let resProjectId = keyText projectId
-      resProjectName = projectNameText projectName
-      resProjectAccessToken = projectAccessTokenText projectAccessToken
+      resProjectName = Project.nameText projectName
+      resProjectAccessToken = Project.accessTokenText projectAccessToken
       resProjectDeploymentImage =
-        projectDeploymentImageText projectDeploymentImage
+        Project.deploymentImageText projectDeploymentImage
    in ProjectResource {..}
 
 data EnvironmentResource = EnvironmentResource
@@ -48,10 +49,10 @@ instance ToJSON EnvironmentResource where
       , "env_vars" .= resEnvironmentEnvVars
       ]
 
-environmentResource :: Environment -> EnvironmentResource
-environmentResource Environment {..} =
+environmentResource :: Environment.Environment -> EnvironmentResource
+environmentResource Environment.Environment {..} =
   let resEnvironmentId = keyText environmentId
-      resEnvironmentName = environmentNameText environmentName
+      resEnvironmentName = Environment.nameText environmentName
       resEnvironmentProjectId = keyText environmentProjectId
       resEnvironmentEnvVars = environmentEnvVars
    in EnvironmentResource {..}

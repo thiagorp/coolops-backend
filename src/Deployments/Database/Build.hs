@@ -5,7 +5,7 @@ module Deployments.Database.Build
 import Data.Aeson (toJSON)
 
 import Common.Database
-import Deployments.Domain
+import Deployments.Domain.Build
 
 createBuild :: (HasPostgres m) => Build -> m ()
 createBuild Build {..} = runDb' q values
