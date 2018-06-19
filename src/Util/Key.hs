@@ -20,6 +20,9 @@ instance ToField (Key a) where
 instance FromField (Key a) where
   fromField f bs = Key <$> (fromField f bs)
 
+instance Eq (Key a) where
+  (==) (Key a) (Key b) = a == b
+
 genID :: (MonadIO m) => m (Key a)
 genID = liftIO $ Key <$> nextRandom
 
