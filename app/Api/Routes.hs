@@ -11,6 +11,7 @@ import Network.Wai.Middleware.Cors
 import Web.Scotty.Trans
 
 import qualified Handlers.CreateBuild as CreateBuild
+import qualified Handlers.CreateDeployment as CreateDeployment
 import qualified Handlers.CreateEnvironment as CreateEnvironment
 import qualified Handlers.CreateProject as CreateProject
 import qualified Handlers.GetProject as GetProject
@@ -61,3 +62,4 @@ routes = do
   patch "/projects/:id" $ userAuth UpdateProject.call
   post "/projects/:project_id/environments" $ userAuth CreateEnvironment.call
   post "/builds" $ projectAuth CreateBuild.call
+  post "/deployments" $ userAuth CreateDeployment.call

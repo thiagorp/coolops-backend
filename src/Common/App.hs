@@ -11,6 +11,7 @@ import qualified Auth.Database as DB
 import qualified Common.Database as DB
 
 import qualified Deployments.Database.Build as DB
+import qualified Deployments.Database.Deployment as DB
 import qualified Deployments.Database.Environment as DB
 import qualified Deployments.Database.Project as DB
 
@@ -47,9 +48,14 @@ instance ProjectRepo AppT where
 
 instance EnvironmentRepo AppT where
   createEnvironment = DB.createEnvironment
+  getEnvironment = DB.getEnvironment
 
 instance BuildRepo AppT where
   createBuild = DB.createBuild
+  getBuild = DB.getBuild
+
+instance DeploymentRepo AppT where
+  createDeployment = DB.createDeployment
 
 instance HasDBTransaction AppT where
   runTransaction tx = ask >>= DB.runTransaction . run tx
