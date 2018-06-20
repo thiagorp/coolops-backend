@@ -21,21 +21,20 @@ data Error =
 
 type UseCaseMonad m = (MonadIO m, DeploymentRepo m)
 
-entity :: (MonadIO m) => Params -> m Deployment.Deployment
+entity :: (MonadIO m) => Params -> m Deployment.QueuedDeployment
 entity Params {..} = do
   let deploymentBuildId = Build.buildId build
   let deploymentEnvironmentId = Environment.environmentId environment
-  let deploymentStatus = Deployment.initialStatus
   deploymentId <- Deployment.genId
-  return Deployment.Deployment {..}
+  return Deployment.QueuedDeployment {..}
 
-create :: UseCaseMonad m => Params -> m Deployment.Deployment
+create :: UseCaseMonad m => Params -> m Deployment.QueuedDeployment
 create params = do
   deployment <- entity params
-  createDeployment deployment
+  createQueuedDeployment deployment
   return deployment
 
-call :: UseCaseMonad m => Params -> m (Either Error Deployment.Deployment)
+call :: UseCaseMonad m => Params -> m (Either Error Deployment.QueuedDeployment)
 call params@(Params {..}) =
   let buildProjectId = Build.buildProjectId build
       environmentProjectId = Environment.environmentProjectId environment
