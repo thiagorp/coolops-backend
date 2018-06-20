@@ -55,7 +55,7 @@ instance BuildRepo AppT where
   getBuild = DB.getBuild
 
 instance DeploymentRepo AppT where
-  createDeployment = DB.createDeployment
+  createQueuedDeployment = DB.createQueuedDeployment
 
 instance HasDBTransaction AppT where
   runTransaction tx = ask >>= DB.runTransaction . run tx

@@ -13,6 +13,7 @@ dependencies:
 - resource-pool
 - rio
 - safe-exceptions
+- time
 - uuid
 
 ghc-options:

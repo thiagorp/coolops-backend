@@ -1,18 +1,20 @@
 module Deployments.Database.Deployment
-  ( createDeployment
+  ( createQueuedDeployment
   ) where
+
+import RIO
 
 import Common.Database
 import Deployments.Domain.Deployment
 
-createDeployment :: (HasPostgres m) => Deployment -> m ()
-createDeployment Deployment {..} = runDb' q values
+waitingStatus :: Text
+waitingStatus = "waiting"
+
+createQueuedDeployment :: (HasPostgres m) => QueuedDeployment -> m ()
+createQueuedDeployment QueuedDeployment {..} = runDb' q values
   where
     q =
       "insert into deployments (id, build_id, environment_id, status, created_at, updated_at) values\
         \ (?, ?, ?, ?, NOW(), NOW())"
     values =
-      ( deploymentId
-      , deploymentBuildId
-      , deploymentEnvironmentId
-      , deploymentStatus)
+      (deploymentId, deploymentBuildId, deploymentEnvironmentId, waitingStatus)
