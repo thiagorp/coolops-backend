@@ -7,11 +7,12 @@ module Deployments.Domain.Deployment
   , EnvironmentID
   , Status(..)
   , genId
+  , run
   ) where
 
 import RIO
 
-import Data.Time (UTCTime)
+import Data.Time (UTCTime, getCurrentTime)
 
 import qualified Deployments.Domain.Build as Build
 import qualified Deployments.Domain.Environment as Environment
@@ -43,6 +44,13 @@ data FinishedDeployment = FinishedDeployment
   , deploymentFinishedAt :: !UTCTime
   , deploymentStatus :: !Status
   }
+
+run :: (MonadIO m) => QueuedDeployment -> m RunningDeployment
+run QueuedDeployment {..} = do
+  currentTime <- liftIO getCurrentTime
+  return
+    RunningDeployment
+      {runningDeploymentId = deploymentId, deploymentStartedAt = currentTime}
 
 genId :: MonadIO m => m ID
 genId = genID

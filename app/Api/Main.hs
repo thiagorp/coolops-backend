@@ -4,6 +4,8 @@ import RIO
 
 import Data.Pool
 import Database.PostgreSQL.Simple
+import Network.HTTP.Client
+import Network.HTTP.Client.TLS
 import Web.Scotty.Trans (scottyT)
 
 import Common.App (Env(..), run)
@@ -21,7 +23,9 @@ acquirePool = do
 main :: IO ()
 main = do
   pool <- acquirePool
+  requestManager <- newManager tlsManagerSettings
   withResource pool migrateDb
-  let runner app = withResource pool $ \conn -> run app (Env conn)
+  let runner app =
+        withResource pool $ \conn -> run app (Env conn requestManager)
   port <- appPort
   scottyT port runner routes
