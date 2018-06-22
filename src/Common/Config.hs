@@ -31,6 +31,7 @@ pgSettings = do
 data KubernetesSettings = KubernetesSettings
   { k8sHost :: Text
   , k8sToken :: ByteString
+  , k8sNamespace :: ByteString
   }
 
 envVar :: Text -> Text -> IO Text
@@ -39,9 +40,11 @@ envVar key defaultValue = do
   return $ fromMaybe defaultValue maybeValue
 
 kubernetesSettings :: IO KubernetesSettings
-kubernetesSettings = KubernetesSettings <$> k8sHost_ <*> k8sToken_
+kubernetesSettings =
+  KubernetesSettings <$> k8sHost_ <*> k8sToken_ <*> k8sNamespace_
   where
     k8sHost_ = envVar "K8S_HOST" "https://192.168.99.100:8443"
+    k8sNamespace_ = encodeUtf8 <$> envVar "K8S_NAMESPACE" "default"
     k8sToken_ =
       encodeUtf8 <$>
       envVar

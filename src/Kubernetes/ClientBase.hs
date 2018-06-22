@@ -1,5 +1,6 @@
 module Kubernetes.ClientBase
-  ( k8sPost
+  ( Action(..)
+  , k8sPost
   ) where
 
 import RIO
@@ -11,12 +12,22 @@ import Network.HTTP.Types
 import Http.Classes
 import Kubernetes.Classes
 
-k8sBaseRequest :: (HasKubernetesSettings m) => m Request
-k8sBaseRequest = do
+data Action =
+  CreateJob
+
+k8sPath :: Action -> ByteString -> ByteString
+k8sPath action namespace =
+  case action of
+    CreateJob -> "/apis/batch/v1/namespaces/" <> namespace <> "/jobs"
+
+k8sBaseRequest :: (HasKubernetesSettings m) => Action -> m Request
+k8sBaseRequest action = do
   token <- k8sToken
   host <- k8sHost
+  namespace <- k8sNamespace
   return $
-    (parseRequest_ (Text.unpack host)) {requestHeaders = defaultHeaders token}
+    (parseRequest_ (Text.unpack host))
+      {requestHeaders = defaultHeaders token, path = k8sPath action namespace}
 
 defaultHeaders :: ByteString -> [Header]
 defaultHeaders token =
@@ -24,11 +35,10 @@ defaultHeaders token =
 
 k8sPost ::
      (HasHttp m, HasKubernetesSettings m)
-  => ByteString
+  => Action
   -> ByteString
   -> m (Response ByteString)
-k8sPost path body = do
-  baseRequest <- k8sBaseRequest
+k8sPost action body = do
+  baseRequest <- k8sBaseRequest action
   requestNoBody
-    (baseRequest
-       {path = path, requestBody = RequestBodyBS body, method = "POST"})
+    (baseRequest {requestBody = RequestBodyBS body, method = "POST"})

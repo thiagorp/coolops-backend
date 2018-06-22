@@ -78,3 +78,4 @@ instance Http.HasHttp AppT
 instance Kubernetes.HasKubernetesSettings AppT where
   k8sHost = Config.k8sHost <$> asks kubernetesSettings
   k8sToken = Config.k8sToken <$> asks kubernetesSettings
+  k8sNamespace = Config.k8sNamespace <$> asks kubernetesSettings
