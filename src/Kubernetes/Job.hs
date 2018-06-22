@@ -57,10 +57,10 @@ type CreateJobMonad m = (HasHttp m, HasKubernetesSettings m)
 
 createJob :: (CreateJobMonad m) => JobDescription -> m Bool
 createJob jobDescription = do
-  response <- k8sPost path body
+  response <- k8sPost action body
   case statusCode (responseStatus response) of
     201 -> return True
     _ -> return False
   where
-    path = "/apis/batch/v1/namespaces/default/jobs"
+    action = CreateJob
     body = encode jobDescription
