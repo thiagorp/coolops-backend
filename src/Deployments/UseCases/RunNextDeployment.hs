@@ -12,7 +12,6 @@ import Deployments.Domain.Deployment
 import Deployments.Domain.Environment (Environment, environmentProjectId)
 import Deployments.Domain.Project (CompanyID, Project)
 import Deployments.Gateway.Kubernetes
-import Http.Classes
 import Util.Key
 
 data Error
@@ -21,7 +20,7 @@ data Error
   | FailedToRunJob
 
 runNext ::
-     (DeploymentRepo m, HasHttp m)
+     (DeploymentRepo m, RunDeploymentMonad m)
   => QueuedDeployment
   -> Environment
   -> Build
@@ -53,7 +52,7 @@ fetchEntities companyId QueuedDeployment {..} = do
 call ::
      ( HasDBTransaction m
      , DeploymentRepo m
-     , HasHttp m
+     , RunDeploymentMonad m
      , ProjectRepo m
      , BuildRepo m
      , EnvironmentRepo m

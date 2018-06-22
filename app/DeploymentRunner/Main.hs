@@ -9,8 +9,8 @@ import Network.HTTP.Client.TLS
 
 import Auth.Classes (listCompanies)
 import Auth.Domain (CompanyID, companyId)
-import Common.App (AppT, Env(..), run)
-import Common.Config (PGSettings(..), pgSettings)
+import Common.App hiding (kubernetesSettings)
+import Common.Config (PGSettings(..), kubernetesSettings, pgSettings)
 import Deployments.UseCases.RunNextDeployment as App
 
 runNextForCompany :: CompanyID -> AppT ()
@@ -39,7 +39,8 @@ loopWith env = do
 main :: IO ()
 main = do
   conn <- pgSettings >>= connectPostgreSQL . pgUrl
+  k8sSettings <- kubernetesSettings
   requestManager <-
     newTlsManagerWith
       (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
-  loopWith (Env conn requestManager)
+  loopWith (Env conn requestManager k8sSettings)

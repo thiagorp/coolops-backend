@@ -1,4 +1,7 @@
-module Deployments.Gateway.Kubernetes where
+module Deployments.Gateway.Kubernetes
+  ( RunDeploymentMonad
+  , runDeployment
+  ) where
 
 import RIO
 
@@ -9,8 +12,10 @@ import Deployments.Domain.Project hiding (buildName)
 import qualified Kubernetes.Job as Kubernetes
 import Util.Key
 
+type RunDeploymentMonad m = Kubernetes.CreateJobMonad m
+
 runDeployment ::
-     (Kubernetes.CreateJobMonad m)
+     (RunDeploymentMonad m)
   => QueuedDeployment
   -> Environment
   -> Build

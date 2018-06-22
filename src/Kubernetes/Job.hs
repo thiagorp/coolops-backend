@@ -12,6 +12,7 @@ import Network.HTTP.Client
 import Network.HTTP.Types
 
 import Http.Classes
+import Kubernetes.Classes
 import Kubernetes.ClientBase
 
 data JobDescription = JobDescription
@@ -52,7 +53,7 @@ instance ToJSON JobDescription where
           ]
       ]
 
-type CreateJobMonad m = (HasHttp m)
+type CreateJobMonad m = (HasHttp m, HasKubernetesSettings m)
 
 createJob :: (CreateJobMonad m) => JobDescription -> m Bool
 createJob jobDescription = do

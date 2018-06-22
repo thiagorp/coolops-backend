@@ -7,20 +7,22 @@ import qualified Network.HTTP.Client as Http
 
 import Auth.Classes
 import Deployments.Classes
-
 import qualified Http.Classes as Http
+import qualified Kubernetes.Classes as Kubernetes
 
 import qualified Auth.Database as DB
 import qualified Common.Database as DB
-
 import qualified Deployments.Database.Build as DB
 import qualified Deployments.Database.Deployment as DB
 import qualified Deployments.Database.Environment as DB
 import qualified Deployments.Database.Project as DB
 
+import qualified Common.Config as Config
+
 data Env = Env
   { pgConn :: PG.Connection
   , requestManager :: Http.Manager
+  , kubernetesSettings :: Config.KubernetesSettings
   }
 
 newtype AppT a = AppT
@@ -72,3 +74,7 @@ instance Http.HasHttpRequestManager AppT where
   getHttpRequestManager = asks requestManager
 
 instance Http.HasHttp AppT
+
+instance Kubernetes.HasKubernetesSettings AppT where
+  k8sHost = Config.k8sHost <$> asks kubernetesSettings
+  k8sToken = Config.k8sToken <$> asks kubernetesSettings
