@@ -9,6 +9,7 @@ import RIO
 
 import Auth.Classes
 import Auth.Domain
+import Common.Database
 
 data Params = Params
   { signupUserFirstName :: !UserName

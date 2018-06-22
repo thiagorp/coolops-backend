@@ -4,10 +4,12 @@ import RIO
 
 import Data.Pool
 import Database.PostgreSQL.Simple
+import Network.HTTP.Client
+import Network.HTTP.Client.TLS
 import Web.Scotty.Trans (scottyT)
 
-import Common.App (Env(..), run)
-import Common.Config (PGSettings(..), appPort, pgSettings)
+import Common.App hiding (kubernetesSettings)
+import Common.Config (PGSettings(..), appPort, kubernetesSettings, pgSettings)
 import Common.Database (migrateDb)
 import Routes (routes)
 
@@ -21,7 +23,11 @@ acquirePool = do
 main :: IO ()
 main = do
   pool <- acquirePool
+  requestManager <- newManager tlsManagerSettings
+  k8sSettings <- kubernetesSettings
   withResource pool migrateDb
-  let runner app = withResource pool $ \conn -> run app (Env conn)
+  let runner app =
+        withResource pool $ \conn ->
+          run app (Env conn requestManager k8sSettings)
   port <- appPort
   scottyT port runner routes

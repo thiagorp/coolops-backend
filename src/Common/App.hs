@@ -3,20 +3,26 @@ module Common.App where
 import RIO
 
 import qualified Database.PostgreSQL.Simple as PG
+import qualified Network.HTTP.Client as Http
 
 import Auth.Classes
 import Deployments.Classes
+import qualified Http.Classes as Http
+import qualified Kubernetes.Classes as Kubernetes
 
 import qualified Auth.Database as DB
 import qualified Common.Database as DB
-
 import qualified Deployments.Database.Build as DB
 import qualified Deployments.Database.Deployment as DB
 import qualified Deployments.Database.Environment as DB
 import qualified Deployments.Database.Project as DB
 
-newtype Env = Env
+import qualified Common.Config as Config
+
+data Env = Env
   { pgConn :: PG.Connection
+  , requestManager :: Http.Manager
+  , kubernetesSettings :: Config.KubernetesSettings
   }
 
 newtype AppT a = AppT
@@ -38,6 +44,7 @@ instance UserRepo AppT where
 
 instance CompanyRepo AppT where
   createCompany = DB.createCompany
+  listCompanies = DB.listCompanies
 
 instance ProjectRepo AppT where
   createProject = DB.createProject
@@ -56,6 +63,18 @@ instance BuildRepo AppT where
 
 instance DeploymentRepo AppT where
   createQueuedDeployment = DB.createQueuedDeployment
+  getNextQueuedDeployment = DB.getNextQueuedDeployment
+  saveRunningDeployment = DB.saveRunningDeployment
 
-instance HasDBTransaction AppT where
-  runTransaction tx = ask >>= DB.runTransaction . run tx
+instance DB.HasDBTransaction AppT where
+  runTransaction tx = ask >>= DB.runTransaction_ . run tx
+  runEitherTransaction tx = ask >>= DB.runEitherTransaction_ . run tx
+
+instance Http.HasHttpRequestManager AppT where
+  getHttpRequestManager = asks requestManager
+
+instance Http.HasHttp AppT
+
+instance Kubernetes.HasKubernetesSettings AppT where
+  k8sHost = Config.k8sHost <$> asks kubernetesSettings
+  k8sToken = Config.k8sToken <$> asks kubernetesSettings

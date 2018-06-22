@@ -55,3 +55,15 @@ findUserByAccessToken token = do
     q =
       "select id, first_name, last_name, email, password, access_token, company_id from users\
       \ where access_token = ? limit 1"
+
+listCompanies :: (HasPostgres m) => m [Company]
+listCompanies = do
+  results <- runQuery_ q
+  return $ map buildCompany results
+  where
+    q = "select id, name, access_token from companies"
+
+type CompanyRow = (CompanyID, CompanyName, AccessToken)
+
+buildCompany :: CompanyRow -> Company
+buildCompany (companyId, companyName, companyToken) = Company {..}
