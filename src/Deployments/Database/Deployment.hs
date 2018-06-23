@@ -2,9 +2,14 @@ module Deployments.Database.Deployment
   ( createQueuedDeployment
   , getNextQueuedDeployment
   , saveRunningDeployment
+  , saveFinishedDeployment
+  , listAllRunningDeployments
   ) where
 
 import RIO
+
+import Data.Time
+import Database.PostgreSQL.Simple
 
 import Common.Database
 import Deployments.Domain.Deployment
@@ -15,6 +20,14 @@ queuedStatus = "waiting"
 
 runningStatus :: Text
 runningStatus = "running"
+
+converFinishedtDeploymentStatus :: Status -> Text
+converFinishedtDeploymentStatus status =
+  case status of
+    Succeeded -> "finished_with_success"
+    Failed InvalidDockerImage -> "failed_with_invalid_docker_image"
+    Failed JobFailed -> "failed_with_job_failed"
+    Failed JobNotFound -> "failed_with_job_not_found"
 
 getNextQueuedDeployment ::
      (HasPostgres m) => CompanyID -> m (Maybe QueuedDeployment)
@@ -31,6 +44,26 @@ getNextQueuedDeployment companyId = do
         \ where p.company_id = ? and d.status = ? \
         \ order by d.created_at asc limit 1\
         \ for update skip locked"
+
+listAllRunningDeployments :: (HasPostgres m) => m [RunningDeployment]
+listAllRunningDeployments = do
+  results <- runQuery q (Only runningStatus)
+  return $ map buildRunningDeployment results
+  where
+    q =
+      "select id, deployment_started_at from deployments\
+        \ where status = ?"
+
+saveFinishedDeployment :: (HasPostgres m) => FinishedDeployment -> m ()
+saveFinishedDeployment FinishedDeployment {..} = runDb' q values
+  where
+    q =
+      "update deployments set (deployment_finished_at, status, updated_at) =\
+        \ (?, ?, NOW()) where id = ?"
+    values =
+      ( deploymentFinishedAt
+      , converFinishedtDeploymentStatus deploymentStatus
+      , finishedDeploymentId)
 
 saveRunningDeployment :: (HasPostgres m) => RunningDeployment -> m ()
 saveRunningDeployment RunningDeployment {..} = runDb' q values
@@ -54,3 +87,10 @@ type QueuedDeploymentRow = (ID, BuildID, EnvironmentID)
 buildQueuedDeployment :: QueuedDeploymentRow -> QueuedDeployment
 buildQueuedDeployment (deploymentId, deploymentBuildId, deploymentEnvironmentId) =
   QueuedDeployment {..}
+
+type RunningDeploymentRow = (ID, LocalTime)
+
+buildRunningDeployment :: RunningDeploymentRow -> RunningDeployment
+buildRunningDeployment (runningDeploymentId, deploymentStartedAtLocaltime) =
+  let deploymentStartedAt = localTimeToUTC utc deploymentStartedAtLocaltime
+   in RunningDeployment {..}

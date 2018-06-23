@@ -96,6 +96,16 @@ executables:
     dependencies:
     - api
 
+  job-status-checker:
+    main:                Main.hs
+    source-dirs:         app/JobStatusChecker
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - api
+
 tests:
   api-test:
     main:                Spec.hs

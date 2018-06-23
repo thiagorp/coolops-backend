@@ -1,7 +1,7 @@
 module Http.Classes where
 
 import RIO
-import RIO.ByteString.Lazy (toStrict)
+import qualified RIO.ByteString.Lazy as LBS
 
 import Network.HTTP.Client
 
@@ -11,7 +11,5 @@ class HasHttpRequestManager m where
 class (MonadIO m, HasHttpRequestManager m) =>
       HasHttp m
   where
-  requestNoBody :: Request -> m (Response ByteString)
-  requestNoBody request =
-    getHttpRequestManager >>= liftIO . httpLbs request >>=
-    return . fmap toStrict
+  makeRequest :: Request -> m (Response LBS.ByteString)
+  makeRequest request = getHttpRequestManager >>= liftIO . httpLbs request
