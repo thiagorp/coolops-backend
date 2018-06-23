@@ -1,7 +1,6 @@
 module Main where
 
 import RIO
-import qualified RIO.ByteString as BS
 import qualified RIO.Text as Text
 
 import Database.PostgreSQL.Simple
@@ -12,6 +11,7 @@ import Common.App hiding (kubernetesSettings)
 import Common.Config (PGSettings(..), kubernetesSettings, pgSettings)
 import Deployments.Database.Deployment as DB
 import Deployments.Domain.Deployment hiding (run)
+import qualified Deployments.UseCases.FinishDeployment as App
 import qualified Kubernetes.Job as Job
 import qualified Kubernetes.Pod as Pod
 import Util.Key
@@ -34,7 +34,7 @@ deploymentJobStatus :: RunningDeployment -> AppT (Maybe Status)
 deploymentJobStatus RunningDeployment {..} = do
   maybeJob <- Job.getJob $ keyByteString runningDeploymentId
   case maybeJob of
-    Nothing -> return $ Just (Unknown JobNotFound)
+    Nothing -> return $ Just (Failed JobNotFound)
     Just job ->
       case Job.readStatus job of
         Job.Running -> deploymentPodStatus job
@@ -43,17 +43,10 @@ deploymentJobStatus RunningDeployment {..} = do
 
 syncJobStatus :: RunningDeployment -> AppT ()
 syncJobStatus deployment = do
-  BS.putStr
-    ("Checking status of deployment " <>
-     keyByteString (runningDeploymentId deployment) <>
-     " --- ")
   maybeStatus <- deploymentJobStatus deployment
   case maybeStatus of
-    Nothing -> BS.putStr "Still running\n"
-    Just (Unknown JobNotFound) -> BS.putStr "Job not found\n"
-    Just (Failed JobFailed) -> BS.putStr "Deployment failed\n"
-    Just (Failed InvalidDockerImage) -> BS.putStr "Invalid docker image\n"
-    Just (Succeeded) -> BS.putStr "Deployment succeeded\n"
+    Nothing -> return ()
+    Just status -> App.call status deployment >> return ()
 
 app :: AppT ()
 app = do

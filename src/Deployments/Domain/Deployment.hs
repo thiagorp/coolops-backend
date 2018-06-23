@@ -6,10 +6,10 @@ module Deployments.Domain.Deployment
   , BuildID
   , EnvironmentID
   , Status(..)
-  , UnknownReason(..)
   , FailedReason(..)
   , genId
   , run
+  , finish
   ) where
 
 import RIO
@@ -26,17 +26,14 @@ type BuildID = Build.ID
 
 type EnvironmentID = Environment.ID
 
-data UnknownReason =
-  JobNotFound
-
 data FailedReason
   = InvalidDockerImage
   | JobFailed
+  | JobNotFound
 
 data Status
   = Succeeded
   | Failed FailedReason
-  | Unknown UnknownReason
 
 data QueuedDeployment = QueuedDeployment
   { deploymentId :: !ID
@@ -61,6 +58,16 @@ run QueuedDeployment {..} = do
   return
     RunningDeployment
       {runningDeploymentId = deploymentId, deploymentStartedAt = currentTime}
+
+finish :: (MonadIO m) => Status -> RunningDeployment -> m FinishedDeployment
+finish status RunningDeployment {..} = do
+  currentTime <- liftIO getCurrentTime
+  return
+    FinishedDeployment
+      { finishedDeploymentId = runningDeploymentId
+      , deploymentFinishedAt = currentTime
+      , deploymentStatus = status
+      }
 
 genId :: MonadIO m => m ID
 genId = genID

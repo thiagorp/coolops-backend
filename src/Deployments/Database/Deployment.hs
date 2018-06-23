@@ -2,6 +2,7 @@ module Deployments.Database.Deployment
   ( createQueuedDeployment
   , getNextQueuedDeployment
   , saveRunningDeployment
+  , saveFinishedDeployment
   , listAllRunningDeployments
   ) where
 
@@ -19,6 +20,14 @@ queuedStatus = "waiting"
 
 runningStatus :: Text
 runningStatus = "running"
+
+converFinishedtDeploymentStatus :: Status -> Text
+converFinishedtDeploymentStatus status =
+  case status of
+    Succeeded -> "finished_with_success"
+    Failed InvalidDockerImage -> "failed_with_invalid_docker_image"
+    Failed JobFailed -> "failed_with_job_failed"
+    Failed JobNotFound -> "failed_with_job_not_found"
 
 getNextQueuedDeployment ::
      (HasPostgres m) => CompanyID -> m (Maybe QueuedDeployment)
@@ -44,6 +53,17 @@ listAllRunningDeployments = do
     q =
       "select id, deployment_started_at from deployments\
         \ where status = ?"
+
+saveFinishedDeployment :: (HasPostgres m) => FinishedDeployment -> m ()
+saveFinishedDeployment FinishedDeployment {..} = runDb' q values
+  where
+    q =
+      "update deployments set (deployment_finished_at, status, updated_at) =\
+        \ (?, ?, NOW()) where id = ?"
+    values =
+      ( deploymentFinishedAt
+      , converFinishedtDeploymentStatus deploymentStatus
+      , finishedDeploymentId)
 
 saveRunningDeployment :: (HasPostgres m) => RunningDeployment -> m ()
 saveRunningDeployment RunningDeployment {..} = runDb' q values

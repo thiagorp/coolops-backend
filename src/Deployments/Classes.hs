@@ -3,7 +3,11 @@ module Deployments.Classes where
 import RIO
 
 import Deployments.Domain.Build (Build)
-import Deployments.Domain.Deployment (QueuedDeployment, RunningDeployment)
+import Deployments.Domain.Deployment
+  ( FinishedDeployment
+  , QueuedDeployment
+  , RunningDeployment
+  )
 import Deployments.Domain.Environment (Environment)
 import Deployments.Domain.Project (CompanyID, Project)
 
@@ -34,3 +38,4 @@ class (Monad m) =>
   createQueuedDeployment :: QueuedDeployment -> m ()
   getNextQueuedDeployment :: CompanyID -> m (Maybe QueuedDeployment)
   saveRunningDeployment :: RunningDeployment -> m ()
+  saveFinishedDeployment :: FinishedDeployment -> m ()

@@ -65,6 +65,7 @@ instance DeploymentRepo AppT where
   createQueuedDeployment = DB.createQueuedDeployment
   getNextQueuedDeployment = DB.getNextQueuedDeployment
   saveRunningDeployment = DB.saveRunningDeployment
+  saveFinishedDeployment = DB.saveFinishedDeployment
 
 instance DB.HasDBTransaction AppT where
   runTransaction tx = ask >>= DB.runTransaction_ . run tx
