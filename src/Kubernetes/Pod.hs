@@ -48,7 +48,7 @@ type GetPodMonad m = (HasHttp m, HasKubernetesSettings m, MonadThrow m)
 
 getPodForJob :: (GetPodMonad m) => ByteString -> m (Maybe Pod)
 getPodForJob jobName = do
-  response <- k8sGet (GetPodForJob jobName)
+  response <- kubernetesRequest (GetPodForJob jobName)
   case statusCode (responseStatus response) of
     404 -> return Nothing
     200 ->

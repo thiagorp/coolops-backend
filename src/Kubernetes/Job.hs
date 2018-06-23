@@ -69,13 +69,10 @@ type CreateJobMonad m = (HasHttp m, HasKubernetesSettings m)
 
 createJob :: (CreateJobMonad m) => JobDescription -> m Bool
 createJob jobDescription = do
-  response <- k8sPost action body
+  response <- kubernetesRequest (CreateJob $ encode jobDescription)
   case statusCode (responseStatus response) of
     201 -> return True
     _ -> return False
-  where
-    action = CreateJob
-    body = encode jobDescription
 
 data Job = Job
   { jobName :: !Text
@@ -104,7 +101,7 @@ type GetJobMonad m = (HasHttp m, HasKubernetesSettings m, MonadThrow m)
 
 getJob :: (GetJobMonad m) => ByteString -> m (Maybe Job)
 getJob jobName = do
-  response <- k8sGet (GetJob jobName)
+  response <- kubernetesRequest (GetJob jobName)
   case statusCode (responseStatus response) of
     404 -> return Nothing
     200 ->

@@ -1,7 +1,6 @@
 module Kubernetes.ClientBase
   ( Action(..)
-  , k8sPost
-  , k8sGet
+  , kubernetesRequest
   ) where
 
 import RIO
@@ -15,47 +14,50 @@ import Http.Classes
 import Kubernetes.Classes
 
 data Action
-  = CreateJob
+  = CreateJob ByteString
   | GetJob ByteString
   | GetPodForJob ByteString
 
-k8sPath :: Action -> ByteString -> ByteString
-k8sPath action namespace =
-  case action of
-    CreateJob -> "/apis/batch/v1/namespaces/" <> namespace <> "/jobs"
-    GetJob jobName ->
-      "/apis/batch/v1/namespaces/" <> namespace <> "/jobs/" <> jobName
-    GetPodForJob jobName ->
-      "/api/v1/namespaces/" <> namespace <> "/pods/?labelSelector=job-name=" <>
-      jobName
+type KubernetesMonad m = (HasHttp m, HasKubernetesSettings m)
 
-k8sBaseRequest :: (HasKubernetesSettings m) => Action -> m Request
-k8sBaseRequest action = do
+kubernetesRequest ::
+     (KubernetesMonad m) => Action -> m (Response LBS.ByteString)
+kubernetesRequest action = do
+  namespace <- k8sNamespace
+  request <- baseRequest
+  makeRequest $ buildRequest request action namespace
+
+buildRequest :: Request -> Action -> ByteString -> Request
+buildRequest request action namespace =
+  case action of
+    GetPodForJob jobName ->
+      request
+        { method = "GET"
+        , path =
+            "/api/v1/namespaces/" <> namespace <>
+            "/pods/?labelSelector=job-name=" <>
+            jobName
+        }
+    GetJob jobName ->
+      request
+        { method = "GET"
+        , path =
+            "/apis/batch/v1/namespaces/" <> namespace <> "/jobs/" <> jobName
+        }
+    CreateJob body ->
+      request
+        { method = "POST"
+        , path = "/apis/batch/v1/namespaces/" <> namespace <> "/jobs"
+        , requestBody = RequestBodyBS body
+        }
+
+baseRequest :: (HasKubernetesSettings m) => m Request
+baseRequest = do
   token <- k8sToken
   host <- k8sHost
-  namespace <- k8sNamespace
   return $
-    (parseRequest_ (Text.unpack host))
-      {requestHeaders = defaultHeaders token, path = k8sPath action namespace}
+    (parseRequest_ (Text.unpack host)) {requestHeaders = defaultHeaders token}
 
 defaultHeaders :: ByteString -> [Header]
 defaultHeaders token =
   [(hContentType, "application/yaml"), (hAuthorization, "Bearer " <> token)]
-
-k8sGet ::
-     (HasHttp m, HasKubernetesSettings m)
-  => Action
-  -> m (Response LBS.ByteString)
-k8sGet action = do
-  baseRequest <- k8sBaseRequest action
-  requestNoBody (baseRequest {method = "GET"})
-
-k8sPost ::
-     (HasHttp m, HasKubernetesSettings m)
-  => Action
-  -> ByteString
-  -> m (Response LBS.ByteString)
-k8sPost action body = do
-  baseRequest <- k8sBaseRequest action
-  requestNoBody
-    (baseRequest {requestBody = RequestBodyBS body, method = "POST"})

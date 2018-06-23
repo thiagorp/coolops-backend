@@ -11,5 +11,5 @@ class HasHttpRequestManager m where
 class (MonadIO m, HasHttpRequestManager m) =>
       HasHttp m
   where
-  requestNoBody :: Request -> m (Response LBS.ByteString)
-  requestNoBody request = getHttpRequestManager >>= liftIO . httpLbs request
+  makeRequest :: Request -> m (Response LBS.ByteString)
+  makeRequest request = getHttpRequestManager >>= liftIO . httpLbs request
