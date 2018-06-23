@@ -2,11 +2,12 @@ module Util.Key
   ( Key
   , genID
   , keyText
+  , keyByteString
   ) where
 
 import RIO
 
-import Data.UUID (UUID, toText)
+import Data.UUID (UUID, toASCIIBytes, toText)
 import Data.UUID.V4 (nextRandom)
 import Database.PostgreSQL.Simple.FromField (FromField(..))
 import Database.PostgreSQL.Simple.ToField
@@ -28,3 +29,6 @@ genID = liftIO $ Key <$> nextRandom
 
 keyText :: Key a -> Text
 keyText (Key uuid) = toText uuid
+
+keyByteString :: Key a -> ByteString
+keyByteString (Key uuid) = toASCIIBytes uuid

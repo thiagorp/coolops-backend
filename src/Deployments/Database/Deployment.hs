@@ -2,9 +2,13 @@ module Deployments.Database.Deployment
   ( createQueuedDeployment
   , getNextQueuedDeployment
   , saveRunningDeployment
+  , listAllRunningDeployments
   ) where
 
 import RIO
+
+import Data.Time
+import Database.PostgreSQL.Simple
 
 import Common.Database
 import Deployments.Domain.Deployment
@@ -32,6 +36,15 @@ getNextQueuedDeployment companyId = do
         \ order by d.created_at asc limit 1\
         \ for update skip locked"
 
+listAllRunningDeployments :: (HasPostgres m) => m [RunningDeployment]
+listAllRunningDeployments = do
+  results <- runQuery q (Only runningStatus)
+  return $ map buildRunningDeployment results
+  where
+    q =
+      "select id, deployment_started_at from deployments\
+        \ where status = ?"
+
 saveRunningDeployment :: (HasPostgres m) => RunningDeployment -> m ()
 saveRunningDeployment RunningDeployment {..} = runDb' q values
   where
@@ -54,3 +67,10 @@ type QueuedDeploymentRow = (ID, BuildID, EnvironmentID)
 buildQueuedDeployment :: QueuedDeploymentRow -> QueuedDeployment
 buildQueuedDeployment (deploymentId, deploymentBuildId, deploymentEnvironmentId) =
   QueuedDeployment {..}
+
+type RunningDeploymentRow = (ID, LocalTime)
+
+buildRunningDeployment :: RunningDeploymentRow -> RunningDeployment
+buildRunningDeployment (runningDeploymentId, deploymentStartedAtLocaltime) =
+  let deploymentStartedAt = localTimeToUTC utc deploymentStartedAtLocaltime
+   in RunningDeployment {..}

@@ -6,6 +6,8 @@ module Deployments.Domain.Deployment
   , BuildID
   , EnvironmentID
   , Status(..)
+  , UnknownReason(..)
+  , FailedReason(..)
   , genId
   , run
   ) where
@@ -24,9 +26,17 @@ type BuildID = Build.ID
 
 type EnvironmentID = Environment.ID
 
+data UnknownReason =
+  JobNotFound
+
+data FailedReason
+  = InvalidDockerImage
+  | JobFailed
+
 data Status
   = Succeeded
-  | Failed
+  | Failed FailedReason
+  | Unknown UnknownReason
 
 data QueuedDeployment = QueuedDeployment
   { deploymentId :: !ID
