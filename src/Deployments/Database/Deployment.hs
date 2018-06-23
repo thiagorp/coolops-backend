@@ -21,8 +21,8 @@ queuedStatus = "waiting"
 runningStatus :: Text
 runningStatus = "running"
 
-converFinishedtDeploymentStatus :: Status -> Text
-converFinishedtDeploymentStatus status =
+convertFinishedtDeploymentStatus :: Status -> Text
+convertFinishedtDeploymentStatus status =
   case status of
     Succeeded -> "finished_with_success"
     Failed InvalidDockerImage -> "failed_with_invalid_docker_image"
@@ -62,7 +62,7 @@ saveFinishedDeployment FinishedDeployment {..} = runDb' q values
         \ (?, ?, NOW()) where id = ?"
     values =
       ( deploymentFinishedAt
-      , converFinishedtDeploymentStatus deploymentStatus
+      , convertFinishedtDeploymentStatus deploymentStatus
       , finishedDeploymentId)
 
 saveRunningDeployment :: (HasPostgres m) => RunningDeployment -> m ()
