@@ -9,6 +9,8 @@ import Auth.Classes
 import Deployments.Classes
 import qualified Http.Classes as Http
 import qualified Kubernetes.Classes as Kubernetes
+import Slack.Api.Classes
+import Slack.Classes
 
 import qualified Auth.Database as DB
 import qualified Common.Database as DB
@@ -16,6 +18,7 @@ import qualified Deployments.Database.Build as DB
 import qualified Deployments.Database.Deployment as DB
 import qualified Deployments.Database.Environment as DB
 import qualified Deployments.Database.Project as DB
+import qualified Slack.Database.Team as DB
 
 import qualified Common.Config as Config
 
@@ -23,7 +26,14 @@ data Env = Env
   { pgConn :: PG.Connection
   , requestManager :: Http.Manager
   , kubernetesSettings :: Config.KubernetesSettings
+  , slackSettings :: Config.SlackSettings
   }
+
+buildEnv :: PG.Connection -> Http.Manager -> IO Env
+buildEnv conn requestManager = do
+  k8sSettings <- Config.kubernetesSettings
+  slackSettings <- Config.slackSettings
+  return $ Env conn requestManager k8sSettings slackSettings
 
 newtype AppT a = AppT
   { unAppT :: ReaderT Env IO a
@@ -45,6 +55,7 @@ instance UserRepo AppT where
 instance CompanyRepo AppT where
   createCompany = DB.createCompany
   listCompanies = DB.listCompanies
+  getCompany = DB.getCompany
 
 instance ProjectRepo AppT where
   createProject = DB.createProject
@@ -80,3 +91,11 @@ instance Kubernetes.HasKubernetesSettings AppT where
   k8sHost = Config.k8sHost <$> asks kubernetesSettings
   k8sToken = Config.k8sToken <$> asks kubernetesSettings
   k8sNamespace = Config.k8sNamespace <$> asks kubernetesSettings
+
+instance SlackTeamRepo AppT where
+  createSlackTeam = DB.createSlackTeam
+  getSlackTeam = DB.getSlackTeam
+
+instance HasSlackSettings AppT where
+  slackClientId = Config.slackClientId <$> asks slackSettings
+  slackClientSecret = Config.slackClientSecret <$> asks slackSettings

@@ -12,3 +12,4 @@ class UserRepo m where
 class CompanyRepo m where
   createCompany :: Company -> m ()
   listCompanies :: m [Company]
+  getCompany :: Text -> m (Maybe Company)

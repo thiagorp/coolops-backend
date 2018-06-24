@@ -63,6 +63,15 @@ listCompanies = do
   where
     q = "select id, name, access_token from companies"
 
+getCompany :: (HasPostgres m) => Text -> m (Maybe Company)
+getCompany companyId = do
+  result <- runQuery q (Only companyId)
+  case result of
+    [] -> return Nothing
+    row:_ -> return . Just $ buildCompany row
+  where
+    q = "select id, name, access_token from companies where id = ?"
+
 type CompanyRow = (CompanyID, CompanyName, AccessToken)
 
 buildCompany :: CompanyRow -> Company

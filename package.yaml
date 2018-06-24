@@ -86,6 +86,20 @@ executables:
     - wai
     - wai-cors
 
+  slack-api:
+    main:                Main.hs
+    source-dirs:         app/SlackApi
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - api
+    - megaparsec
+    - scotty
+    - wai
+    - wai-cors
+
   deployment-runner:
     main:                Main.hs
     source-dirs:         app/DeploymentRunner

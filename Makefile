@@ -23,4 +23,4 @@ live-backend:
 
 run:
 	stack build
-	stack exec api-exe
+	foreman start

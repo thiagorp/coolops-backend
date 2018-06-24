@@ -10,11 +10,13 @@ import Network.Wai (Middleware)
 import Network.Wai.Middleware.Cors
 import Web.Scotty.Trans
 
+import qualified Handlers.ConnectWithSlack as ConnectWithSlack
 import qualified Handlers.CreateBuild as CreateBuild
 import qualified Handlers.CreateDeployment as CreateDeployment
 import qualified Handlers.CreateEnvironment as CreateEnvironment
 import qualified Handlers.CreateProject as CreateProject
 import qualified Handlers.GetProject as GetProject
+import qualified Handlers.GetSlackConfig as GetSlackConfig
 import qualified Handlers.ListProjects as ListProjects
 import qualified Handlers.Login as Handlers
 import qualified Handlers.Signup as Handlers
@@ -63,3 +65,5 @@ routes = do
   post "/projects/:project_id/environments" $ userAuth CreateEnvironment.call
   post "/builds" $ projectAuth CreateBuild.call
   post "/deployments" $ userAuth CreateDeployment.call
+  post "/slack_config" $ userAuth ConnectWithSlack.call
+  get "/slack_config" $ userAuth GetSlackConfig.call
