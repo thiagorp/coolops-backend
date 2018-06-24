@@ -6,6 +6,7 @@ import Data.Aeson hiding (json)
 
 import qualified Deployments.Domain.Environment as Environment
 import qualified Deployments.Domain.Project as Project
+import qualified Slack.Domain.Team as SlackTeam
 import Util.Key (keyText)
 
 data ProjectResource = ProjectResource
@@ -56,3 +57,20 @@ environmentResource Environment.Environment {..} =
       resEnvironmentProjectId = keyText environmentProjectId
       resEnvironmentEnvVars = environmentEnvVars
    in EnvironmentResource {..}
+
+data SlackConfigResource = SlackConfigResource
+  { resSlackConfigEnabled :: !Bool
+  , resSlackConfigClientId :: !Text
+  }
+
+instance ToJSON SlackConfigResource where
+  toJSON SlackConfigResource {..} =
+    object
+      [ "enabled" .= resSlackConfigEnabled
+      , "client_id" .= resSlackConfigClientId
+      ]
+
+slackConfigResource :: Text -> (Maybe SlackTeam.Team) -> SlackConfigResource
+slackConfigResource resSlackConfigClientId maybeSlackTeam =
+  let resSlackConfigEnabled = isJust maybeSlackTeam
+   in SlackConfigResource {..}

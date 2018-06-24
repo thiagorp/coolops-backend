@@ -9,8 +9,7 @@ import Network.HTTP.Client.TLS
 import Web.Scotty.Trans (scottyT)
 
 import Common.App
-import Common.Config (PGSettings(..), appPort, pgSettings)
-import Common.Database (migrateDb)
+import Common.Config (PGSettings(..), pgSettings, slackApiPort)
 import Routes (routes)
 
 acquirePool :: IO (Pool Connection)
@@ -24,10 +23,9 @@ main :: IO ()
 main = do
   pool <- acquirePool
   requestManager <- newManager tlsManagerSettings
-  withResource pool migrateDb
   let runner app =
         withResource pool $ \conn -> do
           env <- buildEnv conn requestManager
           run app env
-  port <- appPort
+  port <- slackApiPort
   scottyT port runner routes
