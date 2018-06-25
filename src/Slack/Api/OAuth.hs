@@ -3,6 +3,7 @@ module Slack.Api.OAuth
   , SlackClientMonad
   , SlackClientError(..)
   , getToken
+  , revokeToken
   ) where
 
 import RIO
@@ -16,9 +17,9 @@ import Network.HTTP.Types
 import Slack.Api.ClientBase
 
 data OAuthTokenResponse = OAuthTokenResponse
-  { accessToken :: !Text
-  , teamName :: !Text
+  { teamName :: !Text
   , teamSlackId :: !Text
+  , teamAccessToken :: !Text
   , incomingWebhookUrl :: !Text
   , incomingWebhookChannel :: !Text
   , incomingWebhookConfigurationUrl :: !Text
@@ -29,7 +30,7 @@ data OAuthTokenResponse = OAuthTokenResponse
 instance FromJSON OAuthTokenResponse where
   parseJSON =
     withObject "response" $ \o -> do
-      accessToken <- o .: "access_token"
+      teamAccessToken <- o .: "access_token"
       teamName <- o .: "team_name"
       teamSlackId <- o .: "team_id"
       iwO <- o .: "incoming_webhook"
@@ -60,3 +61,12 @@ getToken code = do
     _ ->
       return $
       Left $ UnexpectedHttpStatusError $ statusCode $ responseStatus response
+
+revokeToken :: (SlackClientMonad m) => Text -> m (Either SlackClientError ())
+revokeToken token = do
+  response <- slackRequest (RevokeToken $ Text.encodeUtf8 token)
+  case statusCode (responseStatus response) of
+    200 -> return $ Right ()
+    _ ->
+      return $
+      Left $ UnexpectedHttpStatusError $ statusCode $responseStatus response

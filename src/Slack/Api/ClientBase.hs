@@ -13,8 +13,9 @@ import Network.HTTP.Client
 import Http.Classes
 import Slack.Api.Classes
 
-data Action =
-  GetOAuthToken ByteString
+data Action
+  = GetOAuthToken ByteString
+  | RevokeToken ByteString
 
 type SlackClientMonad m = (HasHttp m, HasSlackSettings m, MonadThrow m)
 
@@ -35,6 +36,12 @@ buildRequest request clientId clientSecret action =
         , queryString =
             "code=" <> code <> "&client_id=" <> clientId <> "&client_secret=" <>
             clientSecret
+        }
+    RevokeToken token ->
+      request
+        { method = "GET"
+        , path = "/api/auth.revoke"
+        , queryString = "token=" <> token
         }
 
 baseRequest :: (Monad m) => m Request
