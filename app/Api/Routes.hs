@@ -15,6 +15,7 @@ import qualified Handlers.CreateBuild as CreateBuild
 import qualified Handlers.CreateDeployment as CreateDeployment
 import qualified Handlers.CreateEnvironment as CreateEnvironment
 import qualified Handlers.CreateProject as CreateProject
+import qualified Handlers.DisconnectFromSlack as DisconnectFromSlack
 import qualified Handlers.GetProject as GetProject
 import qualified Handlers.GetSlackConfig as GetSlackConfig
 import qualified Handlers.ListProjects as ListProjects
@@ -50,7 +51,9 @@ corsMiddleware = cors $ const (Just policy)
   where
     policy =
       simpleCorsResourcePolicy
-        {corsRequestHeaders = ["content-type", "authorization"]}
+        { corsRequestHeaders = ["content-type", "authorization"]
+        , corsMethods = ["GET", "HEAD", "POST", "PATCH", "DELETE"]
+        }
 
 routes :: ScottyT WebError AppT ()
 routes = do
@@ -67,3 +70,4 @@ routes = do
   post "/deployments" $ userAuth CreateDeployment.call
   post "/slack_config" $ userAuth ConnectWithSlack.call
   get "/slack_config" $ userAuth GetSlackConfig.call
+  delete "/slack_config" $ userAuth DisconnectFromSlack.call

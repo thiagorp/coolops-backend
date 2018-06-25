@@ -29,6 +29,7 @@ data Team = Team
   , teamCompanyId :: !CompanyID
   , teamName :: !Text
   , teamSlackId :: !Text
+  , teamAccessToken :: !Text
   , teamIncomingWebhook :: !IncomingWebhookConfig
   , teamBotUser :: !BotUser
   }
