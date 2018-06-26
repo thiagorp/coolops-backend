@@ -21,7 +21,7 @@ data Params = Params
 
 call :: (SlackTeamRepo m, SlackClientMonad m) => Params -> m (Either Error ())
 call Params {..} = do
-  maybeTeam <- getSlackTeam companyId
+  maybeTeam <- getSlackTeamForCompany companyId
   case maybeTeam of
     Nothing -> return $ Left TeamNotFound
     Just team -> do

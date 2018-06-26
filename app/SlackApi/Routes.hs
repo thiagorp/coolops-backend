@@ -1,11 +1,11 @@
 module Routes where
 
-import RIO
-
 import Web.Scotty.Trans
+
+import qualified Handlers.Messages as Messages
 
 import Types
 
 routes :: WebRoutes ()
 routes = do
-  get "/oauth/callback" undefined
+  post "/slack/messages" Messages.call

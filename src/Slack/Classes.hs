@@ -7,5 +7,6 @@ import Slack.Domain.Team
 
 class SlackTeamRepo m where
   createSlackTeam :: Team -> m ()
-  getSlackTeam :: CompanyID -> m (Maybe Team)
+  getSlackTeamForCompany :: CompanyID -> m (Maybe Team)
+  getSlackTeam :: Text -> m (Maybe Team)
   deleteSlackTeam :: Team -> m ()
