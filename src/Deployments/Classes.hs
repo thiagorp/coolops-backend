@@ -17,6 +17,7 @@ class (Monad m) =>
   createProject :: Project -> m ()
   updateProject :: Project -> m ()
   getProject :: CompanyID -> Text -> m (Maybe Project)
+  getProjectForBuild :: Build -> m (Maybe Project)
   listProjects :: CompanyID -> m [Project]
   findProjectByAccessToken :: Text -> m (Maybe Project)
 
@@ -25,6 +26,7 @@ class (Monad m) =>
   where
   createEnvironment :: Environment -> m ()
   getEnvironment :: CompanyID -> Text -> m (Maybe Environment)
+  listEnvironments :: CompanyID -> m [Environment]
 
 class (Monad m) =>
       BuildRepo m

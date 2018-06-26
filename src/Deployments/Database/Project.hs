@@ -2,6 +2,7 @@ module Deployments.Database.Project
   ( createProject
   , findProjectByAccessToken
   , getProject
+  , getProjectForBuild
   , listProjects
   , updateProject
   ) where
@@ -11,6 +12,7 @@ import RIO
 import Database.PostgreSQL.Simple
 
 import Common.Database
+import qualified Deployments.Domain.Build as B
 import Deployments.Domain.Project
 
 createProject :: (HasPostgres m) => Project -> m ()
@@ -52,6 +54,17 @@ getProject companyId projectId = do
     q =
       "select id, name, deployment_image, company_id, access_token from projects\
         \ where company_id = ? AND id = ?"
+
+getProjectForBuild :: (HasPostgres m) => B.Build -> m (Maybe Project)
+getProjectForBuild build = do
+  result <- runQuery q (Only $ B.buildProjectId build)
+  case result of
+    [] -> return Nothing
+    row:_ -> return . Just $ buildProject row
+  where
+    q =
+      "select id, name, deployment_image, company_id, access_token from projects\
+        \ where id = ?"
 
 findProjectByAccessToken :: (HasPostgres m) => Text -> m (Maybe Project)
 findProjectByAccessToken accessToken = do

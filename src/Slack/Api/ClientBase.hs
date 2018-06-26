@@ -4,6 +4,7 @@ module Slack.Api.ClientBase
   , slackRequest
   ) where
 
+import Data.Aeson
 import RIO
 import qualified RIO.ByteString.Lazy as LBS
 import qualified RIO.Text as Text
@@ -12,10 +13,13 @@ import Network.HTTP.Client
 
 import Http.Classes
 import Slack.Api.Classes
+import Slack.Api.Message (Message)
 
 data Action
   = GetOAuthToken ByteString
   | RevokeToken ByteString
+  | IncomingWebhook Text
+                    Message
 
 type SlackClientMonad m = (HasHttp m, HasSlackSettings m, MonadThrow m)
 
@@ -43,6 +47,9 @@ buildRequest request clientId clientSecret action =
         , path = "/api/auth.revoke"
         , queryString = "token=" <> token
         }
+    IncomingWebhook url message ->
+      (parseRequest_ $ Text.unpack url)
+        {method = "POST", requestBody = RequestBodyLBS $ encode message}
 
 baseRequest :: (Monad m) => m Request
 baseRequest = do
