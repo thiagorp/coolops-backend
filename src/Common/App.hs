@@ -62,11 +62,13 @@ instance ProjectRepo AppT where
   updateProject = DB.updateProject
   listProjects = DB.listProjects
   getProject = DB.getProject
+  getProjectForBuild = DB.getProjectForBuild
   findProjectByAccessToken = DB.findProjectByAccessToken
 
 instance EnvironmentRepo AppT where
   createEnvironment = DB.createEnvironment
   getEnvironment = DB.getEnvironment
+  listEnvironments = DB.listEnvironments
 
 instance BuildRepo AppT where
   createBuild = DB.createBuild

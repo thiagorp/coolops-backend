@@ -1,12 +1,14 @@
 module Deployments.Database.Environment
   ( createEnvironment
   , getEnvironment
+  , listEnvironments
   ) where
 
 import RIO
 import qualified RIO.HashMap as HashMap
 
 import Data.Aeson (Result(..), Value, fromJSON, toJSON)
+import Database.PostgreSQL.Simple
 
 import Common.Database
 import Deployments.Domain.Environment
@@ -23,6 +25,15 @@ getEnvironment companyId environmentId = do
       "select e.id, e.name, e.env_vars, e.project_id from environments e\
         \ left join projects p on p.id = e.project_id\
         \ where p.company_id = ? and e.id = ?"
+
+listEnvironments :: (HasPostgres m) => CompanyID -> m [Environment]
+listEnvironments companyId =
+  runQuery q (Only companyId) >>= return . (map buildEnvironment)
+  where
+    q =
+      "select e.id, e.name, e.env_vars, e.project_id from environments e\
+        \ left join projects p on p.id = e.project_id\
+        \ where p.company_id = ?"
 
 createEnvironment :: (HasPostgres m) => Environment -> m ()
 createEnvironment Environment {..} = runDb' q values
