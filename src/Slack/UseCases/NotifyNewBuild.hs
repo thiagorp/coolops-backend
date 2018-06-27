@@ -57,7 +57,7 @@ call build = do
   case maybeProject of
     Nothing -> return $ Left ProjectDoesNotexist
     Just project -> do
-      maybeSlackTeam <- getSlackTeam $ P.projectCompanyId project
+      maybeSlackTeam <- getSlackTeamForCompany $ P.projectCompanyId project
       case maybeSlackTeam of
         Nothing -> return $ Right False
         Just slackTeam -> do

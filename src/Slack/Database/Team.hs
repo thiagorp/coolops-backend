@@ -1,5 +1,6 @@
 module Slack.Database.Team
   ( createSlackTeam
+  , getSlackTeamForCompany
   , getSlackTeam
   , deleteSlackTeam
   ) where
@@ -31,8 +32,8 @@ createSlackTeam Team {..} = runDb' q values
       , botUserId teamBotUser
       , botUserAccessToken teamBotUser)
 
-getSlackTeam :: (HasPostgres m) => CompanyID -> m (Maybe Team)
-getSlackTeam companyId = do
+getSlackTeamForCompany :: (HasPostgres m) => CompanyID -> m (Maybe Team)
+getSlackTeamForCompany companyId = do
   result <- runQuery q (Only companyId)
   case result of
     [] -> return Nothing
@@ -41,6 +42,17 @@ getSlackTeam companyId = do
     q =
       "select id, company_id, team_name, team_id, team_access_token, incoming_webhook_url, incoming_webhook_channel, incoming_webhook_configuration_url, bot_user_id, bot_access_token from slack_teams\
         \ where company_id = ? limit 1"
+
+getSlackTeam :: (HasPostgres m) => Text -> m (Maybe Team)
+getSlackTeam teamId = do
+  result <- runQuery q (Only teamId)
+  case result of
+    [] -> return Nothing
+    row:_ -> return $ Just $ buildSlackTeam row
+  where
+    q =
+      "select id, company_id, team_name, team_id, team_access_token, incoming_webhook_url, incoming_webhook_channel, incoming_webhook_configuration_url, bot_user_id, bot_access_token from slack_teams\
+        \ where team_id = ? limit 1"
 
 deleteSlackTeam :: (HasPostgres m) => Team -> m ()
 deleteSlackTeam Team {..} = runDb' q (Only teamId)

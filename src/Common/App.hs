@@ -97,8 +97,10 @@ instance Kubernetes.HasKubernetesSettings AppT where
 instance SlackTeamRepo AppT where
   createSlackTeam = DB.createSlackTeam
   getSlackTeam = DB.getSlackTeam
+  getSlackTeamForCompany = DB.getSlackTeamForCompany
   deleteSlackTeam = DB.deleteSlackTeam
 
 instance HasSlackSettings AppT where
   slackClientId = Config.slackClientId <$> asks slackSettings
   slackClientSecret = Config.slackClientSecret <$> asks slackSettings
+  slackVerificationToken = Config.slackVerificationToken <$> asks slackSettings

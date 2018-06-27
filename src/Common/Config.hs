@@ -61,11 +61,16 @@ kubernetesSettings =
 data SlackSettings = SlackSettings
   { slackClientId :: !Text
   , slackClientSecret :: !ByteString
+  , slackVerificationToken :: !Text
   }
 
 slackSettings :: IO SlackSettings
-slackSettings = SlackSettings <$> slackClientId_ <*> slackClientSecret_
+slackSettings =
+  SlackSettings <$> slackClientId_ <*> slackClientSecret_ <*>
+  slackVerificationToken_
   where
+    slackVerificationToken_ =
+      envVar "SLACK_VERIFICATION_TOKEN" "rl5a2StQeKMHLVBVFo4tWcQr"
     slackClientId_ = envVar "SLACK_CLIENT_ID" "388050218183.386999338546"
     slackClientSecret_ =
       encodeUtf8 <$>
