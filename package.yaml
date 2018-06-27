@@ -13,6 +13,7 @@ dependencies:
 - postgresql-simple
 - postgresql-simple-migration
 - pwstore-fast
+- megaparsec
 - random
 - resource-pool
 - rio
