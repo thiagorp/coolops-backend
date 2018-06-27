@@ -1,16 +1,19 @@
 module Deployments.UseCases.RunNextDeployment
   ( Error(..)
+  , CallMonad
   , call
   ) where
 
 import RIO
 
+import Control.Monad.Except
+
 import Common.Database
 import Deployments.Classes
-import Deployments.Domain.Build (Build)
+import qualified Deployments.Domain.Build as B
 import Deployments.Domain.Deployment
-import Deployments.Domain.Environment (Environment, environmentProjectId)
-import Deployments.Domain.Project (CompanyID, Project)
+import qualified Deployments.Domain.Environment as E
+import qualified Deployments.Domain.Project as P
 import Deployments.Gateway.Kubernetes
 import Util.Key
 
@@ -19,54 +22,62 @@ data Error
   | MissingEntities
   | FailedToRunJob
 
-runNext ::
-     (DeploymentRepo m, RunDeploymentMonad m)
-  => QueuedDeployment
-  -> Environment
-  -> Build
-  -> Project
-  -> m (Either Error RunningDeployment)
-runNext queued environment build project = do
-  running <- run queued
-  saveRunningDeployment running
-  result <- runDeployment queued environment build project
-  case result of
-    True -> return $ Right running
-    False -> return $ Left FailedToRunJob
-
-fetchEntities ::
-     (ProjectRepo m, BuildRepo m, EnvironmentRepo m)
-  => CompanyID
-  -> QueuedDeployment
-  -> m (Maybe (Environment, Build, Project))
-fetchEntities companyId QueuedDeployment {..} = do
-  maybeEnvironment <- getEnvironment companyId (keyText deploymentEnvironmentId)
-  maybeBuild <- getBuild companyId (keyText deploymentBuildId)
-  case (,) <$> maybeEnvironment <*> maybeBuild of
-    Nothing -> return Nothing
-    Just (environment, build) -> do
-      maybeProject <-
-        getProject companyId (keyText (environmentProjectId environment))
-      return $ (environment, build, ) <$> maybeProject
-
-call ::
-     ( HasDBTransaction m
+type CallMonad m
+   = ( HasDBTransaction m
      , DeploymentRepo m
      , RunDeploymentMonad m
      , ProjectRepo m
      , BuildRepo m
-     , EnvironmentRepo m
-     )
-  => CompanyID
-  -> m (Either Error RunningDeployment)
-call companyId =
-  runEitherTransaction $ do
-    maybeDeployment <- getNextQueuedDeployment companyId
-    case maybeDeployment of
-      Nothing -> return $ Left NoDeploymentToRun
-      Just deployment -> do
-        maybeEntities <- fetchEntities companyId deployment
-        case maybeEntities of
-          Nothing -> return $ Left MissingEntities
-          Just (environment, build, project) ->
-            runNext deployment environment build project
+     , EnvironmentRepo m)
+
+type RunMonad m a = ExceptT Error m a
+
+runNext ::
+     (DeploymentRepo m, RunDeploymentMonad m)
+  => QueuedDeployment
+  -> E.Environment
+  -> B.Build
+  -> P.Project
+  -> RunMonad m RunningDeployment
+runNext queued environment build project = do
+  running <- run queued
+  lift $ saveRunningDeployment running
+  result <- lift $ runDeployment queued environment build project
+  case result of
+    True -> return running
+    False -> throwError FailedToRunJob
+
+getEnvironment_ ::
+     EnvironmentRepo m => P.CompanyID -> E.ID -> RunMonad m E.Environment
+getEnvironment_ cId eId =
+  handleEntity MissingEntities $ getEnvironment cId $ keyText eId
+
+getBuild_ :: BuildRepo m => P.CompanyID -> B.ID -> RunMonad m B.Build
+getBuild_ cId bId = handleEntity MissingEntities $ getBuild cId $ keyText bId
+
+getProject_ :: ProjectRepo m => P.CompanyID -> P.ID -> RunMonad m P.Project
+getProject_ cId pId =
+  handleEntity MissingEntities $ getProject cId $ keyText pId
+
+getNextQueuedDeployment_ ::
+     DeploymentRepo m => P.CompanyID -> RunMonad m QueuedDeployment
+getNextQueuedDeployment_ cId =
+  handleEntity NoDeploymentToRun $ getNextQueuedDeployment cId
+
+call_ :: CallMonad m => P.CompanyID -> RunMonad m RunningDeployment
+call_ companyId = do
+  deployment <- getNextQueuedDeployment_ companyId
+  environment <- getEnvironment_ companyId (deploymentEnvironmentId deployment)
+  build <- getBuild_ companyId (deploymentBuildId deployment)
+  project <- getProject_ companyId (B.buildProjectId build)
+  runNext deployment environment build project
+
+call :: CallMonad m => P.CompanyID -> m (Either Error RunningDeployment)
+call = runExceptT . call_
+
+handleEntity :: (Monad m) => Error -> m (Maybe a) -> RunMonad m a
+handleEntity e wrappedEntity = do
+  entity <- lift wrappedEntity
+  case entity of
+    Nothing -> throwError e
+    Just a -> return a
