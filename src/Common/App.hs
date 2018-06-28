@@ -79,6 +79,7 @@ instance DeploymentRepo AppT where
   getNextQueuedDeployment = DB.getNextQueuedDeployment
   saveRunningDeployment = DB.saveRunningDeployment
   saveFinishedDeployment = DB.saveFinishedDeployment
+  getDeploymentResources = DB.getDeploymentResources
 
 instance DB.HasDBTransaction AppT where
   runTransaction tx = ask >>= DB.runTransaction_ . run tx

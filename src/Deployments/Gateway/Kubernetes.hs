@@ -15,18 +15,16 @@ import Util.Key
 type RunDeploymentMonad m = Kubernetes.CreateJobMonad m
 
 runDeployment ::
-     (RunDeploymentMonad m)
-  => QueuedDeployment
-  -> Environment
-  -> Build
-  -> Project
-  -> m Bool
-runDeployment (QueuedDeployment {..}) (Environment {..}) (Build {..}) (Project {..}) =
+     (RunDeploymentMonad m) => QueuedDeployment -> DeploymentResources -> m Bool
+runDeployment (QueuedDeployment {..}) (DeploymentResources {..}) =
   Kubernetes.createJob jobDescription
   where
     jobDescription =
       Kubernetes.JobDescription
-        { Kubernetes.dockerImage = deploymentImageText projectDeploymentImage
-        , Kubernetes.envVars = environmentEnvVars <> buildParams
+        { Kubernetes.dockerImage =
+            deploymentImageText (projectDeploymentImage deploymentProject)
+        , Kubernetes.envVars =
+            (environmentEnvVars deploymentEnvironment) <>
+            (buildParams deploymentBuild)
         , Kubernetes.name = keyText deploymentId
         }

@@ -4,7 +4,8 @@ import RIO
 
 import Deployments.Domain.Build (Build)
 import Deployments.Domain.Deployment
-  ( FinishedDeployment
+  ( DeploymentResources
+  , FinishedDeployment
   , QueuedDeployment
   , RunningDeployment
   )
@@ -41,3 +42,5 @@ class (Monad m) =>
   getNextQueuedDeployment :: CompanyID -> m (Maybe QueuedDeployment)
   saveRunningDeployment :: RunningDeployment -> m ()
   saveFinishedDeployment :: FinishedDeployment -> m ()
+  getDeploymentResources ::
+       CompanyID -> Text -> Text -> m (Maybe DeploymentResources)

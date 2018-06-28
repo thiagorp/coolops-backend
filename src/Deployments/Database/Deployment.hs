@@ -4,6 +4,7 @@ module Deployments.Database.Deployment
   , saveRunningDeployment
   , saveFinishedDeployment
   , listAllRunningDeployments
+  , getDeploymentResources
   ) where
 
 import RIO
@@ -12,8 +13,14 @@ import Data.Time
 import Database.PostgreSQL.Simple
 
 import Common.Database
+import Deployments.Database.Build
+import Deployments.Database.Environment
+import Deployments.Database.Project
 import Deployments.Domain.Deployment
+
+import Deployments.Domain.Build (buildProjectId)
 import Deployments.Domain.Project (CompanyID)
+import Util.Key
 
 queuedStatus :: Text
 queuedStatus = "waiting"
@@ -44,6 +51,24 @@ getNextQueuedDeployment companyId = do
         \ where p.company_id = ? and d.status = ? \
         \ order by d.created_at asc limit 1\
         \ for update skip locked"
+
+getDeploymentResources ::
+     (HasPostgres m)
+  => CompanyID
+  -> Text
+  -> Text
+  -> m (Maybe DeploymentResources)
+getDeploymentResources cId eId bId = do
+  maybeEnvironment <- getEnvironment cId eId
+  maybeBuild <- getBuild cId bId
+  case (,) <$> maybeEnvironment <*> maybeBuild of
+    Nothing -> return Nothing
+    Just (environment, build) -> do
+      maybeProject <- getProject cId $ keyText $ buildProjectId build
+      case maybeProject of
+        Nothing -> return Nothing
+        Just project ->
+          return $ Just $ DeploymentResources project environment build
 
 listAllRunningDeployments :: (HasPostgres m) => m [RunningDeployment]
 listAllRunningDeployments = do
