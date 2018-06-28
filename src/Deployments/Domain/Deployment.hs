@@ -2,6 +2,7 @@ module Deployments.Domain.Deployment
   ( QueuedDeployment(..)
   , RunningDeployment(..)
   , FinishedDeployment(..)
+  , DeploymentResources(..)
   , ID
   , BuildID
   , EnvironmentID
@@ -18,6 +19,7 @@ import Data.Time (UTCTime, getCurrentTime)
 
 import qualified Deployments.Domain.Build as Build
 import qualified Deployments.Domain.Environment as Environment
+import qualified Deployments.Domain.Project as Project
 import Util.Key
 
 type ID = Key QueuedDeployment
@@ -34,6 +36,12 @@ data FailedReason
 data Status
   = Succeeded
   | Failed FailedReason
+
+data DeploymentResources = DeploymentResources
+  { deploymentProject :: !Project.Project
+  , deploymentEnvironment :: !Environment.Environment
+  , deploymentBuild :: !Build.Build
+  }
 
 data QueuedDeployment = QueuedDeployment
   { deploymentId :: !ID

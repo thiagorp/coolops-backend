@@ -8,9 +8,9 @@ import qualified RIO.Text.Lazy as TL
 import Web.Scotty.Trans
 
 import Auth.Domain (CompanyID)
-import Common.App (AppT)
 import Deployments.Classes
 import qualified Deployments.Domain.Build as B
+import Deployments.Domain.Deployment (DeploymentResources(..))
 import qualified Deployments.Domain.Environment as E
 import qualified Deployments.Domain.Project as P
 import qualified Deployments.UseCases.CreateDeployment as App
@@ -18,54 +18,47 @@ import Slack.Api.IncomingWebhooks
 import Slack.Api.Message
 import Slack.Domain.Team (Team(..), webhookUrl)
 import Types
-import Util.Key
 
-runApp :: B.Build -> E.Environment -> WebHandler ()
-runApp build environment =
-  lift $ App.call (App.Params build environment) >> return ()
+resourcesMissing :: TL.Text
+resourcesMissing =
+  "Either the build or the environment that you are trying to deploy does not exist anymore"
 
-withError :: TL.Text -> AppT (Maybe a) -> WebHandler a
-withError errorText v = do
-  maybeVal <- lift v
-  case maybeVal of
-    Nothing -> text errorText >> finish
-    Just val -> return val
+projectsDontMatch :: TL.Text
+projectsDontMatch =
+  "There was a very unexpected error. We are already notified and are working on solving it as soon as possible"
 
-buildMissing :: TL.Text
-buildMissing = "_This build doesn't exist anymore_"
+runApp :: DeploymentResources -> WebHandler ()
+runApp (DeploymentResources {..}) = do
+  result <- lift $ App.call (App.Params deploymentBuild deploymentEnvironment)
+  case result of
+    Right _ -> return ()
+    Left App.ProjectsDontMatch -> text projectsDontMatch >> finish
 
-environmentMissing :: TL.Text
-environmentMissing = "_This environment doesn't exist anymore_"
+getDeploymentResources_ ::
+     CompanyID -> Text -> Text -> WebHandler DeploymentResources
+getDeploymentResources_ cId eId bId = do
+  maybeResources <- lift $ getDeploymentResources cId eId bId
+  case maybeResources of
+    Nothing -> text resourcesMissing >> finish
+    Just resources -> return resources
 
-projectMissing :: TL.Text
-projectMissing = "_This project doesn't exist anymore_"
-
-fetchEnvironment :: CompanyID -> Text -> WebHandler E.Environment
-fetchEnvironment cId eId = withError environmentMissing $ getEnvironment cId eId
-
-fetchBuild :: CompanyID -> Text -> WebHandler B.Build
-fetchBuild cId eId = withError buildMissing $ getBuild cId eId
-
-fetchProject :: CompanyID -> Text -> WebHandler P.Project
-fetchProject cId pId = withError projectMissing $ getProject cId pId
-
-notify :: Text -> Team -> B.Build -> E.Environment -> P.Project -> WebHandler ()
-notify senderId (Team {..}) (B.Build {..}) (E.Environment {..}) (P.Project {..}) =
+notify :: Text -> Team -> DeploymentResources -> WebHandler ()
+notify senderId (Team {..}) (DeploymentResources {..}) =
   lift $ sendIncomingWebhook url message
   where
     url = webhookUrl teamIncomingWebhook
+    bName = B.nameText $ B.buildName $ deploymentBuild
+    eName = E.nameText $ E.environmentName $ deploymentEnvironment
+    pName = P.nameText $ P.projectName $ deploymentProject
     message = slackMessage {messageText = Just t}
     t =
-      "<@" <> senderId <> "> deployed *" <> B.nameText buildName <> "* to *" <>
-      E.nameText environmentName <>
+      "<@" <> senderId <> "> deployed *" <> bName <> "* to *" <> eName <>
       "* of *" <>
-      P.nameText projectName <>
+      pName <>
       "*"
 
 call :: Team -> Text -> Text -> Text -> WebHandler ()
 call (team@Team {..}) environmentId buildId reqSender = do
-  build <- fetchBuild teamCompanyId buildId
-  environment <- fetchEnvironment teamCompanyId environmentId
-  project <- fetchProject teamCompanyId $ keyText $ B.buildProjectId build
-  runApp build environment
-  notify reqSender team build environment project
+  resources <- getDeploymentResources_ teamCompanyId environmentId buildId
+  runApp resources
+  notify reqSender team resources
