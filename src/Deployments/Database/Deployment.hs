@@ -5,12 +5,14 @@ module Deployments.Database.Deployment
   , saveFinishedDeployment
   , listAllRunningDeployments
   , getDeploymentResources
+  , DbStatus(..)
   ) where
 
 import RIO
 
 import Data.Time
 import Database.PostgreSQL.Simple
+import Database.PostgreSQL.Simple.FromField
 
 import Common.Database
 import Deployments.Database.Build
@@ -22,24 +24,46 @@ import Deployments.Domain.Build (buildProjectId)
 import Deployments.Domain.Project (CompanyID)
 import Util.Key
 
-queuedStatus :: Text
-queuedStatus = "waiting"
+data DbStatus
+  = DbQueued
+  | DbRunning
+  | DbSucceeded
+  | DbFailed Text
 
-runningStatus :: Text
-runningStatus = "running"
+instance FromField DbStatus where
+  fromField f bs = textToStatus <$> (fromField f bs)
 
-convertFinishedtDeploymentStatus :: Status -> Text
+textToStatus :: Text -> DbStatus
+textToStatus text =
+  case text of
+    "queued" -> DbQueued
+    "running" -> DbRunning
+    "finished_with_success" -> DbSucceeded
+    "failed_with_invalid_docker_image" -> DbFailed "invalid_docker_image"
+    "failed_with_job_failed" -> DbFailed "job_failed"
+    "failed_with_job_not_found" -> DbFailed "job_not_found"
+    _ -> DbFailed "unknown_reason"
+
+statusText :: DbStatus -> Text
+statusText status =
+  case status of
+    DbQueued -> "queued"
+    DbRunning -> "running"
+    DbSucceeded -> "finished_with_success"
+    DbFailed reason -> "failed_with_" <> reason
+
+convertFinishedtDeploymentStatus :: Status -> DbStatus
 convertFinishedtDeploymentStatus status =
   case status of
-    Succeeded -> "finished_with_success"
-    Failed InvalidDockerImage -> "failed_with_invalid_docker_image"
-    Failed JobFailed -> "failed_with_job_failed"
-    Failed JobNotFound -> "failed_with_job_not_found"
+    Succeeded -> DbSucceeded
+    Failed InvalidDockerImage -> DbFailed "invalid_docker_image"
+    Failed JobFailed -> DbFailed "job_failed"
+    Failed JobNotFound -> DbFailed "job_not_found"
 
 getNextQueuedDeployment ::
      (HasPostgres m) => CompanyID -> m (Maybe QueuedDeployment)
 getNextQueuedDeployment companyId = do
-  result <- runQuery q (companyId, queuedStatus)
+  result <- runQuery q (companyId, statusText DbQueued)
   case result of
     [] -> return Nothing
     row:_ -> return . Just $ buildQueuedDeployment row
@@ -72,7 +96,7 @@ getDeploymentResources cId eId bId = do
 
 listAllRunningDeployments :: (HasPostgres m) => m [RunningDeployment]
 listAllRunningDeployments = do
-  results <- runQuery q (Only runningStatus)
+  results <- runQuery q (Only (statusText DbRunning))
   return $ map buildRunningDeployment results
   where
     q =
@@ -87,7 +111,7 @@ saveFinishedDeployment FinishedDeployment {..} = runDb' q values
         \ (?, ?, NOW()) where id = ?"
     values =
       ( deploymentFinishedAt
-      , convertFinishedtDeploymentStatus deploymentStatus
+      , statusText $ convertFinishedtDeploymentStatus deploymentStatus
       , finishedDeploymentId)
 
 saveRunningDeployment :: (HasPostgres m) => RunningDeployment -> m ()
@@ -96,7 +120,7 @@ saveRunningDeployment RunningDeployment {..} = runDb' q values
     q =
       "update deployments set (deployment_started_at, status, updated_at) =\
         \ (?, ?, NOW()) where id = ?"
-    values = (deploymentStartedAt, runningStatus, runningDeploymentId)
+    values = (deploymentStartedAt, statusText DbRunning, runningDeploymentId)
 
 createQueuedDeployment :: (HasPostgres m) => QueuedDeployment -> m ()
 createQueuedDeployment QueuedDeployment {..} = runDb' q values
@@ -105,7 +129,10 @@ createQueuedDeployment QueuedDeployment {..} = runDb' q values
       "insert into deployments (id, build_id, environment_id, status, created_at, updated_at) values\
         \ (?, ?, ?, ?, NOW(), NOW())"
     values =
-      (deploymentId, deploymentBuildId, deploymentEnvironmentId, queuedStatus)
+      ( deploymentId
+      , deploymentBuildId
+      , deploymentEnvironmentId
+      , statusText DbQueued)
 
 type QueuedDeploymentRow = (ID, BuildID, EnvironmentID)
 
