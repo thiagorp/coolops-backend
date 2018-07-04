@@ -28,6 +28,7 @@ class (Monad m) =>
   createEnvironment :: Environment -> m ()
   getEnvironment :: CompanyID -> Text -> m (Maybe Environment)
   listEnvironments :: CompanyID -> m [Environment]
+  listProjectEnvironments :: CompanyID -> Text -> m [Environment]
 
 class (Monad m) =>
       BuildRepo m

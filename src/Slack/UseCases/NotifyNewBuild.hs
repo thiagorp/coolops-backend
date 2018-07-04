@@ -61,6 +61,9 @@ call build = do
       case maybeSlackTeam of
         Nothing -> return $ Right False
         Just slackTeam -> do
-          environments <- listEnvironments $ P.projectCompanyId project
+          environments <-
+            listProjectEnvironments
+              (P.projectCompanyId project)
+              (keyText $ B.buildProjectId build)
           sendMessage slackTeam build project environments
           return $ Right True

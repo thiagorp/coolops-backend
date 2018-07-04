@@ -2,6 +2,7 @@ module Deployments.Database.Environment
   ( createEnvironment
   , getEnvironment
   , listEnvironments
+  , listProjectEnvironments
   ) where
 
 import RIO
@@ -34,6 +35,16 @@ listEnvironments companyId =
       "select e.id, e.name, e.env_vars, e.project_id from environments e\
         \ left join projects p on p.id = e.project_id\
         \ where p.company_id = ?"
+
+listProjectEnvironments ::
+     (HasPostgres m) => CompanyID -> Text -> m [Environment]
+listProjectEnvironments companyId projectId =
+  runQuery q (companyId, projectId) >>= return . (map buildEnvironment)
+  where
+    q =
+      "select e.id, e.name, e.env_vars, e.project_id from environments e\
+        \ left join projects p on p.id = e.project_id\
+        \ where p.company_id = ? and p.id = ?"
 
 createEnvironment :: (HasPostgres m) => Environment -> m ()
 createEnvironment Environment {..} = runDb' q values
