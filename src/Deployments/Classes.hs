@@ -29,6 +29,7 @@ class (Monad m) =>
   getEnvironment :: CompanyID -> Text -> m (Maybe Environment)
   listEnvironments :: CompanyID -> m [Environment]
   listProjectEnvironments :: CompanyID -> Text -> m [Environment]
+  updateEnvironment :: Environment -> m ()
 
 class (Monad m) =>
       BuildRepo m

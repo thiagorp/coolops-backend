@@ -16,11 +16,13 @@ import qualified Handlers.CreateDeployment as CreateDeployment
 import qualified Handlers.CreateEnvironment as CreateEnvironment
 import qualified Handlers.CreateProject as CreateProject
 import qualified Handlers.DisconnectFromSlack as DisconnectFromSlack
+import qualified Handlers.GetEnvironment as GetEnvironment
 import qualified Handlers.GetProject as GetProject
 import qualified Handlers.GetSlackConfig as GetSlackConfig
 import qualified Handlers.ListProjects as ListProjects
 import qualified Handlers.Login as Handlers
 import qualified Handlers.Signup as Handlers
+import qualified Handlers.UpdateEnvironment as UpdateEnvironment
 import qualified Handlers.UpdateProject as UpdateProject
 
 import Authorization (projectAuth, userAuth)
@@ -66,6 +68,8 @@ routes = do
   get "/projects/:id" $ userAuth GetProject.call
   patch "/projects/:id" $ userAuth UpdateProject.call
   post "/projects/:project_id/environments" $ userAuth CreateEnvironment.call
+  get "/environments/:id" $ userAuth GetEnvironment.call
+  patch "/environments/:id" $ userAuth UpdateEnvironment.call
   post "/builds" $ projectAuth CreateBuild.call
   post "/deployments" $ userAuth CreateDeployment.call
   post "/slack_config" $ userAuth ConnectWithSlack.call

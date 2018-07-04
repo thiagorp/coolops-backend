@@ -3,6 +3,7 @@ module Deployments.Database.Environment
   , getEnvironment
   , listEnvironments
   , listProjectEnvironments
+  , updateEnvironment
   ) where
 
 import RIO
@@ -57,6 +58,14 @@ createEnvironment Environment {..} = runDb' q values
       , environmentName
       , environmentProjectId
       , toJSON environmentEnvVars)
+
+updateEnvironment :: (HasPostgres m) => Environment -> m ()
+updateEnvironment Environment {..} = runDb' q values
+  where
+    q =
+      "update environments set (name, env_vars, updated_at) =\
+        \ (?, ?, NOW()) where id = ?"
+    values = (environmentName, toJSON environmentEnvVars, environmentId)
 
 type EnvironmentRow = (ID, Name, Value, ProjectID)
 
