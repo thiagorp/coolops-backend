@@ -17,6 +17,7 @@ import qualified Handlers.CreateEnvironment as CreateEnvironment
 import qualified Handlers.CreateProject as CreateProject
 import qualified Handlers.DisconnectFromSlack as DisconnectFromSlack
 import qualified Handlers.GetEnvironment as GetEnvironment
+import qualified Handlers.GetProfile as GetProfile
 import qualified Handlers.GetProject as GetProject
 import qualified Handlers.GetSlackConfig as GetSlackConfig
 import qualified Handlers.ListProjects as ListProjects
@@ -63,6 +64,7 @@ routes = do
   defaultHandler errorHandler
   post "/signup" Handlers.signup
   post "/tokens" Handlers.login
+  get "/me" $ userAuth GetProfile.call
   post "/projects" $ userAuth CreateProject.call
   get "/projects" $ userAuth ListProjects.call
   get "/projects/:id" $ userAuth GetProject.call
