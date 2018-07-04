@@ -70,6 +70,7 @@ instance EnvironmentRepo AppT where
   getEnvironment = DB.getEnvironment
   listEnvironments = DB.listEnvironments
   listProjectEnvironments = DB.listProjectEnvironments
+  updateEnvironment = DB.updateEnvironment
 
 instance BuildRepo AppT where
   createBuild = DB.createBuild
