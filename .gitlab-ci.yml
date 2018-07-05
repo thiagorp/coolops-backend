@@ -1,18 +1,22 @@
 image: google/cloud-sdk:alpine
 
 before_script:
-  - apk add --update make docker
+- apk add --update make docker
+
+variables:
+  DOCKER_HOST: tcp://docker:2375/
+  DOCKER_DRIVER: overlay2
 
 services:
-  - docker:dind
+- docker:dind
 
 build:
   script:
-    - make build
-    - make release
+  - make build
+  - make release
 
 push_docker_image:
   script:
-    - make push
+  - make push
 
 
