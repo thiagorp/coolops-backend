@@ -1,4 +1,5 @@
-RELEASE_DOCKER_IMG = coolops-api-release
+PROJECT_ID=fluent-cosine-206514
+RELEASE_DOCKER_IMG = gcr.io/${PROJECT_ID}/coolops-api:${VERSION}
 BUILD_DOCKER_IMG = coolops-api-build:latest
 
 build_base:
@@ -14,6 +15,9 @@ release:
 		${BUILD_DOCKER_IMG} \
 		cp -r executables /tmp
 	docker build -t ${RELEASE_DOCKER_IMG} -f Dockerfile.release .
+
+push:
+	docker push ${RELEASE_DOCKER_IMG}
 
 live-backend:
 	find . -type f \( -iname \*.hs -o -iname \*.yaml -o -iname \*.sql \) | entr -r make run

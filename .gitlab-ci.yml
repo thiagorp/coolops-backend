@@ -1,0 +1,12 @@
+image: google/cloud-sdk:alpine
+
+build:
+  script:
+    - make build
+    - make release
+
+push_docker_image:
+  script:
+    - make push
+
+
