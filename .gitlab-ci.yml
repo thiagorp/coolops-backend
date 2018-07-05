@@ -3,6 +3,9 @@ image: google/cloud-sdk:alpine
 before_script:
   - apk add --update make docker
 
+services:
+  - docker:dind
+
 build:
   script:
     - make build
