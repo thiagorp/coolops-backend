@@ -1,0 +1,10 @@
+FROM debian:stretch
+
+RUN apt-get update && \
+    apt-get install -y postgresql-client
+
+WORKDIR /application
+
+COPY executables/* /application/
+
+COPY migrations /application/migrations

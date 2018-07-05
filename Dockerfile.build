@@ -1,0 +1,5 @@
+FROM coolopsio/api-buildbase
+
+COPY . .
+
+RUN stack install --local-bin-path executables
