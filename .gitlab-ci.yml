@@ -1,5 +1,8 @@
 image: google/cloud-sdk:alpine
 
+before_script:
+  - apk add make
+
 build:
   script:
     - make build
