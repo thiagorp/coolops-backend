@@ -4,12 +4,7 @@ before_script:
 - apk add --update make docker
 
 variables:
-  DOCKER_HOST: tcp://docker:2375/
-  DOCKER_DRIVER: overlay2
   VERSION: ${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
-
-services:
-- docker:dind
 
 build_and_push:
   script:
