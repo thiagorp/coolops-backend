@@ -1,7 +1,7 @@
 image: google/cloud-sdk:alpine
 
 before_script:
-  - apk add --update make
+  - apk add --update make docker
 
 build:
   script:
