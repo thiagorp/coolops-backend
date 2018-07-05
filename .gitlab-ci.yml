@@ -19,5 +19,7 @@ build:
 push_docker_image:
   script:
   - make push
+  dependencies:
+  - build
 
 
