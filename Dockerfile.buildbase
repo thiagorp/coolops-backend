@@ -1,0 +1,10 @@
+FROM haskell:8.4
+
+RUN stack install hpack --install-ghc
+RUN apt-get update
+RUN apt-get install -y libpq-dev
+
+COPY stack.yaml .
+COPY package.yaml .
+
+RUN stack build --only-dependencies 
