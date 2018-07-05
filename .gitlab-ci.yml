@@ -11,15 +11,10 @@ variables:
 services:
 - docker:dind
 
-build:
+build_and_push:
   script:
   - make build
   - make release
-
-push_docker_image:
-  script:
   - make push
-  dependencies:
-  - build
 
 
