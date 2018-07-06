@@ -7,7 +7,7 @@ build_base:
 	docker push coolopsio/api-buildbase:latest
 
 auth_container_registry:
-	docker login -u _json_key -p "${GCLOUD_KEY_JSON}" https://gcr.io
+	docker login -u _json_key --password-stdin https://gcr.io < echo ${GCLOUD_KEY_JSON}
 
 build:
 	stack install --local-bin-path application
