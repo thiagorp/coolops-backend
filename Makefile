@@ -13,7 +13,7 @@ release:
 	docker run -d \
 		-v $$(pwd):/tmp \
 		${BUILD_DOCKER_IMG} \
-		cp -r executables /tmp
+		cp -r application /tmp
 	docker build -t ${RELEASE_DOCKER_IMG} -f Dockerfile.release .
 
 push:
