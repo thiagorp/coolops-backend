@@ -7,14 +7,9 @@ build_base:
 	docker push coolopsio/api-buildbase:latest
 
 build:
-	docker build -t ${BUILD_DOCKER_IMG} -f Dockerfile.build .
+	stack install --local-bin-path application
 
 release:
-	docker run -d \
-		-v $$(pwd):/tmp \
-		${BUILD_DOCKER_IMG} \
-		cp -r application /tmp
-	ls
 	docker build -t ${RELEASE_DOCKER_IMG} -f Dockerfile.release .
 
 push:

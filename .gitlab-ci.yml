@@ -1,7 +1,4 @@
-image: google/cloud-sdk:alpine
-
-before_script:
-- apk add --update make docker
+image: coolopsio/api-buildbase
 
 variables:
   VERSION: ${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
