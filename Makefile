@@ -14,6 +14,7 @@ release:
 		-v $$(pwd):/tmp \
 		${BUILD_DOCKER_IMG} \
 		cp -r application /tmp
+	ls
 	docker build -t ${RELEASE_DOCKER_IMG} -f Dockerfile.release .
 
 push:
