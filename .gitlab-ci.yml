@@ -1,4 +1,4 @@
-image: coolopsio/api-buildbase
+image: coolopsio/api-buildbase:latest
 
 variables:
   VERSION: ${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
