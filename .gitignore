@@ -1,4 +1,5 @@
 .stack-work/
 api.cabal
 executables/
+application/
 *~
