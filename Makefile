@@ -7,7 +7,7 @@ build_base:
 	docker push coolopsio/api-buildbase:latest
 
 auth_container_registry:
-	echo ${GCLOUD_KEY_JSON} > ${HOME}/gcloud-service-key.json
+	echo ${GCLOUD_KEY_JSON} | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
 	docker login -u _json_key --password-stdin https://gcr.io < ${HOME}/gcloud-service-key.json
 
 build:

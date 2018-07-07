@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "fluent-cosine-206514",
+  "private_key_id": "5b29ec1bb18db84193a3dbaad43b9967600223af",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDCls3mjU20z2Mo\n5f9/i5Armb15AbfPlhHSi7UUIMY8WjP4OfEyzoCiNU3MFtQQgtwLWfyTfJ8JK2zw\nKEh0xihBmXFwv0Mf7/kXut3zdrXGnhbveqc3jozGe1+LHI+2QjQTX5oIu+lOFegj\nMA2rK4ws4nFWjgXCiy8zOh+C3wLEN8Ab+ybp1SjK3z3E2/6aA6AUGlGSLANlqfQx\nyLaYMDWwGQLlkeD8lOG3q5UuvlEoFbVQe1q8UCEd2ALEomeidP3za8lX317u6me5\nAknT+7dLdbyjbDxZaGLK92Vb/FkJBJxFbLM4uRIgXb4mtzGe4XZcOUJfb6qi7zZs\nxjRISTlVAgMBAAECggEAByo9eMElUxebnfVbSZ0Mz2b8DwElI9+xlmg+bOt1bGJh\nTWeex44Xto4fAcYpnVXTZRfPAQRCwkTtbQNitZzYfYZGCWhPGa8A1xX/PbHjKOYI\nNkQbKHFkIoI6jXLQbnensLq7GOa7nrxkql6gcwTQIGGSWeUYj7MHZ1i7MWeyRtTH\np6Yqz64MEnmBNGt9eSvxGBtpCmuj1LRI6v1kVaYkxuphcOZ0r1qwLayihm+Ds8SK\nmN4Fr93p9zFkCB7hjmUERFk9eIvQoEoGjaK/SlYm/QlcWhURAX0MCs4m+UAHXHZ+\nbDIX+S7z2q1EpExbIPy45pUW91o9ZQVNK3DKvGJFwQKBgQDh/8kUTNOAVOaW/kbR\nSwavJx4teWvjOs2ofu1e3+MbouXcJ7Gby4pJRXEOTMBZ5paaSSjZLuwtKOG14ScW\nXIxlgLIC8z2M7ViHiKqCkJ2WkVRIYJ27BAF8A3TO1NVqOi/eUmgvSc5nN8wxW9nN\n3jus8CwUGzPiq7VG5dFud/U8QQKBgQDca5kiMpNNb+6jogrKDyDayoclG0WmYG6X\nJjfk770I9yz4nignwy1ILj9oKITL38V0XLlrR+TPu7kaNIDJ47PwU+LKc8sQYOys\nz3tG7vC9k1XYfGNL60jP+d04EF41GzegMCndsyqngrgJKPELXkIx8pGc0wNi7G66\n5ifsnflIFQKBgFR7nPyEt6/KjSS2y1xj0ozZb7OKJ2WbTtQFFtEXmrtzCsBg6kkW\nLoyzc87nrCQvSe9FGAsQOmOrW6z1DPqUADvVfzYRHdo3w5du5GbIjtCBZWNlErGd\njryAQkMrVthOBiTy41WCHrGBL0joUCRgRiig46lkfeHnVG27ba4BE+DBAoGAfOER\nD0jsH7FM2LRTvIq5qHuZ+bHr0glMXqIuhKw2wz+W4Pxp760qmHxrPA3IvuD2s6hc\n/KTsw6ytgGVCmh9BsOU11lGoOI1RSc77HwL8rcstlctTTo3s4LfFV6AeX6Qd7cmb\nzplVjzYGIlppxnEOu9GcIeeDQaaGTalb8TjHJMkCgYAC/LTray/kcHdyCSjfy/Qu\nGOfowLk3qLMQaanqoCEK6mJ0LWXP9j6aWMXSnOMA8ajbTSm12XAVsjeGGi2k95YG\nElx6ceXzcHKGi29T29g5hxZAPSu6ClvdLcpqlF0AdS4+eeDkYVkdXI9M9cQr/PNP\nmM+AeGG9Zw9SyLok0PcL4w==\n-----END PRIVATE KEY-----\n",
+  "client_email": "ci-container-registry@fluent-cosine-206514.iam.gserviceaccount.com",
+  "client_id": "109250502925190823581",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://accounts.google.com/o/oauth2/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/ci-container-registry%40fluent-cosine-206514.iam.gserviceaccount.com"
+}
