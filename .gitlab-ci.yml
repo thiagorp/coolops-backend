@@ -1,0 +1,12 @@
+image: coolopsio/api-buildbase:latest
+
+variables:
+  VERSION: ${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
+
+build_and_push:
+  script:
+  - make build
+  - make release
+  - make push
+
+

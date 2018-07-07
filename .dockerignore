@@ -1,6 +1,7 @@
 .git
 .gitignore
 .git-hooks
+.gitlab-ci.yml
 .dockerignore
 Dockerfile*
 .stack-work
