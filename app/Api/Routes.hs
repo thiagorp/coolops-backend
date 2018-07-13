@@ -20,6 +20,7 @@ import qualified Handlers.GetEnvironment as GetEnvironment
 import qualified Handlers.GetProfile as GetProfile
 import qualified Handlers.GetProject as GetProject
 import qualified Handlers.GetSlackConfig as GetSlackConfig
+import qualified Handlers.HealthCheck as HealthCheck
 import qualified Handlers.ListProjects as ListProjects
 import qualified Handlers.Login as Handlers
 import qualified Handlers.Signup as Handlers
@@ -62,6 +63,7 @@ routes :: ScottyT WebError AppT ()
 routes = do
   middleware corsMiddleware
   defaultHandler errorHandler
+  get "/health" $ HealthCheck.call
   post "/signup" Handlers.signup
   post "/tokens" Handlers.login
   get "/me" $ userAuth GetProfile.call
