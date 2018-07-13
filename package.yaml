@@ -29,7 +29,6 @@ ghc-options:
 - -Wincomplete-record-updates
 - -Wincomplete-uni-patterns
 - -Wredundant-constraints
-- -prof
 
 default-extensions:
 - AutoDeriveTypeable
@@ -82,6 +81,7 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -prof
     dependencies:
     - api
     - megaparsec
