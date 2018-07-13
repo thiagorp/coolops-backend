@@ -81,7 +81,6 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -prof
     dependencies:
     - api
     - megaparsec
