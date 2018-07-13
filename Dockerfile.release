@@ -6,3 +6,5 @@ RUN apt-get update && \
 COPY application /application
 
 COPY migrations /application/migrations
+
+WORKDIR /application
