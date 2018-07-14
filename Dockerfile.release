@@ -6,3 +6,9 @@ RUN apt-get update && \
 COPY application /application
 
 COPY migrations /application/migrations
+
+COPY entrypoint.sh /application/entrypoint.sh
+
+WORKDIR /application
+
+ENTRYPOINT ["./entrypoint.sh"]
