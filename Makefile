@@ -14,7 +14,7 @@ build:
 	stack install --local-bin-path application
 
 release:
-	docker build -t ${RELEASE_DOCKER_IMG} -f Dockerfile.release .
+	# docker build -t ${RELEASE_DOCKER_IMG} -f Dockerfile.release .
 	curl -d '{"name":"${VERSION}","params":{"IMAGE_NAME":"${RELEASE_DOCKER_IMG}"}}' -H "Content-Type: application/json" -X POST -v https://api-staging.coolops.io/builds
 
 push: auth_container_registry
