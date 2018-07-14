@@ -18,7 +18,7 @@ release:
 
 push: auth_container_registry
 	docker push ${RELEASE_DOCKER_IMG}
-	curl -d '{"name":"${VERSION}","params":{"IMAGE_NAME":"${RELEASE_DOCKER_IMG}"}}' -H "Authorization: Token MzLHStpKFawckrJq7ErJkVv66HKjm68HyTgaa" -H "Content-Type: application/json" -X POST -f https://api-staging.coolops.io/builds
+	curl -d '{"name":"${VERSION}","params":{"IMAGE_NAME":"${RELEASE_DOCKER_IMG}"}}' -H "Authorization: Token ${COOLOPS_PROJECT_API_TOKEN}" -H "Content-Type: application/json" -X POST -f https://api-staging.coolops.io/builds
 
 
 live-backend:
