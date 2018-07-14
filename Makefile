@@ -14,11 +14,12 @@ build:
 	stack install --local-bin-path application
 
 release:
-	# docker build -t ${RELEASE_DOCKER_IMG} -f Dockerfile.release .
-	curl -d '{"name":"${VERSION}","params":{"IMAGE_NAME":"${RELEASE_DOCKER_IMG}"}}' -H "Content-Type: application/json" -X POST -v https://api-staging.coolops.io/builds
+	docker build -t ${RELEASE_DOCKER_IMG} -f Dockerfile.release .
 
 push: auth_container_registry
 	docker push ${RELEASE_DOCKER_IMG}
+	curl -d '{"name":"${VERSION}","params":{"IMAGE_NAME":"${RELEASE_DOCKER_IMG}"}}' -H "Authorization: Token MzLHStpKFawckrJq7ErJkVv66HKjm68HyTga" -H "Content-Type: application/json" -X POST -v https://api-staging.coolops.io/builds
+
 
 live-backend:
 	find . -type f \( -iname \*.hs -o -iname \*.yaml -o -iname \*.sql \) | entr -r make run
