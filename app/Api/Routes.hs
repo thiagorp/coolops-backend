@@ -59,9 +59,10 @@ corsMiddleware = cors $ const (Just policy)
         , corsMethods = ["GET", "HEAD", "POST", "PATCH", "DELETE"]
         }
 
-routes :: ScottyT WebError AppT ()
-routes = do
+routes :: Middleware -> ScottyT WebError AppT ()
+routes logger = do
   middleware corsMiddleware
+  middleware logger
   defaultHandler errorHandler
   get "/health" $ HealthCheck.call
   post "/signup" Handlers.signup
