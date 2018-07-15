@@ -18,7 +18,7 @@ runNextForCompany companyId = do
   result <- App.call companyId
   case result of
     Right _ -> BS.putStr "Ran successfully\n"
-    Left App.NoDeploymentToRun -> BS.putStr "No deployment to run\n"
+    Left App.NoDeploymentToRun -> return ()
     Left App.FailedToRunJob -> BS.putStr "Error on kubernetes\n"
     Left App.MissingEntities ->
       BS.putStr

@@ -12,7 +12,7 @@ dependencies:
 - http-types
 - postgresql-simple
 - postgresql-simple-migration
-- pwstore-fast
+- pwstore-fast >= 2.4 && < 3
 - megaparsec
 - mtl
 - random
@@ -83,10 +83,13 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - api
+    - data-default-class
     - megaparsec
     - scotty
     - wai
     - wai-cors
+    - wai-extra
+    - warp
 
   slack-api:
     main:                Main.hs
@@ -101,6 +104,7 @@ executables:
     - scotty
     - wai
     - wai-cors
+    - warp
 
   deployment-runner:
     main:                Main.hs
