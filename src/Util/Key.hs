@@ -7,6 +7,7 @@ module Util.Key
 
 import RIO
 
+import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.UUID (UUID, toASCIIBytes, toText)
 import Data.UUID.V4 (nextRandom)
 import Database.PostgreSQL.Simple.FromField (FromField(..))
@@ -20,6 +21,12 @@ instance ToField (Key a) where
 
 instance FromField (Key a) where
   fromField f bs = Key <$> (fromField f bs)
+
+instance FromJSON (Key a) where
+  parseJSON value = Key <$> (parseJSON value)
+
+instance ToJSON (Key a) where
+  toJSON (Key uuid) = toJSON uuid
 
 instance Eq (Key a) where
   (==) (Key a) (Key b) = a == b

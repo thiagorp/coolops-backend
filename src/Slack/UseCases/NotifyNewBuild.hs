@@ -1,5 +1,6 @@
 module Slack.UseCases.NotifyNewBuild
   ( CallConstraint
+  , Error(..)
   , call
   ) where
 
@@ -15,8 +16,9 @@ import Slack.Classes
 import Slack.Domain.Team
 import Util.Key
 
-data Error =
-  ProjectDoesNotexist
+data Error
+  = BuildNotFound
+  | ProjectNotFound
 
 sendMessage ::
      (SlackClientMonad m)
@@ -52,21 +54,29 @@ sendMessage Team {..} B.Build {..} P.Project {..} environments = do
         }
 
 type CallConstraint m
-   = (ProjectRepo m, EnvironmentRepo m, SlackTeamRepo m, SlackClientMonad m)
+   = ( BuildRepo m
+     , ProjectRepo m
+     , EnvironmentRepo m
+     , SlackTeamRepo m
+     , SlackClientMonad m)
 
-call :: CallConstraint m => B.Build -> m (Either Error Bool)
-call build = do
-  maybeProject <- getProjectForBuild build
-  case maybeProject of
-    Nothing -> return $ Left ProjectDoesNotexist
-    Just project -> do
-      maybeSlackTeam <- getSlackTeamForCompany $ P.projectCompanyId project
-      case maybeSlackTeam of
-        Nothing -> return $ Right False
-        Just slackTeam -> do
-          environments <-
-            listProjectEnvironments
-              (P.projectCompanyId project)
-              (keyText $ B.buildProjectId build)
-          sendMessage slackTeam build project environments
-          return $ Right True
+call :: CallConstraint m => P.CompanyID -> Text -> m (Either Error Bool)
+call cId bId = do
+  maybeBuild <- getBuild cId bId
+  case maybeBuild of
+    Nothing -> return $ Left BuildNotFound
+    Just build -> do
+      maybeProject <- getProjectForBuild build
+      case maybeProject of
+        Nothing -> return $ Left ProjectNotFound
+        Just project -> do
+          maybeSlackTeam <- getSlackTeamForCompany $ P.projectCompanyId project
+          case maybeSlackTeam of
+            Nothing -> return $ Right False
+            Just slackTeam -> do
+              environments <-
+                listProjectEnvironments
+                  (P.projectCompanyId project)
+                  (keyText $ B.buildProjectId build)
+              sendMessage slackTeam build project environments
+              return $ Right True
