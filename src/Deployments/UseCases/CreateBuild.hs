@@ -5,10 +5,11 @@ module Deployments.UseCases.CreateBuild
 
 import RIO
 
+import qualified BackgroundJobs.AppJobs as Background
 import Deployments.Classes
 import qualified Deployments.Domain.Build as Build
 import qualified Deployments.Domain.Project as Project
-import qualified Slack.UseCases.NotifyNewBuild as Notify
+import Util.Key
 
 data Params = Params
   { buildName :: !Build.Name
@@ -22,12 +23,18 @@ entity Params {..} = do
   let buildProjectId = Project.projectId buildProject
   return Build.Build {..}
 
+notify ::
+     (Background.NotifyBuildConstraint m)
+  => Project.Project
+  -> Build.Build
+  -> m ()
+notify (Project.Project {..}) (Build.Build {..}) =
+  Background.notifyBuild projectCompanyId (keyText buildId)
+
 call ::
-     (MonadIO m, BuildRepo m, Notify.CallConstraint m)
-  => Params
-  -> m Build.Build
-call params = do
+     (MonadIO m, Background.NotifyBuildConstraint m) => Params -> m Build.Build
+call params@(Params {..}) = do
   build <- entity params
   createBuild build
-  _ <- Notify.call build
+  notify buildProject build
   return build
