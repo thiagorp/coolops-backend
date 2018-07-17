@@ -41,12 +41,15 @@ sendMessage Team {..} B.Build {..} P.Project {..} environments = do
       "*"
     attachments =
       slackAttachment
-        { attachmentPretext = Just messageText
-        , attachmentCallbackId = Just $ "deploy_build|" <> keyText buildId
+        { attachmentCallbackId = Just $ "deploy_build|" <> keyText buildId
         , attachmentType = Just "default"
         , attachmentActions = Just $ map buildAction environments
         }
-    message = slackMessage {messageAttachments = Just [attachments]}
+    message =
+      slackMessage
+        { messageText = Just messageText
+        , messageAttachments = Just [attachments]
+        }
 
 type CallConstraint m
    = (ProjectRepo m, EnvironmentRepo m, SlackTeamRepo m, SlackClientMonad m)
