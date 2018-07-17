@@ -21,9 +21,11 @@ import BackgroundJobs.Database
 type Seconds = NominalDiffTime
 
 data JobReturnType
-  = Done
-  | RetryImmediately
-  | RetryIn Seconds
+  = FinishedWithSuccess
+  | FinishedWithFailure Text
+  | RetryImmediately Text
+  | RetryIn Text
+            Seconds
 
 type RunMonad m = MonadIO m
 
@@ -33,17 +35,17 @@ data JobConfig m a = JobConfig
   , run :: Int -> a -> m JobReturnType
   }
 
-retry :: RunMonad m => m JobReturnType
-retry = return RetryImmediately
+retry :: RunMonad m => Text -> m JobReturnType
+retry = return . RetryImmediately
 
-retryIn :: RunMonad m => Seconds -> m JobReturnType
-retryIn = return . RetryIn
+retryIn :: RunMonad m => Text -> Seconds -> m JobReturnType
+retryIn reason = return . RetryIn reason
 
-finishWithFailure :: RunMonad m => m JobReturnType
-finishWithFailure = return Done
+finishWithFailure :: RunMonad m => Text -> m JobReturnType
+finishWithFailure = return . FinishedWithFailure
 
 finishWithSuccess :: RunMonad m => m JobReturnType
-finishWithSuccess = return Done
+finishWithSuccess = return FinishedWithSuccess
 
 queue :: (DbMonad m) => JobConfig m job -> job -> m ()
 queue JobConfig {..} job = do
@@ -51,7 +53,8 @@ queue JobConfig {..} job = do
   let (jobName, jobParams) = serialize job
   let jobRetryCount = 0
   let jobNextRetry = Nothing
-  let jobFinished = False
+  let jobFinishedAt = Nothing
+  let jobFailureReason = Nothing
   create Job {..}
 
 runNext :: (RunMonad m, DbMonad m) => JobConfig m job -> m ()
@@ -65,7 +68,10 @@ runNext' :: DbMonad m => JobConfig m job -> Job -> m ()
 runNext' config@(JobConfig {..}) job@(Job {..}) = do
   let deserializedJob = deserialize jobName jobParams
   case deserializedJob of
-    Nothing -> update' job Done
+    Nothing ->
+      update'
+        job
+        (FinishedWithFailure "Serialization failure - Invalid payload")
     Just j -> runDeserializedJob config j job
 
 runDeserializedJob ::
@@ -78,33 +84,46 @@ update' :: (DbMonad m) => Job -> JobReturnType -> m ()
 update' job@(Job {..}) r = do
   let newRetryCount = retryCountFromReturn jobRetryCount r
   newNextRetry <- nextRetryFromReturn r
-  let newFinished = finishedFromReturn r
+  newFinishedAt <- finishedFromReturn r
+  let newFailureReason = failureReasonFromReturn r
   update
     job
       { jobRetryCount = newRetryCount
       , jobNextRetry = newNextRetry
-      , jobFinished = newFinished
+      , jobFinishedAt = newFinishedAt
+      , jobFailureReason = newFailureReason
       }
 
-finishedFromReturn :: JobReturnType -> Bool
+failureReasonFromReturn :: JobReturnType -> Maybe Text
+failureReasonFromReturn job =
+  case job of
+    FinishedWithSuccess -> Nothing
+    FinishedWithFailure t -> Just t
+    RetryImmediately t -> Just t
+    RetryIn t _ -> Just t
+
+finishedFromReturn :: MonadIO m => JobReturnType -> m (Maybe UTCTime)
 finishedFromReturn r =
   case r of
-    Done -> True
-    _ -> False
+    FinishedWithSuccess -> Just <$> liftIO getCurrentTime
+    FinishedWithFailure _ -> Just <$> liftIO getCurrentTime
+    _ -> return Nothing
 
 retryCountFromReturn :: Int -> JobReturnType -> Int
 retryCountFromReturn oldRetryCount r =
   case r of
-    Done -> oldRetryCount
-    RetryImmediately -> oldRetryCount + 1
-    RetryIn _ -> oldRetryCount + 1
+    FinishedWithSuccess -> oldRetryCount
+    FinishedWithFailure _ -> oldRetryCount
+    RetryImmediately _ -> oldRetryCount + 1
+    RetryIn _ _ -> oldRetryCount + 1
 
 nextRetryFromReturn :: MonadIO m => JobReturnType -> m (Maybe UTCTime)
 nextRetryFromReturn r =
   case r of
-    Done -> return Nothing
-    RetryImmediately -> Just <$> liftIO getCurrentTime
-    RetryIn seconds ->
+    FinishedWithSuccess -> return Nothing
+    FinishedWithFailure _ -> return Nothing
+    RetryImmediately _ -> Just <$> liftIO getCurrentTime
+    RetryIn _ seconds ->
       liftIO getCurrentTime >>= addSeconds seconds >>= return . Just
 
 addSeconds :: MonadIO m => Seconds -> UTCTime -> m UTCTime

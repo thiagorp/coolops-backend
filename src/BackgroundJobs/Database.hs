@@ -20,7 +20,8 @@ data Job = Job
   , jobParams :: !Value
   , jobRetryCount :: !Int
   , jobNextRetry :: !(Maybe UTCTime)
-  , jobFinished :: !Bool
+  , jobFinishedAt :: !(Maybe UTCTime)
+  , jobFailureReason :: !(Maybe Text)
   }
 
 instance FromRow Job where
@@ -29,8 +30,11 @@ instance FromRow Job where
     jobName <- field
     jobParams <- field
     jobRetryCount <- field
-    jobNextRetry <- field
-    jobFinished <- field
+    mJobNextRetry <- field
+    let jobNextRetry = localTimeToUTC utc <$> mJobNextRetry
+    mJobFinishedAt <- field
+    let jobFinishedAt = localTimeToUTC utc <$> mJobFinishedAt
+    jobFailureReason <- field
     return Job {..}
 
 genId :: MonadIO m => m JobID
@@ -44,8 +48,8 @@ getNextJob = do
     row:_ -> return (Just row)
   where
     q =
-      "select id, name, params, retry_count, next_retry, finished from background_jobs\
-        \ where (next_retry is null or next_retry <= now()) and finished is not true\
+      "select id, name, params, retry_count, next_retry, finished_at, failure_reason from background_jobs\
+        \ where (next_retry is null or next_retry <= now()) and finished_at is null\
         \ order by created_at asc\
         \ limit 1\
         \ for update skip locked"
@@ -54,15 +58,22 @@ create :: (DbMonad m) => Job -> m ()
 create Job {..} = runDb' q values
   where
     values =
-      (jobId, jobName, jobParams, jobRetryCount, jobNextRetry, jobFinished)
+      ( jobId
+      , jobName
+      , jobParams
+      , jobRetryCount
+      , jobNextRetry
+      , jobFinishedAt
+      , jobFailureReason)
     q =
-      "insert into background_jobs (id, name, params, retry_count, next_retry, finished, created_at, updated_at) values\
-        \ (?, ?, ?, ?, ?, ?, now(), now())"
+      "insert into background_jobs (id, name, params, retry_count, next_retry, finished_at, failure_reason, created_at, updated_at) values\
+        \ (?, ?, ?, ?, ?, ?, ?, now(), now())"
 
 update :: (DbMonad m) => Job -> m ()
 update Job {..} = runDb' q values
   where
-    values = (jobRetryCount, jobNextRetry, jobFinished, jobId)
+    values =
+      (jobRetryCount, jobNextRetry, jobFinishedAt, jobFailureReason, jobId)
     q =
-      "update background_jobs set (retry_count, next_retry, finished, updated_at) =\
-        \ (?, ?, ?, now()) where id = ?"
+      "update background_jobs set (retry_count, next_retry, finished_at, failure_reason, updated_at) =\
+        \ (?, ?, ?, ?, now()) where id = ?"

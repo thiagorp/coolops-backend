@@ -35,7 +35,7 @@ deserialize jobName value =
 serialize :: Job -> (Text, Value)
 serialize job =
   case job of
-    NotifyBuild params -> ("NotifyBuildParams", toJSON params)
+    NotifyBuild params -> ("NotifyBuild", toJSON params)
 
 run :: JobMonad m => Int -> Job -> m Runner.JobReturnType
 run _ job =

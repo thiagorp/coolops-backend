@@ -29,6 +29,6 @@ call :: App.CallConstraint m => Params -> m JobReturnType
 call (Params cId bId) = do
   r <- App.call cId bId
   case r of
-    Left App.ProjectNotFound -> finishWithFailure
-    Left App.BuildNotFound -> finishWithFailure
+    Left App.ProjectNotFound -> finishWithFailure "Project not found"
+    Left App.BuildNotFound -> finishWithFailure "Build not found"
     Right _ -> finishWithSuccess
