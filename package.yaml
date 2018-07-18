@@ -100,10 +100,12 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - api
+    - data-default-class
     - megaparsec
     - scotty
     - wai
     - wai-cors
+    - wai-extra
     - warp
 
   deployment-runner:
