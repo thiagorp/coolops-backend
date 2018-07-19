@@ -1,23 +1,41 @@
 module Slack.Api.ClientBase
   ( Action(..)
+  , ChatPostMessageAsBot(..)
   , SlackClientMonad
   , slackRequest
   ) where
 
-import Data.Aeson
 import RIO
+
+import Data.Aeson
 import qualified RIO.ByteString.Lazy as LBS
 import qualified RIO.Text as Text
 
 import Network.HTTP.Client
+import Network.HTTP.Types
 
 import Http.Classes
 import Slack.Api.Classes
-import Slack.Api.Message (Message)
+import Slack.Api.Message (Message(..))
+
+data ChatPostMessageAsBot =
+  ChatPostMessageAsBot Text
+                       Text
+                       Message
+
+instance ToJSON ChatPostMessageAsBot where
+  toJSON (ChatPostMessageAsBot _ channel Message {..}) =
+    object
+      [ "channel" .= channel
+      , "as_user" .= False
+      , "text" .= messageText
+      , "attachments" .= messageAttachments
+      ]
 
 data Action
   = GetOAuthToken ByteString
   | RevokeToken ByteString
+  | PostMessageAsBot ChatPostMessageAsBot
   | IncomingWebhook Text
                     Message
 
@@ -50,7 +68,16 @@ buildRequest request clientId clientSecret action =
     IncomingWebhook url message ->
       (parseRequest_ $ Text.unpack url)
         {method = "POST", requestBody = RequestBodyLBS $ encode message}
+    PostMessageAsBot message@(ChatPostMessageAsBot token _ _) ->
+      request
+        { method = "POST"
+        , path = "/api/chat.postMessage"
+        , requestBody = RequestBodyLBS $ encode message
+        , requestHeaders =
+            [ (hContentType, "application/json")
+            , (hAuthorization, "Bearer " <> encodeUtf8 token)
+            ]
+        }
 
 baseRequest :: (Monad m) => m Request
-baseRequest = do
-  return $ parseRequest_ "https://slack.com"
+baseRequest = return $ parseRequest_ "https://slack.com"
