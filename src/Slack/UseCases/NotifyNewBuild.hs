@@ -10,7 +10,7 @@ import Deployments.Classes
 import qualified Deployments.Domain.Build as B
 import qualified Deployments.Domain.Environment as E
 import qualified Deployments.Domain.Project as P
-import Slack.Api.IncomingWebhooks
+import Slack.Api.ChatMessages
 import Slack.Api.Message
 import Slack.Classes
 import Slack.Domain.Team
@@ -27,8 +27,11 @@ sendMessage ::
   -> P.Project
   -> [E.Environment]
   -> m ()
-sendMessage Team {..} B.Build {..} P.Project {..} environments = do
-  sendIncomingWebhook (webhookUrl teamIncomingWebhook) message
+sendMessage Team {..} B.Build {..} P.Project {..} environments =
+  postMessage
+    (botUserAccessToken teamBotUser)
+    (webhookChannel teamIncomingWebhook)
+    message
   where
     buildAction E.Environment {..} =
       slackAction

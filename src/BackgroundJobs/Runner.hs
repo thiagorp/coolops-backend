@@ -60,12 +60,10 @@ queue JobConfig {..} job = do
 runNext :: (RunMonad m, DbMonad m) => JobConfig m job -> m ()
 runNext config = do
   maybeJob <- getNextJob
-  case maybeJob of
-    Nothing -> return ()
-    Just job -> runNext' config job
+  forM_ maybeJob (runNext' config)
 
 runNext' :: DbMonad m => JobConfig m job -> Job -> m ()
-runNext' config@(JobConfig {..}) job@(Job {..}) = do
+runNext' config@JobConfig {..} job@Job {..} = do
   let deserializedJob = deserialize jobName jobParams
   case deserializedJob of
     Nothing ->
@@ -76,12 +74,12 @@ runNext' config@(JobConfig {..}) job@(Job {..}) = do
 
 runDeserializedJob ::
      (RunMonad m, DbMonad m) => JobConfig m job -> job -> Job -> m ()
-runDeserializedJob JobConfig {..} deserializedJob job@(Job {..}) = do
+runDeserializedJob JobConfig {..} deserializedJob job@Job {..} = do
   r <- run jobRetryCount deserializedJob
   update' job r
 
 update' :: (DbMonad m) => Job -> JobReturnType -> m ()
-update' job@(Job {..}) r = do
+update' job@Job {..} r = do
   let newRetryCount = retryCountFromReturn jobRetryCount r
   newNextRetry <- nextRetryFromReturn r
   newFinishedAt <- finishedFromReturn r
@@ -123,8 +121,7 @@ nextRetryFromReturn r =
     FinishedWithSuccess -> return Nothing
     FinishedWithFailure _ -> return Nothing
     RetryImmediately _ -> Just <$> liftIO getCurrentTime
-    RetryIn _ seconds ->
-      liftIO getCurrentTime >>= addSeconds seconds >>= return . Just
+    RetryIn _ seconds -> Just <$> (liftIO getCurrentTime >>= addSeconds seconds)
 
 addSeconds :: MonadIO m => Seconds -> UTCTime -> m UTCTime
 addSeconds seconds time = return $ addUTCTime seconds time

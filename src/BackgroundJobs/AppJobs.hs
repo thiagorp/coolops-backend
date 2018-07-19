@@ -13,7 +13,7 @@ import qualified BackgroundJobs.Handlers.NotifyBuild as NotifyBuild
 import Auth.Domain (CompanyID)
 import qualified BackgroundJobs.Runner as Runner
 
-data Job =
+newtype Job =
   NotifyBuild NotifyBuild.Params
 
 type NotifyBuildConstraint m = NotifyBuild.CallConstraint m
