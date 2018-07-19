@@ -23,8 +23,12 @@ push: auth_container_registry
 
 
 live-backend:
-	find . -type f \( -iname \*.hs -o -iname \*.yaml -o -iname \*.sql \) | entr -r make run
+	find . -type f \( -iname \*.hs -o -iname \*.yaml -o -iname \*.sql \) | entr -d -r make run
 
 run:
 	stack build
-	stack exec api-exe
+	stack exec slack-api | sed -e 's/^/[Slack Api] /' & \
+		stack exec deployment-runner | sed -e 's/^/[Deployment Runner] /' & \
+		stack exec job-status-checker | sed -e 's/^/[Job Status Checker] /' & \
+		stack exec background-job-runner | sed -e 's/^/[Background Jobs Runner] /' & \
+		stack exec api-exe | sed -e 's/^/[Api] /' &
