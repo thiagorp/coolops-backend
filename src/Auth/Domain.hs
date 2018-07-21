@@ -44,7 +44,7 @@ instance ToField UserName where
   toField (UserName name) = toField name
 
 instance FromField UserName where
-  fromField f bs = UserName <$> (fromField f bs)
+  fromField f bs = UserName <$> fromField f bs
 
 type CompanyID = Key Company
 
@@ -55,7 +55,7 @@ instance ToField CompanyName where
   toField (CompanyName name) = toField name
 
 instance FromField CompanyName where
-  fromField f bs = CompanyName <$> (fromField f bs)
+  fromField f bs = CompanyName <$> fromField f bs
 
 newtype AccessToken =
   AccessToken ByteString
@@ -64,7 +64,7 @@ instance ToField AccessToken where
   toField (AccessToken token) = toField token
 
 instance FromField AccessToken where
-  fromField f bs = AccessToken <$> (fromField f bs)
+  fromField f bs = AccessToken <$> fromField f bs
 
 data Company = Company
   { companyId :: !CompanyID
@@ -92,7 +92,7 @@ instance ToField SafePassword where
   toField (SafePassword password) = toField password
 
 instance FromField SafePassword where
-  fromField f bs = SafePassword <$> (fromField f bs)
+  fromField f bs = SafePassword <$> fromField f bs
 
 protectPassword :: (MonadIO m) => RawPassword -> m SafePassword
 protectPassword (RawPassword p) = liftIO $ SafePassword <$> makePassword p 17

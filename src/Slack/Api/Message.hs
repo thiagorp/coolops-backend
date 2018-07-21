@@ -16,6 +16,8 @@ data Attachment = Attachment
   , attachmentCallbackId :: !(Maybe Text)
   , attachmentType :: !(Maybe Text)
   , attachmentActions :: !(Maybe [Action])
+  , attachmentFooter :: !(Maybe Text)
+  , attachmentColor :: !(Maybe Text)
   }
 
 data Action = Action
@@ -29,7 +31,8 @@ slackMessage :: Message
 slackMessage = Message Nothing Nothing
 
 slackAttachment :: Attachment
-slackAttachment = Attachment Nothing Nothing Nothing Nothing Nothing Nothing
+slackAttachment =
+  Attachment Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 slackAction :: Action
 slackAction =
@@ -48,6 +51,8 @@ instance ToJSON Attachment where
       , "callback_id" .= attachmentCallbackId
       , "type" .= attachmentType
       , "actions" .= attachmentActions
+      , "footer" .= attachmentFooter
+      , "color" .= attachmentColor
       ]
 
 instance ToJSON Action where

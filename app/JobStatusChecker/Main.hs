@@ -41,18 +41,17 @@ deploymentJobStatus RunningDeployment {..} = do
         Job.Failed -> return $ Just (Failed JobFailed)
         Job.Succeeded -> return $ Just Succeeded
 
-syncJobStatus :: RunningDeployment -> AppT ()
-syncJobStatus deployment = do
+syncJobStatus :: (CompanyID, RunningDeployment) -> AppT ()
+syncJobStatus (companyId, deployment) = do
   maybeStatus <- deploymentJobStatus deployment
   case maybeStatus of
     Nothing -> return ()
-    Just status -> App.call status deployment >> return ()
+    Just status -> void $ App.call status companyId deployment
 
 app :: AppT ()
 app = do
   deployments <- DB.listAllRunningDeployments
-  _ <- mapM syncJobStatus deployments
-  return ()
+  mapM_ syncJobStatus deployments
 
 loopWith :: Env -> IO ()
 loopWith env = do

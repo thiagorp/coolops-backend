@@ -23,7 +23,7 @@ push: auth_container_registry
 
 
 live-backend:
-	find . -type f \( -iname \*.hs -o -iname \*.yaml -o -iname \*.sql \) | entr -d -r make run
+	find . -type f \( -iname \*.hs -o -iname \*.yaml \) | entr -d -r make run
 
 run:
 	stack build

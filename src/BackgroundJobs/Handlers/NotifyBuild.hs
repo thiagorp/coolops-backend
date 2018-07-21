@@ -29,6 +29,7 @@ call :: App.CallConstraint m => Params -> m JobReturnType
 call (Params cId bId) = do
   r <- App.call cId bId
   case r of
-    Left App.ProjectNotFound -> finishWithFailure "Project not found"
+    Left App.MessageDataNotFound -> finishWithFailure "Message data not found"
     Left App.BuildNotFound -> finishWithFailure "Build not found"
+    Left App.SlackTeamNotFound -> finishWithFailure "Slack team not found"
     Right _ -> finishWithSuccess

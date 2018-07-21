@@ -21,7 +21,8 @@ data Request = Request
   , reqActionValue :: !Text
   , reqTeamId :: !Text
   , reqVerificationToken :: !Text
-  , reqSender :: !Text
+  , reqSenderId :: !Text
+  , reqSenderName :: !Text
   }
 
 instance FromJSON Request where
@@ -32,31 +33,36 @@ instance FromJSON Request where
       teamO <- o .: "team"
       userO <- o .: "user"
       reqTeamId <- teamO .: "id"
-      reqSender <- userO .: "id"
+      reqSenderId <- userO .: "id"
+      reqSenderName <- userO .: "name"
       reqVerificationToken <- o .: "token"
-      actionValues <- mapM (\action -> action .: "value") actions
+      actionValues <- mapM (.: "value") actions
       reqActionValue <-
         case actionValues of
           [] -> fail "No action provided"
-          e:[] -> return e
-          _:_ -> fail "Only one action is supported"
+          [e] -> return e
+          _ -> fail "Only one action is supported"
       return Request {..}
 
 verifyToken :: Text -> WebHandler ()
 verifyToken token = do
   configToken <- lift slackVerificationToken
-  case token == configToken of
-    True -> return ()
-    False -> status status401 >> finish
+  if token == configToken
+    then return ()
+    else status status401 >> finish
 
 handleMessage :: Team -> Request -> WebHandler ()
 handleMessage slackTeam Request {..} =
   case reqMessageType of
     DeployBuild buildId ->
-      DeployBuild.call slackTeam reqActionValue buildId reqSender
+      DeployBuild.call
+        slackTeam
+        reqActionValue
+        buildId
+        (reqSenderId, reqSenderName)
 
 process :: Request -> WebHandler ()
-process req@(Request {..}) = do
+process req@Request {..} = do
   verifyToken reqVerificationToken
   maybeSlackTeam <- lift $ getSlackTeam reqTeamId
   case maybeSlackTeam of

@@ -64,7 +64,7 @@ routes logger = do
   middleware corsMiddleware
   middleware logger
   defaultHandler errorHandler
-  get "/health" $ HealthCheck.call
+  get "/health" HealthCheck.call
   post "/signup" Handlers.signup
   post "/tokens" Handlers.login
   get "/me" $ userAuth GetProfile.call

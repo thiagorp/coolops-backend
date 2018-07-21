@@ -8,6 +8,7 @@ import RIO
 
 import Control.Monad.Except
 
+import qualified BackgroundJobs.AppJobs as Background
 import Common.Database
 import Deployments.Classes
 import Deployments.Domain.Deployment
@@ -20,7 +21,11 @@ data Error
   | MissingEntities
   | FailedToRunJob
 
-type CallMonad m = (HasDBTransaction m, DeploymentRepo m, RunDeploymentMonad m)
+type CallMonad m
+   = ( HasDBTransaction m
+     , DeploymentRepo m
+     , RunDeploymentMonad m
+     , Background.NotifyBuildConstraint m)
 
 type RunMonad m a = ExceptT Error m a
 
@@ -33,9 +38,9 @@ runNext queued resources = do
   running <- run queued
   lift $ saveRunningDeployment running
   result <- lift $ runDeployment queued resources
-  case result of
-    True -> return running
-    False -> throwError FailedToRunJob
+  if result
+    then return running
+    else throwError FailedToRunJob
 
 getDeploymentResources_ ::
      DeploymentRepo m
@@ -58,7 +63,10 @@ call_ :: CallMonad m => CompanyID -> RunMonad m RunningDeployment
 call_ companyId = do
   deployment <- getNextQueuedDeployment_ companyId
   resources <- getDeploymentResources_ companyId deployment
-  runNext deployment resources
+  running <- runNext deployment resources
+  lift $
+    Background.notifyBuild companyId (keyText $ deploymentBuildId deployment)
+  return running
 
 call :: CallMonad m => CompanyID -> m (Either Error RunningDeployment)
 call = runExceptT . call_

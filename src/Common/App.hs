@@ -18,6 +18,8 @@ import qualified Deployments.Database.Build as DB
 import qualified Deployments.Database.Deployment as DB
 import qualified Deployments.Database.Environment as DB
 import qualified Deployments.Database.Project as DB
+import qualified Slack.Database.BuildMessage as DB
+import qualified Slack.Database.Deployment as DB
 import qualified Slack.Database.Team as DB
 
 import qualified Common.Config as Config
@@ -30,10 +32,8 @@ data Env = Env
   }
 
 buildEnv :: PG.Connection -> Http.Manager -> IO Env
-buildEnv conn requestManager = do
-  k8sSettings <- Config.kubernetesSettings
-  slackSettings <- Config.slackSettings
-  return $ Env conn requestManager k8sSettings slackSettings
+buildEnv conn requestManager =
+  Env conn requestManager <$> Config.kubernetesSettings <*> Config.slackSettings
 
 newtype AppT a = AppT
   { unAppT :: ReaderT Env IO a
@@ -102,6 +102,13 @@ instance SlackTeamRepo AppT where
   getSlackTeam = DB.getSlackTeam
   getSlackTeamForCompany = DB.getSlackTeamForCompany
   deleteSlackTeam = DB.deleteSlackTeam
+
+instance SlackBuildMessageRepo AppT where
+  createSlackBuildMessage = DB.createSlackBuildMessage
+  getSlackBuildMessage = DB.getSlackBuildMessage
+
+instance SlackDeploymentRepo AppT where
+  createSlackDeployment = DB.createSlackDeployment
 
 instance HasSlackSettings AppT where
   slackClientId = Config.slackClientId <$> asks slackSettings
