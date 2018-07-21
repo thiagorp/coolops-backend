@@ -16,7 +16,7 @@ type RunDeploymentMonad m = Kubernetes.CreateJobMonad m
 
 runDeployment ::
      (RunDeploymentMonad m) => QueuedDeployment -> DeploymentResources -> m Bool
-runDeployment (QueuedDeployment {..}) (DeploymentResources {..}) =
+runDeployment QueuedDeployment {..} DeploymentResources {..} =
   Kubernetes.createJob jobDescription
   where
     jobDescription =
@@ -24,7 +24,7 @@ runDeployment (QueuedDeployment {..}) (DeploymentResources {..}) =
         { Kubernetes.dockerImage =
             deploymentImageText (projectDeploymentImage deploymentProject)
         , Kubernetes.envVars =
-            (environmentEnvVars deploymentEnvironment) <>
-            (buildParams deploymentBuild)
+            environmentEnvVars deploymentEnvironment <>
+            buildParams deploymentBuild
         , Kubernetes.name = keyText deploymentId
         }
