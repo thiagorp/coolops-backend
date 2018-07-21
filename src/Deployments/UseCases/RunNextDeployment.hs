@@ -36,8 +36,8 @@ runNext ::
   -> RunMonad m RunningDeployment
 runNext queued resources = do
   running <- run queued
-  lift $ saveRunningDeployment running
   result <- lift $ runDeployment queued resources
+  lift $ saveRunningDeployment running
   if result
     then return running
     else throwError FailedToRunJob
@@ -69,7 +69,7 @@ call_ companyId = do
   return running
 
 call :: CallMonad m => CompanyID -> m (Either Error RunningDeployment)
-call = runExceptT . call_
+call = runTransaction . runExceptT . call_
 
 handleEntity :: (Monad m) => Error -> m (Maybe a) -> RunMonad m a
 handleEntity e wrappedEntity = do
