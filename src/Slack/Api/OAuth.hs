@@ -35,7 +35,7 @@ instance FromJSON OAuthTokenResponse where
       teamSlackId <- o .: "team_id"
       iwO <- o .: "incoming_webhook"
       incomingWebhookUrl <- iwO .: "url"
-      incomingWebhookChannel <- iwO .: "channel"
+      incomingWebhookChannel <- iwO .: "channel_id"
       incomingWebhookConfigurationUrl <- iwO .: "configuration_url"
       botO <- o .: "bot"
       botUserId <- botO .: "bot_user_id"

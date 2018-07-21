@@ -31,7 +31,7 @@ data DbStatus
   | DbFailed Text
 
 instance FromField DbStatus where
-  fromField f bs = textToStatus <$> (fromField f bs)
+  fromField f bs = textToStatus <$> fromField f bs
 
 textToStatus :: Text -> DbStatus
 textToStatus text =
@@ -94,13 +94,16 @@ getDeploymentResources cId eId bId = do
         Just project ->
           return $ Just $ DeploymentResources project environment build
 
-listAllRunningDeployments :: (HasPostgres m) => m [RunningDeployment]
+listAllRunningDeployments ::
+     (HasPostgres m) => m [(CompanyID, RunningDeployment)]
 listAllRunningDeployments = do
   results <- runQuery q (Only (statusText DbRunning))
   return $ map buildRunningDeployment results
   where
     q =
-      "select id, deployment_started_at from deployments\
+      "select d.id, d.deployment_started_at, d.build_id, p.company_id from deployments d\
+        \ join environments e on e.id = d.environment_id\
+        \ join projects p on p.id = e.project_id\
         \ where status = ?"
 
 saveFinishedDeployment :: (HasPostgres m) => FinishedDeployment -> m ()
@@ -140,9 +143,9 @@ buildQueuedDeployment :: QueuedDeploymentRow -> QueuedDeployment
 buildQueuedDeployment (deploymentId, deploymentBuildId, deploymentEnvironmentId) =
   QueuedDeployment {..}
 
-type RunningDeploymentRow = (ID, LocalTime)
+type RunningDeploymentRow = (ID, LocalTime, BuildID, CompanyID)
 
-buildRunningDeployment :: RunningDeploymentRow -> RunningDeployment
-buildRunningDeployment (runningDeploymentId, deploymentStartedAtLocaltime) =
+buildRunningDeployment :: RunningDeploymentRow -> (CompanyID, RunningDeployment)
+buildRunningDeployment (runningDeploymentId, deploymentStartedAtLocaltime, runningDeploymentBuildId, companyId) =
   let deploymentStartedAt = localTimeToUTC utc deploymentStartedAtLocaltime
-   in RunningDeployment {..}
+   in (companyId, RunningDeployment {..})

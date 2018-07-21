@@ -1,5 +1,6 @@
 module Deployments.UseCases.CreateDeployment
   ( Params(..)
+  , CallMonad
   , Error(..)
   , call
   ) where
@@ -12,14 +13,14 @@ import qualified Deployments.Domain.Deployment as Deployment
 import qualified Deployments.Domain.Environment as Environment
 
 data Params = Params
-  { build :: Build.Build
-  , environment :: Environment.Environment
+  { build :: !Build.Build
+  , environment :: !Environment.Environment
   }
 
 data Error =
   ProjectsDontMatch
 
-type UseCaseMonad m = (MonadIO m, DeploymentRepo m)
+type CallMonad m = (MonadIO m, DeploymentRepo m)
 
 entity :: (MonadIO m) => Params -> m Deployment.QueuedDeployment
 entity Params {..} = do
@@ -28,16 +29,16 @@ entity Params {..} = do
   deploymentId <- Deployment.genId
   return Deployment.QueuedDeployment {..}
 
-create :: UseCaseMonad m => Params -> m Deployment.QueuedDeployment
+create :: CallMonad m => Params -> m Deployment.QueuedDeployment
 create params = do
   deployment <- entity params
   createQueuedDeployment deployment
   return deployment
 
-call :: UseCaseMonad m => Params -> m (Either Error Deployment.QueuedDeployment)
-call params@(Params {..}) =
+call :: CallMonad m => Params -> m (Either Error Deployment.QueuedDeployment)
+call params@Params {..} =
   let buildProjectId = Build.buildProjectId build
       environmentProjectId = Environment.environmentProjectId environment
-   in case buildProjectId == environmentProjectId of
-        False -> return $ Left ProjectsDontMatch
-        True -> Right <$> create params
+   in if buildProjectId == environmentProjectId
+        then Right <$> create params
+        else return (Left ProjectsDontMatch)

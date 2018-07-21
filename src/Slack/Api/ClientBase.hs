@@ -1,6 +1,7 @@
 module Slack.Api.ClientBase
   ( Action(..)
   , ChatPostMessageAsBot(..)
+  , ChatUpdateMessage(..)
   , SlackClientMonad
   , slackRequest
   ) where
@@ -27,8 +28,24 @@ instance ToJSON ChatPostMessageAsBot where
   toJSON (ChatPostMessageAsBot _ channel Message {..}) =
     object
       [ "channel" .= channel
-      , "as_user" .= False
+      , "as_user" .= True
       , "text" .= messageText
+      , "attachments" .= messageAttachments
+      ]
+
+data ChatUpdateMessage =
+  ChatUpdateMessage Text
+                    Text
+                    Text
+                    Message
+
+instance ToJSON ChatUpdateMessage where
+  toJSON (ChatUpdateMessage _ channel ts Message {..}) =
+    object
+      [ "channel" .= channel
+      , "as_user" .= True
+      , "text" .= messageText
+      , "ts" .= ts
       , "attachments" .= messageAttachments
       ]
 
@@ -36,6 +53,7 @@ data Action
   = GetOAuthToken ByteString
   | RevokeToken ByteString
   | PostMessageAsBot ChatPostMessageAsBot
+  | UpdateMessage ChatUpdateMessage
   | IncomingWebhook Text
                     Message
 
@@ -72,6 +90,16 @@ buildRequest request clientId clientSecret action =
       request
         { method = "POST"
         , path = "/api/chat.postMessage"
+        , requestBody = RequestBodyLBS $ encode message
+        , requestHeaders =
+            [ (hContentType, "application/json")
+            , (hAuthorization, "Bearer " <> encodeUtf8 token)
+            ]
+        }
+    UpdateMessage message@(ChatUpdateMessage token _ _ _) ->
+      request
+        { method = "POST"
+        , path = "/api/chat.update"
         , requestBody = RequestBodyLBS $ encode message
         , requestHeaders =
             [ (hContentType, "application/json")

@@ -28,12 +28,12 @@ notify ::
   => Project.Project
   -> Build.Build
   -> m ()
-notify (Project.Project {..}) (Build.Build {..}) =
+notify Project.Project {..} Build.Build {..} =
   Background.notifyBuild projectCompanyId (keyText buildId)
 
 call ::
      (MonadIO m, Background.NotifyBuildConstraint m) => Params -> m Build.Build
-call params@(Params {..}) = do
+call params@Params {..} = do
   build <- entity params
   createBuild build
   notify buildProject build

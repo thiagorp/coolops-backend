@@ -34,10 +34,8 @@ class (Monad m, HasPostgresConnection m, MonadIO m) =>
 migrateDb :: Connection -> IO ()
 migrateDb conn = void $ withTransaction conn (runMigration (ctx conn))
   where
-    ctx = MigrationContext cmd False
-    cmd =
-      MigrationCommands
-        [MigrationInitialization, MigrationDirectory "migrations"]
+    ctx = MigrationContext cmd True
+    cmd = MigrationDirectory "migrations"
 
 runEitherTransaction_ ::
      (HasPostgresConnection m, MonadIO m) => IO (Either e a) -> m (Either e a)
@@ -45,9 +43,7 @@ runEitherTransaction_ tx = do
   conn <- getPostgresConn
   liftIO $ begin conn
   liftIO $
-    E.catch
-      (runTx conn)
-      (\e -> do rollback conn >> E.throw (e :: SomeException))
+    E.catch (runTx conn) (\e -> rollback conn >> E.throw (e :: SomeException))
   where
     runTx conn = do
       result <- tx

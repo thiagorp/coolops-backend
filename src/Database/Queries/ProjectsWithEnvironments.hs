@@ -84,7 +84,7 @@ flattenProjects project hash =
       newProject =
         project
           { projectEnvironments =
-              (projectEnvironments project) <> environmentToAdd
+              projectEnvironments project <> environmentToAdd
           }
    in HashMap.insert key newProject hash
 

@@ -5,6 +5,7 @@ module Deployments.Domain.Deployment
   , DeploymentResources(..)
   , ID
   , BuildID
+  , Project.CompanyID
   , EnvironmentID
   , Status(..)
   , FailedReason(..)
@@ -52,6 +53,7 @@ data QueuedDeployment = QueuedDeployment
 data RunningDeployment = RunningDeployment
   { runningDeploymentId :: !ID
   , deploymentStartedAt :: !UTCTime
+  , runningDeploymentBuildId :: !BuildID
   }
 
 data FinishedDeployment = FinishedDeployment
@@ -65,7 +67,10 @@ run QueuedDeployment {..} = do
   currentTime <- liftIO getCurrentTime
   return
     RunningDeployment
-      {runningDeploymentId = deploymentId, deploymentStartedAt = currentTime}
+      { runningDeploymentId = deploymentId
+      , deploymentStartedAt = currentTime
+      , runningDeploymentBuildId = deploymentBuildId
+      }
 
 finish :: (MonadIO m) => Status -> RunningDeployment -> m FinishedDeployment
 finish status RunningDeployment {..} = do
