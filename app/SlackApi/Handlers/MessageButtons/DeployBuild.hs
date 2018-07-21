@@ -8,17 +8,11 @@ import qualified RIO.Text.Lazy as TL
 import Web.Scotty.Trans
 
 import Auth.Domain (CompanyID)
-import qualified BackgroundJobs.AppJobs as Background
 import Deployments.Classes
-import qualified Deployments.Domain.Build as B
 import Deployments.Domain.Deployment (DeploymentResources(..))
-import qualified Deployments.Domain.Environment as E
 import qualified Deployments.Domain.Project as P
-import Slack.Api.IncomingWebhooks
-import Slack.Api.Message
-import Slack.Domain.Team (Team(..), webhookUrl)
+import Slack.Domain.Team (Team(..))
 import qualified Slack.UseCases.CreateDeployment as App
-import qualified Slack.UseCases.NotifyNewBuild as NotifyBuild
 import Types
 
 resourcesMissing :: TL.Text
@@ -37,7 +31,12 @@ runApp DeploymentResources {..} (slackUserId, slackUserName) = do
     Left App.ProjectsDontMatch -> text projectsDontMatch >> finish
   where
     appParams =
-      App.Params deploymentBuild deploymentEnvironment slackUserId slackUserName
+      App.Params
+        deploymentBuild
+        deploymentEnvironment
+        (P.projectCompanyId deploymentProject)
+        slackUserId
+        slackUserName
 
 getResources_ :: CompanyID -> Text -> Text -> WebHandler DeploymentResources
 getResources_ cId eId bId = do
@@ -46,24 +45,7 @@ getResources_ cId eId bId = do
     Nothing -> text resourcesMissing >> finish
     Just resources -> return resources
 
-notify :: (Text, Text) -> Team -> DeploymentResources -> WebHandler ()
-notify (slackUserId, _) Team {..} DeploymentResources {..} =
-  lift $ sendIncomingWebhook url message
-  where
-    url = webhookUrl teamIncomingWebhook
-    bName = B.nameText $ B.buildName deploymentBuild
-    eName = E.nameText $ E.environmentName deploymentEnvironment
-    pName = P.nameText $ P.projectName deploymentProject
-    message = slackMessage {messageText = Just t}
-    t =
-      "<@" <> slackUserId <> "> deployed *" <> bName <> "* to *" <> eName <>
-      "* of *" <>
-      pName <>
-      "*"
-
 call :: Team -> Text -> Text -> (Text, Text) -> WebHandler ()
-call team@Team {..} environmentId buildId slackUser = do
+call Team {..} environmentId buildId slackUser = do
   resources <- getResources_ teamCompanyId environmentId buildId
   runApp resources slackUser
-  lift $ Background.notifyBuild teamCompanyId buildId
-  -- notify slackUser team resources
