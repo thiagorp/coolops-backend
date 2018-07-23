@@ -5,6 +5,7 @@ module Deployments.Database.Deployment
   , saveFinishedDeployment
   , listAllRunningDeployments
   , getDeploymentResources
+  , notFinishedStatuses
   , DbStatus(..)
   ) where
 
@@ -13,6 +14,7 @@ import RIO
 import Data.Time
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
+import Database.PostgreSQL.Simple.ToField
 
 import Common.Database
 import Deployments.Database.Build
@@ -32,6 +34,12 @@ data DbStatus
 
 instance FromField DbStatus where
   fromField f bs = textToStatus <$> fromField f bs
+
+instance ToField DbStatus where
+  toField = toField . statusText
+
+notFinishedStatuses :: [DbStatus]
+notFinishedStatuses = [DbQueued, DbRunning]
 
 textToStatus :: Text -> DbStatus
 textToStatus text =

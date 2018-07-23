@@ -13,7 +13,7 @@ import Slack.Classes (getSlackTeamForCompany)
 import Types (WebMonad)
 
 call :: AuthenticatedUser -> WebMonad ()
-call (AuthenticatedUser (User {..})) = do
+call (AuthenticatedUser User {..}) = do
   maybeSlackTeam <- lift $ getSlackTeamForCompany userCompanyId
-  clientId <- lift $ slackClientId
+  clientId <- lift slackClientId
   json $ slackConfigResource clientId maybeSlackTeam
