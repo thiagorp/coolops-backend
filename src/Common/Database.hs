@@ -34,7 +34,7 @@ class (Monad m, HasPostgresConnection m, MonadIO m) =>
 migrateDb :: Connection -> IO ()
 migrateDb conn = void $ withTransaction conn (runMigration (ctx conn))
   where
-    ctx = MigrationContext cmd True
+    ctx = MigrationContext cmd False
     cmd = MigrationDirectory "migrations"
 
 runEitherTransaction_ ::

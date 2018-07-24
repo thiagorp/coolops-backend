@@ -18,6 +18,7 @@ data Attachment = Attachment
   , attachmentActions :: !(Maybe [Action])
   , attachmentFooter :: !(Maybe Text)
   , attachmentColor :: !(Maybe Text)
+  , attachmentMarkdown :: !(Maybe [Text])
   }
 
 data Action = Action
@@ -32,7 +33,16 @@ slackMessage = Message Nothing Nothing
 
 slackAttachment :: Attachment
 slackAttachment =
-  Attachment Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+  Attachment
+    Nothing
+    Nothing
+    Nothing
+    Nothing
+    Nothing
+    Nothing
+    Nothing
+    Nothing
+    Nothing
 
 slackAction :: Action
 slackAction =
@@ -53,6 +63,7 @@ instance ToJSON Attachment where
       , "actions" .= attachmentActions
       , "footer" .= attachmentFooter
       , "color" .= attachmentColor
+      , "mrkdwn_in" .= attachmentMarkdown
       ]
 
 instance ToJSON Action where
