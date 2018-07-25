@@ -30,6 +30,9 @@ data JobDescription = JobDescription
   , name :: !Text
   }
 
+jobRetryCount :: Int
+jobRetryCount = 0
+
 buildEnv :: HashMap Text Text -> [Value]
 buildEnv = map builder . HashMap.toList
   where
@@ -46,7 +49,8 @@ instance ToJSON JobDescription where
       , "metadata" .= object ["name" .= name]
       , "spec" .=
         object
-          [ "template" .=
+          [ "backoffLimit" .= jobRetryCount
+          , "template" .=
             object
               [ "metadata" .= object ["name" .= name]
               , "spec" .=
@@ -77,7 +81,8 @@ createJob jobDescription = do
 data Job = Job
   { jobName :: !Text
   , jobCompletionTime :: !(Maybe UTCTime)
-  , jobSucceeded :: !(Maybe Integer)
+  , jobSucceeded :: !(Maybe Int)
+  , jobFailed :: !(Maybe Int)
   }
 
 instance FromJSON Job where
@@ -88,6 +93,7 @@ instance FromJSON Job where
       jobName <- metadataO .: "name"
       jobCompletionTime <- statusO .:? "completionTime"
       jobSucceeded <- statusO .:? "succeeded"
+      jobFailed <- statusO .:? "failed"
       return Job {..}
 
 data GetJobError
@@ -118,7 +124,10 @@ data JobStatus
 readStatus :: Job -> JobStatus
 readStatus Job {..} =
   case jobCompletionTime of
-    Nothing -> Running
+    Nothing ->
+      if fromMaybe 0 jobFailed > jobRetryCount
+        then Failed
+        else Running
     Just _ ->
       if fromMaybe 0 jobSucceeded > 0
         then Succeeded

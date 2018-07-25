@@ -29,8 +29,8 @@ data ContainerStatus = ContainerStatus
   , containerState :: !ContainerState
   }
 
-data Pod = Pod
-  { podContainerStatuses :: ![ContainerStatus]
+newtype Pod = Pod
+  { podContainerStatuses :: [ContainerStatus]
   }
 
 newtype PodsList =
