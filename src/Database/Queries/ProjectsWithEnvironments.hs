@@ -105,4 +105,4 @@ listProjectsWithEnvironments companyId = do
         \ left join deployments d on d.environment_id = e.id\
         \ left join builds b on b.id = d.build_id\
         \ where p.company_id = ?\
-        \ order by p.id, e.id, d.deployment_finished_at desc"
+        \ order by p.id, e.id, d.created_at desc"
