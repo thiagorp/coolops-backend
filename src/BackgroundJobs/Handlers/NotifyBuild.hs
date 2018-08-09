@@ -31,5 +31,5 @@ call (Params cId bId) = do
   case r of
     Left App.MessageDataNotFound -> finishWithFailure "Message data not found"
     Left App.BuildNotFound -> finishWithFailure "Build not found"
-    Left App.SlackTeamNotFound -> finishWithFailure "Slack team not found"
+    Left App.SlackConfigNotFound -> finishWithFailure "Slack config not found"
     Right _ -> finishWithSuccess

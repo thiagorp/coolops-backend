@@ -29,13 +29,13 @@ getSlackDeploymentMessageData cId dId = do
     row:_ -> return $ Just (build row)
   where
     q =
-      "select b.name, e.name, p.name, sd.slack_user_id, st.bot_access_token, d.status\
+      "select b.name, e.name, p.name, sd.slack_user_id, spi.access_token, d.status\
         \ from deployments d\
         \ join builds b on d.build_id = b.id\
         \ join environments e on d.environment_id = e.id\
         \ join projects p on e.project_id = p.id\ 
         \ join slack_deployments sd on d.id = sd.deployment_id\
-        \ join slack_teams st on p.company_id = st.company_id\
+        \ join slack_project_integrations spi on p.id = spi.project_id\
         \ where p.company_id = ? and d.id = ? and d.status not in ?\
         \ limit 1"
 

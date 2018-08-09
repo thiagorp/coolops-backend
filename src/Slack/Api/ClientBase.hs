@@ -3,6 +3,7 @@ module Slack.Api.ClientBase
   , ChatPostMessageAsBot(..)
   , ChatUpdateMessage(..)
   , SlackClientMonad
+  , SlackResponse
   , slackRequest
   ) where
 
@@ -19,6 +20,8 @@ import Http.Classes
 import Slack.Api.Classes
 import Slack.Api.Message (Message(..))
 
+type SlackResponse = Response LBS.ByteString
+
 data ChatPostMessageAsBot =
   ChatPostMessageAsBot Text
                        Text
@@ -28,7 +31,6 @@ instance ToJSON ChatPostMessageAsBot where
   toJSON (ChatPostMessageAsBot _ channel Message {..}) =
     object
       [ "channel" .= channel
-      , "as_user" .= True
       , "text" .= messageText
       , "attachments" .= messageAttachments
       ]
@@ -43,7 +45,6 @@ instance ToJSON ChatUpdateMessage where
   toJSON (ChatUpdateMessage _ channel ts Message {..}) =
     object
       [ "channel" .= channel
-      , "as_user" .= True
       , "text" .= messageText
       , "ts" .= ts
       , "attachments" .= messageAttachments
@@ -51,6 +52,8 @@ instance ToJSON ChatUpdateMessage where
 
 data Action
   = GetOAuthToken ByteString
+  | GetWorkspaceToken ByteString
+                      ByteString
   | RevokeToken ByteString
   | PostMessageAsBot ChatPostMessageAsBot
   | UpdateMessage ChatUpdateMessage
@@ -76,6 +79,16 @@ buildRequest request clientId clientSecret action =
         , queryString =
             "code=" <> code <> "&client_id=" <> clientId <> "&client_secret=" <>
             clientSecret
+        }
+    GetWorkspaceToken redirectUri code ->
+      request
+        { method = "GET"
+        , path = "/api/oauth.access"
+        , queryString =
+            "code=" <> code <> "&client_id=" <> clientId <> "&client_secret=" <>
+            clientSecret <>
+            "&redirect_uri=" <>
+            redirectUri
         }
     RevokeToken token ->
       request
