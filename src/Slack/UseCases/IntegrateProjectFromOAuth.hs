@@ -21,7 +21,6 @@ data Params = Params
   { companyId :: !CompanyID
   , pId :: !Text
   , oAuthCode :: !Text
-  , redirectUri :: !Text
   }
 
 build ::
@@ -48,7 +47,7 @@ call Params {..} = do
   case maybeProject of
     Nothing -> return $ Left ProjectNotFound
     Just Project {..} -> do
-      eitherResponse <- getWorkspaceToken oAuthCode redirectUri
+      eitherResponse <- getWorkspaceToken oAuthCode
       case eitherResponse of
         Left (WrongBodyError _ _) -> return $ Left CouldNotExchangeCode
         Left (UnexpectedHttpStatusError _) -> return $ Left CouldNotExchangeCode

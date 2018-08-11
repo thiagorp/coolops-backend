@@ -21,6 +21,7 @@ import qualified Handlers.GetEnvironment as GetEnvironment
 import qualified Handlers.GetProfile as GetProfile
 import qualified Handlers.GetProject as GetProject
 import qualified Handlers.GetSlackConfig as GetSlackConfig
+import qualified Handlers.GetSlackProjectIntegration as GetSlackProjectIntegration
 import qualified Handlers.HealthCheck as HealthCheck
 import qualified Handlers.ListProjects as ListProjects
 import qualified Handlers.Login as Handlers
@@ -76,6 +77,8 @@ routes logger = do
   post "/projects/:project_id/environments" $ userAuth CreateEnvironment.call
   post "/projects/:project_id/slack_integration" $
     userAuth ConnectProjectWithSlack.call
+  get "/projects/:project_id/slack_integration" $
+    userAuth GetSlackProjectIntegration.call
   get "/environments/:id" $ userAuth GetEnvironment.call
   patch "/environments/:id" $ userAuth UpdateEnvironment.call
   post "/builds" $ projectAuth CreateBuild.call

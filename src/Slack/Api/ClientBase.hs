@@ -53,7 +53,6 @@ instance ToJSON ChatUpdateMessage where
 data Action
   = GetOAuthToken ByteString
   | GetWorkspaceToken ByteString
-                      ByteString
   | RevokeToken ByteString
   | PostMessageAsBot ChatPostMessageAsBot
   | UpdateMessage ChatUpdateMessage
@@ -80,15 +79,13 @@ buildRequest request clientId clientSecret action =
             "code=" <> code <> "&client_id=" <> clientId <> "&client_secret=" <>
             clientSecret
         }
-    GetWorkspaceToken redirectUri code ->
+    GetWorkspaceToken code ->
       request
         { method = "GET"
         , path = "/api/oauth.access"
         , queryString =
             "code=" <> code <> "&client_id=" <> clientId <> "&client_secret=" <>
-            clientSecret <>
-            "&redirect_uri=" <>
-            redirectUri
+            clientSecret
         }
     RevokeToken token ->
       request

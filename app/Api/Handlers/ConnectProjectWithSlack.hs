@@ -2,7 +2,7 @@ module Handlers.ConnectProjectWithSlack
   ( call
   ) where
 
-import RIO
+import RIO hiding (optional)
 
 import Data.Aeson hiding (json)
 
@@ -18,34 +18,29 @@ import qualified Slack.UseCases.IntegrateProjectFromOAuth as App
 import Types
 import Validation
 
-data Fields
-  = Code
-  | RedirectUri
+data Fields =
+  Code
 
 instance HasFieldName Fields where
   fieldName field =
     case field of
       Code -> "code"
-      RedirectUri -> "redirect_uri"
 
 data Request = Request
   { reqCode :: !(Maybe Text)
-  , reqRedirectUri :: !(Maybe Text)
   }
 
 instance FromJSON Request where
   parseJSON =
     withObject "request params" $ \o -> do
       reqCode <- o .:? (fieldName Code)
-      reqRedirectUri <- o .:? (fieldName RedirectUri)
       return Request {..}
 
 builder :: User -> Text -> Request -> WebValidation App.Params
 builder (User {..}) projectId (Request {..}) =
-  App.Params <$> pure userCompanyId <*> pure projectId <*> code <*> redirectUri
+  App.Params <$> pure userCompanyId <*> pure projectId <*> code
   where
     code = required Code reqCode >>> valid
-    redirectUri = required RedirectUri reqRedirectUri >>> valid
 
 call :: AuthenticatedUser -> WebMonad ()
 call (AuthenticatedUser user) = do

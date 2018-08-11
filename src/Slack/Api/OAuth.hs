@@ -81,12 +81,9 @@ data SlackClientError
 getWorkspaceToken ::
      (SlackClientMonad m)
   => Text
-  -> Text
   -> m (Either SlackClientError WorkspaceTokenResponse)
-getWorkspaceToken code redirectUri = do
-  response <-
-    slackRequest
-      (GetWorkspaceToken (Text.encodeUtf8 redirectUri) (Text.encodeUtf8 code))
+getWorkspaceToken code = do
+  response <- slackRequest (GetWorkspaceToken (Text.encodeUtf8 code))
   return $ parseResponse response
 
 parseResponse :: FromJSON a => SlackResponse -> Either SlackClientError a

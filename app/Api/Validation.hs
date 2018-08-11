@@ -4,12 +4,13 @@ module Validation
   , WebValidation
   , WebValidationError
   , (>>>)
+  , optional
   , required
   , validationToString
   , Validation.valid
   ) where
 
-import RIO
+import RIO hiding (optional)
 
 import qualified Util.Validation as Validation
 import Util.Validation (Validation(..), ValidationError(..), validateRequired)
@@ -27,6 +28,9 @@ class HasFieldName field where
 
 required :: (HasFieldName f) => f -> Maybe a -> (f, WebValidation a)
 required field value = (field, onField field (validateRequired value))
+
+optional :: (HasFieldName f) => f -> Maybe a -> (f, WebValidation (Maybe a))
+optional field value = (field, onField field (Validation.valid value))
 
 (>>>) ::
      (HasFieldName f)

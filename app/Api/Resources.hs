@@ -6,6 +6,7 @@ import Data.Aeson hiding (json)
 
 import qualified Deployments.Domain.Environment as Environment
 import qualified Deployments.Domain.Project as Project
+import qualified Slack.Domain.ProjectIntegration as SlackProjectIntegration
 import qualified Slack.Domain.Team as SlackTeam
 import Util.Key (keyText)
 
@@ -74,3 +75,23 @@ slackConfigResource :: Text -> (Maybe SlackTeam.Team) -> SlackConfigResource
 slackConfigResource resSlackConfigClientId maybeSlackTeam =
   let resSlackConfigEnabled = isJust maybeSlackTeam
    in SlackConfigResource {..}
+
+data SlackProjectIntegrationResource = SlackProjectIntegrationResource
+  { resSlackProjectIntegrationEnabled :: !Bool
+  , resSlackProjectIntegrationClientId :: !Text
+  }
+
+instance ToJSON SlackProjectIntegrationResource where
+  toJSON SlackProjectIntegrationResource {..} =
+    object
+      [ "enabled" .= resSlackProjectIntegrationEnabled
+      , "client_id" .= resSlackProjectIntegrationClientId
+      ]
+
+slackProjectIntegrationResource ::
+     Text
+  -> Maybe SlackProjectIntegration.ProjectIntegration
+  -> SlackProjectIntegrationResource
+slackProjectIntegrationResource resSlackProjectIntegrationClientId maybeSlackProjectIntegration =
+  let resSlackProjectIntegrationEnabled = isJust maybeSlackProjectIntegration
+   in SlackProjectIntegrationResource {..}
