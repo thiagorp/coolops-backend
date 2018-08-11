@@ -20,13 +20,14 @@ import qualified Deployments.Domain.Project as P
 import Slack.Api.ChatMessages
 import Slack.Api.Message
 import Slack.Classes
+import Slack.Database.ProjectIntegration (getSlackIntegrationForProject)
 import Slack.Domain.BuildMessage
-import Slack.Domain.Team hiding (genId)
+import Slack.Domain.ProjectIntegration hiding (genId)
 
 data Error
   = MessageDataNotFound
   | BuildNotFound
-  | SlackTeamNotFound
+  | SlackConfigNotFound
 
 saveSlackBuildMessage ::
      (SlackBuildMessageRepo m, MonadIO m) => B.ID -> Text -> m ()
@@ -36,32 +37,28 @@ saveSlackBuildMessage buildMessageBuildId buildMessageSlackMessageId = do
 
 createMessage ::
      (SlackClientMonad m, SlackBuildMessageRepo m)
-  => Team
+  => ProjectIntegration
   -> B.Build
   -> Message
   -> m ()
-createMessage Team {..} B.Build {..} m = do
-  maybeResponseTs <-
-    postMessage
-      (botUserAccessToken teamBotUser)
-      (webhookChannel teamIncomingWebhook)
-      m
+createMessage ProjectIntegration {..} B.Build {..} m = do
+  maybeResponseTs <- postMessage integrationAccessToken integrationChannelId m
   forM_ maybeResponseTs (saveSlackBuildMessage buildId)
 
 sendMessage ::
      (SlackClientMonad m, SlackBuildMessageRepo m)
-  => Team
+  => ProjectIntegration
   -> B.Build
   -> Message
   -> m ()
-sendMessage team@Team {..} build@B.Build {..} m = do
+sendMessage config@ProjectIntegration {..} build@B.Build {..} m = do
   maybeExistingMesage <- getSlackBuildMessage buildId
   case maybeExistingMesage of
-    Nothing -> createMessage team build m
+    Nothing -> createMessage config build m
     Just BuildMessage {..} ->
       updateMessage
-        (botUserAccessToken teamBotUser)
-        (webhookChannel teamIncomingWebhook)
+        integrationAccessToken
+        integrationChannelId
         buildMessageSlackMessageId
         m
 
@@ -72,18 +69,15 @@ handleEntity e wrappedEntity = do
     Nothing -> throwError e
     Just a -> return a
 
-getSlackTeam_ :: SlackTeamRepo m => P.CompanyID -> ExceptT Error m Team
-getSlackTeam_ cId = handleEntity SlackTeamNotFound (getSlackTeamForCompany cId)
+getSlackConfig_ :: HasPostgres m => P.ID -> ExceptT Error m ProjectIntegration
+getSlackConfig_ projectId =
+  handleEntity SlackConfigNotFound (getSlackIntegrationForProject projectId)
 
 getBuild_ :: BuildRepo m => P.CompanyID -> Text -> ExceptT Error m B.Build
 getBuild_ cId bId = handleEntity BuildNotFound (getBuild cId bId)
 
 type CallConstraint m
-   = ( HasPostgres m
-     , BuildRepo m
-     , SlackBuildMessageRepo m
-     , SlackTeamRepo m
-     , SlackClientMonad m)
+   = (HasPostgres m, BuildRepo m, SlackBuildMessageRepo m, SlackClientMonad m)
 
 colorOf :: DbStatus -> Maybe Text
 colorOf status =
@@ -141,10 +135,10 @@ message cId bId = runExceptT $ message_ cId bId
 
 call_ :: CallConstraint m => P.CompanyID -> Text -> ExceptT Error m ()
 call_ cId bId = do
-  slackTeam <- getSlackTeam_ cId
   build <- getBuild_ cId bId
+  slackConfig <- getSlackConfig_ (B.buildProjectId build)
   m <- message_ cId bId
-  lift $ sendMessage slackTeam build m
+  lift $ sendMessage slackConfig build m
 
 call :: CallConstraint m => P.CompanyID -> Text -> m (Either Error ())
 call cId bId = runExceptT $ call_ cId bId

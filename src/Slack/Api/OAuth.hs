@@ -2,7 +2,9 @@ module Slack.Api.OAuth
   ( OAuthTokenResponse(..)
   , SlackClientMonad
   , SlackClientError(..)
+  , WorkspaceTokenResponse(..)
   , getToken
+  , getWorkspaceToken
   , revokeToken
   ) where
 
@@ -42,10 +44,57 @@ instance FromJSON OAuthTokenResponse where
       botUserAccessToken <- botO .: "bot_access_token"
       return OAuthTokenResponse {..}
 
+data WorkspaceTokenResponse = WorkspaceTokenResponse
+  { tokenAccessToken :: !Text
+  , tokenWorkspaceName :: !Text
+  , tokenAppId :: !Text
+  , tokenAppUserId :: !Text
+  , tokenInstallerUserId :: !Text
+  , tokenAuthorizingUserId :: !Text
+  , tokenTeamId :: !Text
+  , tokenChannelId :: !Text
+  , tokenScopes :: !Value
+  }
+
+instance FromJSON WorkspaceTokenResponse where
+  parseJSON =
+    withObject "response" $ \o -> do
+      tokenAccessToken <- o .: "access_token"
+      tokenWorkspaceName <- o .: "team_name"
+      tokenAppId <- o .: "app_id"
+      tokenAppUserId <- o .: "app_user_id"
+      installerUser <- o .: "installer_user"
+      tokenInstallerUserId <- installerUser .: "user_id"
+      authorizingUser <- o .: "authorizing_user"
+      tokenAuthorizingUserId <- authorizingUser .: "user_id"
+      tokenTeamId <- o .: "team_id"
+      tokenChannelId <- o .: "single_channel_id"
+      tokenScopes <- o .: "scopes"
+      return WorkspaceTokenResponse {..}
+
 data SlackClientError
-  = WrongBodyError LBS.ByteString
+  = WrongBodyError Text
+                   LBS.ByteString
   | UnexpectedHttpStatusError Int
   deriving (Show)
+
+getWorkspaceToken ::
+     (SlackClientMonad m)
+  => Text
+  -> m (Either SlackClientError WorkspaceTokenResponse)
+getWorkspaceToken code = do
+  response <- slackRequest (GetWorkspaceToken (Text.encodeUtf8 code))
+  return $ parseResponse response
+
+parseResponse :: FromJSON a => SlackResponse -> Either SlackClientError a
+parseResponse response =
+  case statusCode (responseStatus response) of
+    200 ->
+      case eitherDecode (responseBody response) of
+        Left err ->
+          Left $ WrongBodyError (Text.pack err) (responseBody response)
+        Right r -> Right r
+    _ -> Left $ UnexpectedHttpStatusError $ statusCode $ responseStatus response
 
 getToken ::
      (SlackClientMonad m)
@@ -53,14 +102,7 @@ getToken ::
   -> m (Either SlackClientError OAuthTokenResponse)
 getToken code = do
   response <- slackRequest (GetOAuthToken $ Text.encodeUtf8 code)
-  case statusCode (responseStatus response) of
-    200 ->
-      case decode (responseBody response) of
-        Nothing -> return $ Left $ WrongBodyError $ responseBody response
-        Just r -> return $ Right r
-    _ ->
-      return $
-      Left $ UnexpectedHttpStatusError $ statusCode $ responseStatus response
+  return $ parseResponse response
 
 revokeToken :: (SlackClientMonad m) => Text -> m (Either SlackClientError ())
 revokeToken token = do

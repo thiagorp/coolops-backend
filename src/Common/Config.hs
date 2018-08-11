@@ -70,8 +70,8 @@ slackSettings =
   slackVerificationToken_
   where
     slackVerificationToken_ =
-      envVar "SLACK_VERIFICATION_TOKEN" "rl5a2StQeKMHLVBVFo4tWcQr"
-    slackClientId_ = envVar "SLACK_CLIENT_ID" "388050218183.386999338546"
+      envVar "SLACK_VERIFICATION_TOKEN" "AtSllqYHHdWAUpiVuuNfPTU1"
+    slackClientId_ = envVar "SLACK_CLIENT_ID" "388050218183.406662000402"
     slackClientSecret_ =
       encodeUtf8 <$>
-      envVar "SLACK_CLIENT_SECRET" "124ccde4a4e086714387fd1c54e8e33c"
+      envVar "SLACK_CLIENT_SECRET" "8bca4209d59b84e8f341c5e49cc3d26b"
