@@ -37,34 +37,19 @@ type UserID = Key User
 
 newtype UserName =
   UserName Text
+  deriving (ToField, FromField)
 
 type UserEmail = EmailAddress
-
-instance ToField UserName where
-  toField (UserName name) = toField name
-
-instance FromField UserName where
-  fromField f bs = UserName <$> fromField f bs
 
 type CompanyID = Key Company
 
 newtype CompanyName =
   CompanyName Text
-
-instance ToField CompanyName where
-  toField (CompanyName name) = toField name
-
-instance FromField CompanyName where
-  fromField f bs = CompanyName <$> fromField f bs
+  deriving (ToField, FromField)
 
 newtype AccessToken =
   AccessToken ByteString
-
-instance ToField AccessToken where
-  toField (AccessToken token) = toField token
-
-instance FromField AccessToken where
-  fromField f bs = AccessToken <$> fromField f bs
+  deriving (ToField, FromField)
 
 data Company = Company
   { companyId :: !CompanyID
@@ -87,12 +72,7 @@ newtype RawPassword =
 
 newtype SafePassword =
   SafePassword ByteString
-
-instance ToField SafePassword where
-  toField (SafePassword password) = toField password
-
-instance FromField SafePassword where
-  fromField f bs = SafePassword <$> fromField f bs
+  deriving (ToField, FromField)
 
 protectPassword :: (MonadIO m) => RawPassword -> m SafePassword
 protectPassword (RawPassword p) = liftIO $ SafePassword <$> makePassword p 17

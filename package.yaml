@@ -148,3 +148,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - api
+    - hspec
