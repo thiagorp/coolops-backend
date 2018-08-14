@@ -22,6 +22,17 @@ push: auth_container_registry
 	curl -d '{"name":"${VERSION}","params":{"IMAGE_NAME":"${RELEASE_DOCKER_IMG}"}}' -H "Authorization: Token ${COOLOPS_PRODUCTION_API_TOKEN}" -H "Content-Type: application/json" -X POST -f https://api.coolops.io/builds
 
 
+dev-api:
+	ghcid --command "stack ghci api:lib api:exe:api-exe"
+
+dev-slack-api:
+	ghcid --command "stack ghci api:lib api:exe:slack-api"
+
+
+run-tests:
+	ghcid --command "stack ghci api:lib api:test:api-test" --test "main"
+
+
 live-backend:
 	find . -path ./.stack-work -prune -o -type f \( -iname \*.hs -o -iname \*.yaml \) | entr -d -r make run
 

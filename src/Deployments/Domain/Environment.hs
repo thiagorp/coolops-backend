@@ -15,12 +15,7 @@ type ProjectID = Project.ID
 
 newtype Name =
   Name Text
-
-instance ToField Name where
-  toField (Name name) = toField name
-
-instance FromField Name where
-  fromField f bs = Name <$> (fromField f bs)
+  deriving (ToField, FromField)
 
 data Environment = Environment
   { environmentId :: !ID

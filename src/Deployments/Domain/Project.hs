@@ -29,30 +29,15 @@ type ID = Key Project
 
 newtype Name =
   Name Text
-
-instance ToField Name where
-  toField (Name name) = toField name
-
-instance FromField Name where
-  fromField f bs = Name <$> (fromField f bs)
+  deriving (ToField, FromField)
 
 newtype DeploymentImage =
   DeploymentImage Text
-
-instance ToField DeploymentImage where
-  toField (DeploymentImage image) = toField image
-
-instance FromField DeploymentImage where
-  fromField f bs = DeploymentImage <$> (fromField f bs)
+  deriving (ToField, FromField)
 
 newtype AccessToken =
   AccessToken ByteString
-
-instance ToField AccessToken where
-  toField (AccessToken token) = toField token
-
-instance FromField AccessToken where
-  fromField f bs = AccessToken <$> (fromField f bs)
+  deriving (ToField, FromField)
 
 data Project = Project
   { projectId :: !ID
