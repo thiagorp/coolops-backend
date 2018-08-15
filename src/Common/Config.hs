@@ -13,17 +13,21 @@ data PGSettings = PGSettings
 envVars :: (MonadIO m) => m EnvVars
 envVars = view envVarsL <$> mkDefaultProcessContext
 
+frontendBaseUrl :: (MonadIO m) => m Text
+frontendBaseUrl =
+  liftIO $ envVar "FRONTEND_APP_BASE_URL" "http://localhost:3000"
+
 appPort :: (MonadIO m) => m Int
 appPort = do
   envPort <- M.lookup "PORT" <$> envVars
-  case (envPort >>= return . unpack >>= readMaybe) of
+  case unpack <$> envPort >>= readMaybe of
     Nothing -> return 3001
     Just port -> return port
 
 slackApiPort :: (MonadIO m) => m Int
 slackApiPort = do
   envPort <- M.lookup "SLACK_API_PORT" <$> envVars
-  case (envPort >>= return . unpack >>= readMaybe) of
+  case unpack <$> envPort >>= readMaybe of
     Nothing -> return 3002
     Just port -> return port
 

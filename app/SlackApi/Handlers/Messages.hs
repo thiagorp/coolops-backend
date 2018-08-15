@@ -11,8 +11,6 @@ import Web.Scotty.Trans
 
 import qualified Handlers.MessageButtons.DeployBuild as DeployBuild
 import Slack.Api.Classes
-import Slack.Classes
-import Slack.Domain.Team (Team)
 import Slack.MessageButtons
 import Types
 
@@ -51,23 +49,20 @@ verifyToken token = do
     then return ()
     else status status401 >> finish
 
-handleMessage :: Team -> Request -> WebHandler ()
-handleMessage slackTeam Request {..} =
+handleMessage :: Request -> WebHandler ()
+handleMessage Request {..} =
   case reqMessageType of
     DeployBuild buildId ->
       DeployBuild.call
-        slackTeam
         reqActionValue
         buildId
+        reqTeamId
         (reqSenderId, reqSenderName)
 
 process :: Request -> WebHandler ()
 process req@Request {..} = do
   verifyToken reqVerificationToken
-  maybeSlackTeam <- lift $ getSlackTeam reqTeamId
-  case maybeSlackTeam of
-    Nothing -> status status401 >> finish
-    Just slackTeam -> handleMessage slackTeam req
+  handleMessage req
 
 call :: WebHandler ()
 call = do

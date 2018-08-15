@@ -22,7 +22,8 @@ data Environment = Environment
   }
 
 data SlackDeployment = SlackDeployment
-  { deploymentUserId :: !Text
+  { deploymentId :: !UUID
+  , deploymentUserId :: !Text
   , deploymentTime :: !UTCTime
   , deploymentStatus :: !DbStatus
   , deploymentEnvironmentName :: !Text
@@ -78,15 +79,15 @@ getSlackDeployments buildMessageId = do
   return $ map buildSlackDeployment rows
   where
     q =
-      "select sd.slack_user_id, sd.deployed_at, d.status, e.name\
+      "select d.id, sd.slack_user_id, sd.deployed_at, d.status, e.name\
         \ from slack_deployments sd\
         \ join deployments d on d.id = sd.deployment_id\
         \ join environments e on e.id = d.environment_id\
         \ where sd.build_message_id = ?"
 
-type SlackDeploymentRow = (Text, LocalTime, DbStatus, Text)
+type SlackDeploymentRow = (UUID, Text, LocalTime, DbStatus, Text)
 
 buildSlackDeployment :: SlackDeploymentRow -> SlackDeployment
-buildSlackDeployment (deploymentUserId, localTime, deploymentStatus, deploymentEnvironmentName) =
+buildSlackDeployment (deploymentId, deploymentUserId, localTime, deploymentStatus, deploymentEnvironmentName) =
   let deploymentTime = localTimeToUTC utc localTime
    in SlackDeployment {..}
