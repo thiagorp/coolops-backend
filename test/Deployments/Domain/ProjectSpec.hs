@@ -18,9 +18,9 @@ buildValidName name =
     Valid n -> return n
 
 spec :: Spec
-spec = do
+spec =
   describe "ToField Name" $
-    it "is the same as the one for the text" $ do
-      let nameT = "Api Service"
-      name <- buildValidName nameT
-      show (toField name) `shouldBe` show (toField nameT)
+  it "is the same as the one for the text" $ do
+    let nameT = "Api Service"
+    name <- buildValidName nameT
+    show (toField name) `shouldBe` show (toField nameT)

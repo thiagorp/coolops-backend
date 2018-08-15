@@ -34,8 +34,8 @@ data Request = Request
 instance FromJSON Request where
   parseJSON =
     withObject "request params" $ \o -> do
-      reqEnvironmentName <- o .:? (fieldName Name)
-      reqEnvironmentEnvVars <- o .:? (fieldName EnvVars)
+      reqEnvironmentName <- o .:? fieldName Name
+      reqEnvironmentEnvVars <- o .:? fieldName EnvVars
       return Request {..}
 
 builder :: Request -> WebValidation App.Params

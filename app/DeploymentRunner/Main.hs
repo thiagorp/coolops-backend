@@ -27,8 +27,7 @@ runNextForCompany companyId = do
 app :: AppT ()
 app = do
   companies <- listCompanies
-  _ <- mapM runNextForCompany $ map companyId companies
-  return ()
+  mapM_ (runNextForCompany . companyId) companies
 
 loopWith :: Env -> IO ()
 loopWith env = do

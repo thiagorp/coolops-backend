@@ -33,14 +33,14 @@ data Request = Request
 instance FromJSON Request where
   parseJSON =
     withObject "request params" $ \o -> do
-      reqEnvironmentName <- o .:? (fieldName Name)
-      reqEnvironmentEnvVars <- o .:? (fieldName EnvVars)
+      reqEnvironmentName <- o .:? fieldName Name
+      reqEnvironmentEnvVars <- o .:? fieldName EnvVars
       return Request {..}
 
 builder :: User -> Text -> Request -> WebValidation App.Params
-builder (User {..}) projectId (Request {..}) =
-  App.Params <$> environmentName <*> environmentEnvVars <*> (pure projectId) <*>
-  (pure userCompanyId)
+builder User {..} projectId Request {..} =
+  App.Params <$> environmentName <*> environmentEnvVars <*> pure projectId <*>
+  pure userCompanyId
   where
     environmentName = required Name reqEnvironmentName >>> buildName
     environmentEnvVars = required EnvVars reqEnvironmentEnvVars >>> valid
@@ -52,4 +52,4 @@ call (AuthenticatedUser user) = do
   maybeProject <- lift $ App.call requestData
   case maybeProject of
     Left App.ProjectNotFound -> status notFound404
-    Right project -> status created201 >> (json $ environmentResource project)
+    Right project -> status created201 >> json (environmentResource project)
