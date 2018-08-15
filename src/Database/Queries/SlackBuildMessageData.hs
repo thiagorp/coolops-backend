@@ -83,7 +83,8 @@ getSlackDeployments buildMessageId = do
         \ from slack_deployments sd\
         \ join deployments d on d.id = sd.deployment_id\
         \ join environments e on e.id = d.environment_id\
-        \ where sd.build_message_id = ?"
+        \ where sd.build_message_id = ?\
+        \ order by d.created_at asc"
 
 type SlackDeploymentRow = (UUID, Text, LocalTime, DbStatus, Text)
 
