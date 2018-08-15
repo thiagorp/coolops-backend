@@ -1,7 +1,6 @@
 module Main where
 
 import RIO
-import qualified RIO.Text as Text
 
 import Database.PostgreSQL.Simple
 import Network.Connection (TLSSettings(..))
@@ -16,37 +15,41 @@ import qualified Kubernetes.Job as Job
 import qualified Kubernetes.Pod as Pod
 import Util.Key
 
-deploymentPodStatus :: Job.Job -> AppT (Maybe Status)
+data DeploymentJobStatus
+  = StillRunning
+  | Finished Status
+
+deploymentPodStatus :: Job.Job -> AppT DeploymentJobStatus
 deploymentPodStatus Job.Job {..} = do
-  maybePod <- Pod.getPodForJob $ Text.encodeUtf8 jobName
+  maybePod <- Pod.getPodForJob jobName
   case maybePod of
-    Nothing -> return Nothing
+    Nothing -> return StillRunning
     Just pod ->
       case Pod.getPodContainerState Job.deploymentContainerName pod of
-        Nothing -> return Nothing
-        Just Pod.Running -> return Nothing
-        Just Pod.Terminated -> return Nothing
+        Nothing -> return StillRunning
+        Just Pod.Running -> return StillRunning
+        Just Pod.Terminated -> return StillRunning
         Just (Pod.Waiting "ImagePullBackOff") ->
-          return $ Just (Failed InvalidDockerImage)
-        Just (Pod.Waiting _) -> return Nothing
+          return $ Finished (Failed InvalidDockerImage)
+        Just (Pod.Waiting _) -> return StillRunning
 
-deploymentJobStatus :: RunningDeployment -> AppT (Maybe Status)
+deploymentJobStatus :: RunningDeployment -> AppT DeploymentJobStatus
 deploymentJobStatus RunningDeployment {..} = do
   maybeJob <- Job.getJob $ keyByteString runningDeploymentId
   case maybeJob of
-    Nothing -> return $ Just (Failed JobNotFound)
+    Nothing -> return $ Finished (Failed JobNotFound)
     Just job ->
       case Job.readStatus job of
         Job.Running -> deploymentPodStatus job
-        Job.Failed -> return $ Just (Failed JobFailed)
-        Job.Succeeded -> return $ Just Succeeded
+        Job.Failed -> return $ Finished (Failed JobFailed)
+        Job.Succeeded -> return $ Finished Succeeded
 
 syncJobStatus :: (CompanyID, RunningDeployment) -> AppT ()
 syncJobStatus (companyId, deployment) = do
   maybeStatus <- deploymentJobStatus deployment
   case maybeStatus of
-    Nothing -> return ()
-    Just status -> void $ App.call status companyId deployment
+    StillRunning -> return ()
+    Finished status -> void $ App.call status companyId deployment
 
 app :: AppT ()
 app = do

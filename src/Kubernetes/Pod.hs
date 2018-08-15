@@ -1,5 +1,9 @@
 module Kubernetes.Pod
   ( ContainerState(..)
+  , GetLogsMonad
+  , GetPodMonad
+  , Pod(..)
+  , getLogs
   , getPodForJob
   , getPodContainerState
   ) where
@@ -29,8 +33,9 @@ data ContainerStatus = ContainerStatus
   , containerState :: !ContainerState
   }
 
-newtype Pod = Pod
-  { podContainerStatuses :: [ContainerStatus]
+data Pod = Pod
+  { podContainerStatuses :: ![ContainerStatus]
+  , podName :: !Text
   }
 
 newtype PodsList =
@@ -46,9 +51,9 @@ instance Exception GetPodError
 
 type GetPodMonad m = (HasHttp m, HasKubernetesSettings m, MonadThrow m)
 
-getPodForJob :: (GetPodMonad m) => ByteString -> m (Maybe Pod)
+getPodForJob :: (GetPodMonad m) => Text -> m (Maybe Pod)
 getPodForJob jobName = do
-  response <- kubernetesRequest (GetPodForJob jobName)
+  response <- kubernetesRequest $ GetPodForJob (encodeUtf8 jobName)
   case statusCode (responseStatus response) of
     404 -> return Nothing
     200 ->
@@ -79,6 +84,8 @@ instance FromJSON PodsList where
 instance FromJSON Pod where
   parseJSON =
     withObject "pod" $ \o -> do
+      metadataO <- o .: "metadata"
+      podName <- metadataO .: "name"
       statusO <- o .: "status"
       containerStatuses <- statusO .: "containerStatuses"
       podContainerStatuses <- parseJSON containerStatuses
@@ -109,3 +116,13 @@ parseWaitingState stateHash = do
   let maybeReason = HashMap.lookup "reason" stateHash
   reason <- maybe (return "NoReasonOnStateHash") parseJSON maybeReason
   return $ Waiting reason
+
+type GetLogsMonad m = (HasHttp m, HasKubernetesSettings m, MonadThrow m)
+
+getLogs :: (GetPodMonad m) => Int -> Text -> m (Maybe LBS.ByteString)
+getLogs nLines name = do
+  response <- kubernetesRequest (GetPodLogs nLines (encodeUtf8 name))
+  case statusCode (responseStatus response) of
+    404 -> return Nothing
+    200 -> return $ Just (responseBody response)
+    _ -> throwM (HttpStatusError $ statusCode $ responseStatus response)

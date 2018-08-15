@@ -7,6 +7,7 @@ module Deployments.Database.Deployment
   , getDeploymentResources
   , notFinishedStatuses
   , DbStatus(..)
+  , isFinished
   ) where
 
 import RIO
@@ -31,12 +32,16 @@ data DbStatus
   | DbRunning
   | DbSucceeded
   | DbFailed Text
+  deriving (Eq)
 
 instance FromField DbStatus where
   fromField f bs = textToStatus <$> fromField f bs
 
 instance ToField DbStatus where
   toField = toField . statusText
+
+isFinished :: DbStatus -> Bool
+isFinished s = notElem s notFinishedStatuses
 
 notFinishedStatuses :: [DbStatus]
 notFinishedStatuses = [DbQueued, DbRunning]

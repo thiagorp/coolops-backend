@@ -17,6 +17,8 @@ data Action
   = CreateJob ByteString
   | GetJob ByteString
   | GetPodForJob ByteString
+  | GetPodLogs Int
+               ByteString
 
 type KubernetesMonad m = (HasHttp m, HasKubernetesSettings m)
 
@@ -49,6 +51,14 @@ buildRequest request action namespace =
         { method = "POST"
         , path = "/apis/batch/v1/namespaces/" <> namespace <> "/jobs"
         , requestBody = RequestBodyBS body
+        }
+    GetPodLogs tailSize podName ->
+      request
+        { method = "GET"
+        , path =
+            "/api/v1/namespaces/" <> namespace <> "/pods/" <> podName <>
+            "/log?tailLines=" <>
+            encodeUtf8 (tshow tailSize)
         }
 
 baseRequest :: (HasKubernetesSettings m) => m Request
