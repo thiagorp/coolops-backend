@@ -1,16 +1,34 @@
 module Deployments.Gateway.Kubernetes
-  ( RunDeploymentMonad
+  ( GetDeploymentLogsMonad
+  , RunDeploymentMonad
+  , getDeploymentLogs
   , runDeployment
   ) where
 
 import RIO
+import qualified RIO.ByteString.Lazy as LBS
 
 import Deployments.Domain.Build
-import Deployments.Domain.Deployment
+import Deployments.Domain.Deployment as Deployment
 import Deployments.Domain.Environment hiding (buildName)
 import Deployments.Domain.Project hiding (buildName)
 import qualified Kubernetes.Job as Kubernetes
+import qualified Kubernetes.Pod as Kubernetes
 import Util.Key
+
+type GetDeploymentLogsMonad m
+   = (Kubernetes.GetPodMonad m, Kubernetes.GetLogsMonad m)
+
+getDeploymentLogs ::
+     (GetDeploymentLogsMonad m)
+  => Maybe Int
+  -> Deployment.ID
+  -> m (Maybe LBS.ByteString)
+getDeploymentLogs nLines deploymentId = do
+  maybePod <- Kubernetes.getPodForJob (keyText deploymentId)
+  case maybePod of
+    Nothing -> return Nothing
+    Just Kubernetes.Pod {..} -> Kubernetes.getLogs nLines podName
 
 type RunDeploymentMonad m = Kubernetes.CreateJobMonad m
 

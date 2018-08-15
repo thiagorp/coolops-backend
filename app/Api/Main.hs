@@ -7,8 +7,8 @@ import qualified RIO.Text as T
 import Data.Default.Class (def)
 import Data.Pool
 import Database.PostgreSQL.Simple
-import Network.HTTP.Client (newManager)
-import Network.HTTP.Client.TLS (tlsManagerSettings)
+import Network.Connection (TLSSettings(..))
+import Network.HTTP.Client.TLS
 import Network.Wai (Request)
 import qualified Network.Wai.Handler.Warp as Warp
 import Network.Wai.Middleware.RequestLogger
@@ -42,7 +42,9 @@ options = Options 1 . settings
 main :: IO ()
 main = do
   pool <- acquirePool
-  requestManager <- newManager tlsManagerSettings
+  requestManager <-
+    newTlsManagerWith
+      (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
   withResource pool migrateDb
   logger <-
     mkRequestLogger

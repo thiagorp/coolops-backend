@@ -17,6 +17,7 @@ import qualified Handlers.CreateDeployment as CreateDeployment
 import qualified Handlers.CreateEnvironment as CreateEnvironment
 import qualified Handlers.CreateProject as CreateProject
 import qualified Handlers.DisconnectFromSlack as DisconnectFromSlack
+import qualified Handlers.GetDeploymentLogs as GetDeploymentLogs
 import qualified Handlers.GetEnvironment as GetEnvironment
 import qualified Handlers.GetProfile as GetProfile
 import qualified Handlers.GetProject as GetProject
@@ -83,6 +84,7 @@ routes logger = do
   patch "/environments/:id" $ userAuth UpdateEnvironment.call
   post "/builds" $ projectAuth CreateBuild.call
   post "/deployments" $ userAuth CreateDeployment.call
+  get "/deployments/:id/logs" $ GetDeploymentLogs.call
   post "/slack_config" $ userAuth ConnectWithSlack.call
   get "/slack_config" $ userAuth GetSlackConfig.call
   delete "/slack_config" $ userAuth DisconnectFromSlack.call
