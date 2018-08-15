@@ -12,12 +12,11 @@ import Deployments.Domain.Build
 import Deployments.Domain.Deployment as Deployment
 import Deployments.Domain.Environment hiding (buildName)
 import Deployments.Domain.Project hiding (buildName)
-import qualified Kubernetes.Job as Kubernetes
-import qualified Kubernetes.Pod as Kubernetes
+import qualified Kubernetes.Job as K8s
+import qualified Kubernetes.Pod as K8s
 import Util.Key
 
-type GetDeploymentLogsMonad m
-   = (Kubernetes.GetPodMonad m, Kubernetes.GetLogsMonad m)
+type GetDeploymentLogsMonad m = (K8s.GetPodMonad m, K8s.GetLogsMonad m)
 
 getDeploymentLogs ::
      (GetDeploymentLogsMonad m)
@@ -25,24 +24,28 @@ getDeploymentLogs ::
   -> Deployment.ID
   -> m (Maybe LBS.ByteString)
 getDeploymentLogs nLines deploymentId = do
-  maybePod <- Kubernetes.getPodForJob (keyText deploymentId)
+  maybePod <- K8s.getPodForJob (keyText deploymentId)
   case maybePod of
     Nothing -> return Nothing
-    Just Kubernetes.Pod {..} -> Kubernetes.getLogs nLines podName
+    Just pod@K8s.Pod {..} ->
+      case K8s.getPodContainerState K8s.deploymentContainerName pod of
+        Nothing -> return Nothing
+        Just (K8s.Waiting _) -> return Nothing
+        _ -> K8s.getLogs nLines podName
 
-type RunDeploymentMonad m = Kubernetes.CreateJobMonad m
+type RunDeploymentMonad m = K8s.CreateJobMonad m
 
 runDeployment ::
      (RunDeploymentMonad m) => QueuedDeployment -> DeploymentResources -> m Bool
 runDeployment QueuedDeployment {..} DeploymentResources {..} =
-  Kubernetes.createJob jobDescription
+  K8s.createJob jobDescription
   where
     jobDescription =
-      Kubernetes.JobDescription
-        { Kubernetes.dockerImage =
+      K8s.JobDescription
+        { K8s.dockerImage =
             deploymentImageText (projectDeploymentImage deploymentProject)
-        , Kubernetes.envVars =
+        , K8s.envVars =
             environmentEnvVars deploymentEnvironment <>
             buildParams deploymentBuild
-        , Kubernetes.name = keyText deploymentId
+        , K8s.name = keyText deploymentId
         }

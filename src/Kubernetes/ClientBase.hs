@@ -37,7 +37,7 @@ buildRequest request action namespace =
         { method = "GET"
         , path =
             "/api/v1/namespaces/" <> namespace <>
-            "/pods/?labelSelector=job-name=" <>
+            "/pods/?labelSelector=job-name%3D" <>
             jobName
         }
     GetJob jobName ->
