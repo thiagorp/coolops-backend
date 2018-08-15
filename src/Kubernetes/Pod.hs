@@ -119,7 +119,7 @@ parseWaitingState stateHash = do
 
 type GetLogsMonad m = (HasHttp m, HasKubernetesSettings m, MonadThrow m)
 
-getLogs :: (GetPodMonad m) => Int -> Text -> m (Maybe LBS.ByteString)
+getLogs :: (GetPodMonad m) => Maybe Int -> Text -> m (Maybe LBS.ByteString)
 getLogs nLines name = do
   response <- kubernetesRequest (GetPodLogs nLines (encodeUtf8 name))
   case statusCode (responseStatus response) of

@@ -20,12 +20,15 @@ type GetDeploymentLogsMonad m
    = (Kubernetes.GetPodMonad m, Kubernetes.GetLogsMonad m)
 
 getDeploymentLogs ::
-     (GetDeploymentLogsMonad m) => Deployment.ID -> m (Maybe LBS.ByteString)
-getDeploymentLogs deploymentId = do
+     (GetDeploymentLogsMonad m)
+  => Maybe Int
+  -> Deployment.ID
+  -> m (Maybe LBS.ByteString)
+getDeploymentLogs nLines deploymentId = do
   maybePod <- Kubernetes.getPodForJob (keyText deploymentId)
   case maybePod of
     Nothing -> return Nothing
-    Just Kubernetes.Pod {..} -> Kubernetes.getLogs 20 podName
+    Just Kubernetes.Pod {..} -> Kubernetes.getLogs nLines podName
 
 type RunDeploymentMonad m = Kubernetes.CreateJobMonad m
 

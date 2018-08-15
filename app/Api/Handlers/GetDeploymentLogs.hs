@@ -21,7 +21,7 @@ getDeployment_ deploymentId = do
 
 getDeploymentLogs_ :: Deployment -> WebMonad Text
 getDeploymentLogs_ Deployment {..} = do
-  maybeLogs <- lift $ getDeploymentLogs deploymentId
+  maybeLogs <- lift $ getDeploymentLogs Nothing deploymentId
   case maybeLogs of
     Nothing -> return ""
     Just logs -> return $ decodeUtf8Lenient $ toStrictBytes logs
