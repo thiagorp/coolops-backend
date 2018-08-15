@@ -12,6 +12,7 @@ import Control.Monad.Except
 import Data.Time
 import Data.UUID (toText)
 
+import Common.Config (frontendBaseUrl)
 import Common.Database (HasPostgres)
 import Database.Queries.SlackBuildMessageData
 import Deployments.Classes
@@ -23,6 +24,7 @@ import Slack.Classes
 import Slack.Database.ProjectIntegration (getSlackIntegrationForProject)
 import Slack.Domain.BuildMessage
 import Slack.Domain.ProjectIntegration hiding (genId)
+import Util.FrontendEndpoints (logsPage)
 
 data Error
   = MessageDataNotFound
@@ -87,8 +89,8 @@ colorOf status =
     DbSucceeded -> Just "good"
     DbFailed _ -> Just "danger"
 
-buildMessage :: MessageData -> Message
-buildMessage MessageData {..} =
+buildMessage :: Text -> MessageData -> Message
+buildMessage appBaseUrl MessageData {..} =
   slackMessage
     {messageText = Just messageText, messageAttachments = Just attachments}
   where
@@ -114,9 +116,10 @@ buildMessage MessageData {..} =
             "<!date^" <>
             Text.pack (formatTime defaultTimeLocale "%s" deploymentTime) <>
             "^{date_pretty} - {time}|Deployment time conversion failed> | " <>
-            "<http://localhost:3000/deployments/" <>
-            tshow deploymentId <>
-            "/logs|See logs>"
+            "<" <>
+            appBaseUrl <>
+            logsPage (tshow deploymentId) <>
+            "|See logs>"
         , attachmentColor = colorOf deploymentStatus
         }
     buildAction Environment {..} =
@@ -127,11 +130,16 @@ buildMessage MessageData {..} =
         , actionValue = toText environmentId
         }
 
-message_ :: HasPostgres m => P.CompanyID -> Text -> ExceptT Error m Message
+message_ ::
+     (MonadIO m, HasPostgres m)
+  => P.CompanyID
+  -> Text
+  -> ExceptT Error m Message
 message_ cId bId = do
   messageData <-
     handleEntity MessageDataNotFound (getSlackBuildMessageData cId bId)
-  return $ buildMessage messageData
+  appBaseUrl <- frontendBaseUrl
+  return $ buildMessage appBaseUrl messageData
 
 message :: HasPostgres m => P.CompanyID -> Text -> m (Either Error Message)
 message cId bId = runExceptT $ message_ cId bId
