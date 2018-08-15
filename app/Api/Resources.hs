@@ -71,7 +71,7 @@ instance ToJSON SlackConfigResource where
       , "client_id" .= resSlackConfigClientId
       ]
 
-slackConfigResource :: Text -> (Maybe SlackTeam.Team) -> SlackConfigResource
+slackConfigResource :: Text -> Maybe SlackTeam.Team -> SlackConfigResource
 slackConfigResource resSlackConfigClientId maybeSlackTeam =
   let resSlackConfigEnabled = isJust maybeSlackTeam
    in SlackConfigResource {..}

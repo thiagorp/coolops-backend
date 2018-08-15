@@ -43,7 +43,7 @@ builder Request {..} = (,) <$> environmentId <*> buildId
     buildId = required BuildID reqBuildId >>> valid
 
 findEntities :: User -> (Text, Text) -> WebMonad App.Params
-findEntities (User {..}) (environmentId, buildId) = do
+findEntities User {..} (environmentId, buildId) = do
   maybeEnvironment <- lift $ getEnvironment userCompanyId environmentId
   maybeBuild <- lift $ getBuild userCompanyId buildId
   case (,) <$> maybeEnvironment <*> maybeBuild of

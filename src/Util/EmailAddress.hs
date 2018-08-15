@@ -11,7 +11,11 @@ import Database.PostgreSQL.Simple.FromField
   , returnError
   )
 import Database.PostgreSQL.Simple.ToField
-import qualified Text.Email.Validate as TEV (EmailAddress, emailAddress, toByteString)
+import qualified Text.Email.Validate as TEV
+  ( EmailAddress
+  , emailAddress
+  , toByteString
+  )
 
 newtype EmailAddress =
   EmailAddress TEV.EmailAddress
@@ -20,10 +24,10 @@ instance ToField EmailAddress where
   toField (EmailAddress email) = toField (TEV.toByteString email)
 
 instance FromField EmailAddress where
-  fromField f bs = (fromField f bs) >>= buildEmail
+  fromField f bs = fromField f bs >>= buildEmail
     where
       buildEmail email =
-        case (emailAddress email) of
+        case emailAddress email of
           Nothing -> returnError ConversionFailed f "invlaid email address"
           Just e -> return e
 

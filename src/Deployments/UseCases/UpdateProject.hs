@@ -11,7 +11,7 @@ data Params = Params
   }
 
 apply :: Project.Project -> Params -> Project.Project
-apply project (Params {..}) = do
+apply project Params {..} =
   project
     { Project.projectName = paramProjectName
     , Project.projectDeploymentImage = paramProjectDeploymentImage

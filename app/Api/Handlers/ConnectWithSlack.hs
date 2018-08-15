@@ -22,19 +22,18 @@ instance HasFieldName Fields where
     case field of
       Code -> "code"
 
-data Request = Request
-  { reqCode :: !(Maybe Text)
+newtype Request = Request
+  { reqCode :: Maybe Text
   }
 
 instance FromJSON Request where
   parseJSON =
     withObject "request params" $ \o -> do
-      reqCode <- o .:? (fieldName Code)
+      reqCode <- o .:? fieldName Code
       return Request {..}
 
 builder :: User -> Request -> WebValidation App.Params
-builder (User {..}) (Request {..}) =
-  App.Params <$> (pure userCompanyId) <*> code
+builder User {..} Request {..} = App.Params <$> pure userCompanyId <*> code
   where
     code = required Code reqCode >>> valid
 

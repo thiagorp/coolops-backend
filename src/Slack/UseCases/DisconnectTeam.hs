@@ -15,7 +15,7 @@ data Error
   = CouldNotRevokeToken
   | TeamNotFound
 
-data Params = Params
+newtype Params = Params
   { companyId :: CompanyID
   }
 

@@ -40,11 +40,11 @@ data Request = Request
 instance FromJSON Request where
   parseJSON =
     withObject "signup params" $ \o -> do
-      reqFirstName <- o .:? (fieldName FirstName)
-      reqLastName <- o .:? (fieldName LastName)
-      reqEmail <- o .:? (fieldName Email)
-      reqPassword <- o .:? (fieldName Password)
-      reqCompanyName <- o .:? (fieldName CompanyName)
+      reqFirstName <- o .:? fieldName FirstName
+      reqLastName <- o .:? fieldName LastName
+      reqEmail <- o .:? fieldName Email
+      reqPassword <- o .:? fieldName Password
+      reqCompanyName <- o .:? fieldName CompanyName
       return Request {..}
 
 data Response = Response

@@ -33,13 +33,13 @@ data Request = Request
 instance FromJSON Request where
   parseJSON =
     withObject "request params" $ \o -> do
-      reqProjectName <- o .:? (fieldName Name)
-      reqProjectDeploymentImage <- o .:? (fieldName DeploymentImage)
+      reqProjectName <- o .:? fieldName Name
+      reqProjectDeploymentImage <- o .:? fieldName DeploymentImage
       return Request {..}
 
 builder :: User -> Request -> WebValidation App.Params
-builder (User {..}) (Request {..}) =
-  App.Params <$> projectName <*> projectDeploymentImage <*> (pure userCompanyId)
+builder User {..} Request {..} =
+  App.Params <$> projectName <*> projectDeploymentImage <*> pure userCompanyId
   where
     projectName = required Name reqProjectName >>> buildName
     projectDeploymentImage =

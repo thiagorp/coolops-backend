@@ -11,7 +11,7 @@ data Params = Params
   }
 
 apply :: Environment.Environment -> Params -> Environment.Environment
-apply project (Params {..}) = do
+apply project Params {..} =
   project
     { Environment.environmentName = paramEnvironmentName
     , Environment.environmentEnvVars = paramEnvironmentEnvVars

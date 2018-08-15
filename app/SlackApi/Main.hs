@@ -28,13 +28,12 @@ acquirePool = do
 
 exceptionHandler :: Maybe Request -> SomeException -> IO ()
 exceptionHandler r e = do
-  BS.putStr ("Error: " <> (T.encodeUtf8 $ T.pack $ show e))
+  BS.putStr ("Error: " <> T.encodeUtf8 (T.pack $ show e))
   Warp.defaultOnException r e
 
 settings :: Int -> Warp.Settings
 settings port =
-  Warp.setPort port $
-  Warp.setOnException exceptionHandler $ Warp.defaultSettings
+  Warp.setPort port $ Warp.setOnException exceptionHandler Warp.defaultSettings
 
 options :: Int -> Options
 options = Options 1 . settings

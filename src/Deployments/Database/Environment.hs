@@ -30,7 +30,7 @@ getEnvironment companyId environmentId = do
 
 listEnvironments :: (HasPostgres m) => CompanyID -> m [Environment]
 listEnvironments companyId =
-  runQuery q (Only companyId) >>= return . (map buildEnvironment)
+  map buildEnvironment <$> runQuery q (Only companyId)
   where
     q =
       "select e.id, e.name, e.env_vars, e.project_id from environments e\
@@ -40,7 +40,7 @@ listEnvironments companyId =
 listProjectEnvironments ::
      (HasPostgres m) => CompanyID -> Text -> m [Environment]
 listProjectEnvironments companyId projectId =
-  runQuery q (companyId, projectId) >>= return . (map buildEnvironment)
+  map buildEnvironment <$> runQuery q (companyId, projectId)
   where
     q =
       "select e.id, e.name, e.env_vars, e.project_id from environments e\

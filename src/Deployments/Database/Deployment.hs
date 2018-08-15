@@ -41,7 +41,7 @@ instance ToField DbStatus where
   toField = toField . statusText
 
 isFinished :: DbStatus -> Bool
-isFinished s = notElem s notFinishedStatuses
+isFinished s = s `notElem` notFinishedStatuses
 
 notFinishedStatuses :: [DbStatus]
 notFinishedStatuses = [DbQueued, DbRunning]

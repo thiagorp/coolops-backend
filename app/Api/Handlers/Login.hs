@@ -31,12 +31,12 @@ data Request = Request
 instance FromJSON Request where
   parseJSON =
     withObject "" $ \o -> do
-      reqEmail <- o .:? (fieldName Email)
-      reqPassword <- o .:? (fieldName Password)
+      reqEmail <- o .:? fieldName Email
+      reqPassword <- o .:? fieldName Password
       return Request {..}
 
-data Response = Response
-  { resAccessToken :: !Text
+newtype Response = Response
+  { resAccessToken :: Text
   }
 
 instance ToJSON Response where

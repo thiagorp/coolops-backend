@@ -7,7 +7,7 @@ import Data.Aeson
 import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
 
-data MessageButtonAction =
+newtype MessageButtonAction =
   DeployBuild Text
 
 instance FromJSON MessageButtonAction where

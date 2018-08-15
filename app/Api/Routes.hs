@@ -84,7 +84,7 @@ routes logger = do
   patch "/environments/:id" $ userAuth UpdateEnvironment.call
   post "/builds" $ projectAuth CreateBuild.call
   post "/deployments" $ userAuth CreateDeployment.call
-  get "/deployments/:id/logs" $ GetDeploymentLogs.call
+  get "/deployments/:id/logs" GetDeploymentLogs.call
   post "/slack_config" $ userAuth ConnectWithSlack.call
   get "/slack_config" $ userAuth GetSlackConfig.call
   delete "/slack_config" $ userAuth DisconnectFromSlack.call

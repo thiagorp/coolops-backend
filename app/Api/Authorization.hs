@@ -22,10 +22,10 @@ import Deployments.Classes (findProjectByAccessToken)
 import Deployments.Domain.Project (Project(..))
 import Types (WebMonad)
 
-data AuthenticatedUser =
+newtype AuthenticatedUser =
   AuthenticatedUser User
 
-data AuthenticatedProject =
+newtype AuthenticatedProject =
   AuthenticatedProject Project
 
 unauthorized :: WebMonad a
@@ -51,7 +51,7 @@ projectAuth handler = do
 
 readToken :: WebMonad Text
 readToken = do
-  authHeader <- fromMaybe "" <$> (header "Authorization")
+  authHeader <- fromMaybe "" <$> header "Authorization"
   case parseAuthHeader (toStrict authHeader) of
     Just authToken -> return authToken
     Nothing -> unauthorized
@@ -60,4 +60,4 @@ parseAuthHeader :: Text -> Maybe Text
 parseAuthHeader = parseMaybe authHeaderParser
 
 authHeaderParser :: Parsec Void Text Text
-authHeaderParser = string' "Token " >> some asciiChar >>= return . pack
+authHeaderParser = pack <$> (string' "Token " >> some asciiChar)

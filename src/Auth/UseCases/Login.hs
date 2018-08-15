@@ -15,9 +15,9 @@ data Params = Params
 
 verify :: RawPassword -> User -> Maybe User
 verify password user =
-  case authenticate user password of
-    True -> Just user
-    False -> Nothing
+  if authenticate user password
+    then Just user
+    else Nothing
 
 login :: (UserRepo m, Monad m) => Params -> m (Maybe User)
 login Params {..} = do

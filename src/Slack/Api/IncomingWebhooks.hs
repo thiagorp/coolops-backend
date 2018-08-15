@@ -10,4 +10,4 @@ import Slack.Api.Message
 
 sendIncomingWebhook :: (SlackClientMonad m) => Text -> Message -> m ()
 sendIncomingWebhook url message =
-  slackRequest (IncomingWebhook url message) >> return ()
+  void $ slackRequest (IncomingWebhook url message)

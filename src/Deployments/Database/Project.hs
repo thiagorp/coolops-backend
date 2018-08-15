@@ -37,8 +37,7 @@ updateProject Project {..} =
         \ (?, ?, NOW()) where id = ?"
 
 listProjects :: (HasPostgres m) => CompanyID -> m [Project]
-listProjects companyId =
-  runQuery q (Only companyId) >>= return . (map buildProject)
+listProjects companyId = map buildProject <$> runQuery q (Only companyId)
   where
     q =
       "select id, name, deployment_image, company_id, access_token from projects\
