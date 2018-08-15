@@ -3,6 +3,7 @@ module Slack.Database.ProjectIntegration
   , createSlackProjectIntegration
   , getSlackIntegrationForProject
   , deleteSlackProjectIntegration
+  , getCompanyIdForBuildsProjectIntegration
   ) where
 
 import RIO
@@ -13,7 +14,22 @@ import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.ToRow
 
 import Common.Database
+import Deployments.Domain.Project (CompanyID)
 import Slack.Domain.ProjectIntegration
+
+getCompanyIdForBuildsProjectIntegration ::
+     (HasPostgres m) => Text -> Text -> m (Maybe CompanyID)
+getCompanyIdForBuildsProjectIntegration teamId buildId = do
+  rows <- runQuery q (teamId, buildId)
+  case rows of
+    [] -> return Nothing
+    Only row:_ -> return $ Just row
+  where
+    q =
+      "select p.company_id from projects p\
+        \ join slack_project_integrations spi on p.id = spi.project_id\
+        \ join builds b on p.id = b.project_id\
+        \ where spi.team_id = ? and b.id = ?"
 
 createSlackProjectIntegration :: (HasPostgres m) => ProjectIntegration -> m ()
 createSlackProjectIntegration ProjectIntegration {..} = runDb' q values

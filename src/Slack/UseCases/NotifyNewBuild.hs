@@ -113,7 +113,10 @@ buildMessage MessageData {..} =
             Just $
             "<!date^" <>
             Text.pack (formatTime defaultTimeLocale "%s" deploymentTime) <>
-            "^{date_pretty} - {time}|Deployment time conversion failed>"
+            "^{date_pretty} - {time}|Deployment time conversion failed> | " <>
+            "<http://localhost:3000/deployments/" <>
+            tshow deploymentId <>
+            "/logs|See logs>"
         , attachmentColor = colorOf deploymentStatus
         }
     buildAction Environment {..} =

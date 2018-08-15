@@ -11,7 +11,9 @@ import Auth.Domain (CompanyID)
 import Deployments.Classes
 import Deployments.Domain.Deployment (DeploymentResources(..))
 import qualified Deployments.Domain.Project as P
-import Slack.Domain.Team (Team(..))
+import Slack.Database.ProjectIntegration
+  ( getCompanyIdForBuildsProjectIntegration
+  )
 import qualified Slack.UseCases.CreateDeployment as App
 import Types
 
@@ -22,6 +24,10 @@ resourcesMissing =
 projectsDontMatch :: TL.Text
 projectsDontMatch =
   "There was a very unexpected error. We are already notified and are working on solving it as soon as possible"
+
+integrationMissing :: TL.Text
+integrationMissing =
+  "Something wrong happened and we can't find your Slack integration"
 
 runApp :: DeploymentResources -> (Text, Text) -> WebHandler ()
 runApp DeploymentResources {..} (slackUserId, slackUserName) = do
@@ -45,7 +51,16 @@ getResources_ cId eId bId = do
     Nothing -> text resourcesMissing >> finish
     Just resources -> return resources
 
-call :: Team -> Text -> Text -> (Text, Text) -> WebHandler ()
-call Team {..} environmentId buildId slackUser = do
-  resources <- getResources_ teamCompanyId environmentId buildId
+getCompanyId_ :: Text -> Text -> WebHandler CompanyID
+getCompanyId_ teamId buildId = do
+  maybeCompanyId <-
+    lift $ getCompanyIdForBuildsProjectIntegration teamId buildId
+  case maybeCompanyId of
+    Nothing -> text integrationMissing >> finish
+    Just companyId -> return companyId
+
+call :: Text -> Text -> Text -> (Text, Text) -> WebHandler ()
+call environmentId buildId teamId slackUser = do
+  companyId <- getCompanyId_ teamId buildId
+  resources <- getResources_ companyId environmentId buildId
   runApp resources slackUser
