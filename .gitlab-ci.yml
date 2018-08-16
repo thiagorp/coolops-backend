@@ -3,10 +3,25 @@ image: coolopsio/api-buildbase:latest
 variables:
   VERSION: ${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
 
-build_and_push:
+lint:
+  stage: test
+  script: hlint .
+
+test:
+  stage: test
+  script: stack test
+
+build:
+  stage: build
   script:
   - make build
-  - make release
   - make push
 
+deploy:
+  stage: deploy
+  script: make notify_coolops
 
+stages:
+  - test
+  - build
+  - deploy
