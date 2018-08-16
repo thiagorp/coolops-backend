@@ -19,6 +19,7 @@ data Attachment = Attachment
   , attachmentFooter :: !(Maybe Text)
   , attachmentColor :: !(Maybe Text)
   , attachmentMarkdown :: !(Maybe [Text])
+  , attachmentFields :: !(Maybe [Field])
   }
 
 data Action = Action
@@ -26,6 +27,11 @@ data Action = Action
   , actionText :: !Text
   , actionType :: !Text
   , actionValue :: !Text
+  }
+
+data Field = Field
+  { fieldValue :: !Text
+  , fieldTitle :: !Text
   }
 
 slackMessage :: Message
@@ -43,10 +49,14 @@ slackAttachment =
     Nothing
     Nothing
     Nothing
+    Nothing
 
 slackAction :: Action
 slackAction =
   Action {actionName = "", actionText = "", actionType = "", actionValue = ""}
+
+slackField :: Field
+slackField = Field {fieldValue = "", fieldTitle = ""}
 
 instance ToJSON Message where
   toJSON Message {..} =
@@ -64,6 +74,7 @@ instance ToJSON Attachment where
       , "footer" .= attachmentFooter
       , "color" .= attachmentColor
       , "mrkdwn_in" .= attachmentMarkdown
+      , "fields" .= attachmentFields
       ]
 
 instance ToJSON Action where
@@ -74,3 +85,6 @@ instance ToJSON Action where
       , "type" .= actionType
       , "value" .= actionValue
       ]
+
+instance ToJSON Field where
+  toJSON Field {..} = object ["title" .= fieldTitle, "value" .= fieldValue]

@@ -29,6 +29,7 @@ data Build = Build
   { buildId :: !ID
   , buildName :: !Name
   , buildParams :: !(HashMap Text Text)
+  , buildMetadata :: !(HashMap Text Text)
   , buildProjectId :: !ProjectID
   }
 

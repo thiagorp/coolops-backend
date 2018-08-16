@@ -14,6 +14,7 @@ import Util.Key
 data Params = Params
   { buildName :: !Build.Name
   , buildParams :: !(HashMap Text Text)
+  , buildMetadata :: !(HashMap Text Text)
   , buildProject :: !Project.Project
   }
 

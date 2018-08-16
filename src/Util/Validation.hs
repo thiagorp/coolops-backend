@@ -60,3 +60,6 @@ validateRequired value =
 
 valid :: a -> Validated a
 valid = Valid
+
+withDefault :: a -> Maybe a -> Validated a
+withDefault def maybeValue = Valid (fromMaybe def maybeValue)

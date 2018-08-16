@@ -2,7 +2,8 @@ module Handlers.CreateBuild
   ( call
   ) where
 
-import RIO
+import RIO hiding (optional)
+import qualified RIO.HashMap as HashMap
 
 import Data.Aeson hiding (json)
 import Network.HTTP.Types.Status (created201)
@@ -17,16 +18,19 @@ import Validation
 data Fields
   = Name
   | Params
+  | Metadata
 
 instance HasFieldName Fields where
   fieldName field =
     case field of
       Name -> "name"
       Params -> "params"
+      Metadata -> "metadata"
 
 data Request = Request
   { reqBuildName :: !(Maybe Text)
   , reqBuildParams :: !(Maybe (HashMap Text Text))
+  , reqBuildMetadata :: !(Maybe (HashMap Text Text))
   }
 
 instance FromJSON Request where
@@ -34,14 +38,17 @@ instance FromJSON Request where
     withObject "request params" $ \o -> do
       reqBuildName <- o .:? fieldName Name
       reqBuildParams <- o .:? fieldName Params
+      reqBuildMetadata <- o .:? fieldName Metadata
       return Request {..}
 
 builder :: Project -> Request -> WebValidation App.Params
 builder project Request {..} =
-  App.Params <$> buildName <*> buildParams <*> pure project
+  App.Params <$> buildName <*> buildParams <*> buildMetadata <*> pure project
   where
     buildName = required Name reqBuildName >>> buildBuildName
     buildParams = required Params reqBuildParams >>> valid
+    buildMetadata =
+      optional Metadata reqBuildMetadata >>> withDefault HashMap.empty
 
 call :: AuthenticatedProject -> WebMonad ()
 call (AuthenticatedProject project) = do

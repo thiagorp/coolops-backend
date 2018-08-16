@@ -6,6 +6,7 @@ module Slack.UseCases.NotifyNewBuild
   ) where
 
 import RIO
+import qualified RIO.HashMap as HashMap
 import qualified RIO.Text as Text
 
 import Control.Monad.Except
@@ -97,12 +98,20 @@ buildMessage appBaseUrl MessageData {..} =
     messageText =
       "*" <> dataProjectName <> "* has a new build: *" <> dataBuildName <> "*"
     attachments =
-      [deploymentButtons] <> map buildDeploymentRow dataSlackDeployments
+      [deploymentButtons] <>
+      [buildMetadataRow (HashMap.toList dataBuildMetadata)] <>
+      map buildDeploymentRow dataSlackDeployments
     deploymentButtons =
       slackAttachment
         { attachmentCallbackId = Just $ "deploy_build|" <> toText dataBuildId
         , attachmentType = Just "default"
         , attachmentActions = Just $ map buildAction dataEnvironments
+        }
+    buildMetadataRow fields =
+      slackAttachment
+        { attachmentFields =
+            Just $
+            map (\(t, v) -> slackField {fieldValue = v, fieldTitle = t}) fields
         }
     buildDeploymentRow SlackDeployment {..} =
       slackAttachment

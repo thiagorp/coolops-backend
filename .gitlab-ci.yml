@@ -1,7 +1,7 @@
 image: coolopsio/api-buildbase:latest
 
 variables:
-  VERSION: ${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
+  VERSION: ${CI_COMMIT_REF_SLUG}-${CI_JOB_ID}
 
 lint:
   stage: test
