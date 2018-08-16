@@ -18,8 +18,8 @@ push: auth_container_registry
 	docker push ${RELEASE_DOCKER_IMG}
 
 notify_coolops:
-	curl -d '{"name":"${VERSION}","params":{"IMAGE_NAME":"${RELEASE_DOCKER_IMG}"},"metadata":{"Job url":"${JOB_URL}"}}' -H "Authorization: Token ${COOLOPS_STAGING_API_TOKEN}" -H "Content-Type: application/json" -X POST -f https://api-staging.coolops.io/builds
-	curl -d '{"name":"${VERSION}","params":{"IMAGE_NAME":"${RELEASE_DOCKER_IMG}"},"metadata":{"Job url":"${JOB_URL}"}}' -H "Authorization: Token ${COOLOPS_PRODUCTION_API_TOKEN}" -H "Content-Type: application/json" -X POST -f https://api.coolops.io/builds
+	curl -d '{"name":"${BUILD_NAME}","params":{"IMAGE_NAME":"${RELEASE_DOCKER_IMG}"},"metadata":{"Job url":"${JOB_URL}"}}' -H "Authorization: Token ${COOLOPS_STAGING_API_TOKEN}" -H "Content-Type: application/json" -X POST -f https://api-staging.coolops.io/builds
+	curl -d '{"name":"${BUILD_NAME}","params":{"IMAGE_NAME":"${RELEASE_DOCKER_IMG}"},"metadata":{"Job url":"${JOB_URL}"}}' -H "Authorization: Token ${COOLOPS_PRODUCTION_API_TOKEN}" -H "Content-Type: application/json" -X POST -f https://api.coolops.io/builds
 
 
 dev-api:
