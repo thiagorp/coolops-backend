@@ -8,6 +8,7 @@ module Validation
   , required
   , validationToString
   , Validation.valid
+  , Validation.withDefault
   ) where
 
 import RIO hiding (optional)

@@ -7,7 +7,9 @@ module Database.Queries.SlackBuildMessageData
   ) where
 
 import RIO
+import qualified RIO.HashMap as HashMap
 
+import Data.Aeson (Result(..), Value, fromJSON)
 import Database.PostgreSQL.Simple
 
 import Common.Database
@@ -32,6 +34,7 @@ data SlackDeployment = SlackDeployment
 data MessageData = MessageData
   { dataBuildId :: !UUID
   , dataBuildName :: !Text
+  , dataBuildMetadata :: !(HashMap Text Text)
   , dataProjectName :: !Text
   , dataSlackDeployments :: ![SlackDeployment]
   , dataEnvironments :: ![Environment]
@@ -46,19 +49,23 @@ getSlackBuildMessageData cId bId = do
     row:_ -> Just <$> buildData row
   where
     q =
-      "select b.id, b.name, p.id, p.name, sbm.id\
+      "select b.id, b.name, b.metadata, p.id, p.name, sbm.id\
         \ from builds b\
         \ join projects p on p.id = b.project_id\
         \ left join slack_build_messages sbm on sbm.build_id = b.id\
         \ where p.company_id = ? and b.id = ?"
 
-type DataRow = (UUID, Text, UUID, Text, Maybe UUID)
+type DataRow = (UUID, Text, Value, UUID, Text, Maybe UUID)
 
 buildData :: HasPostgres m => DataRow -> m MessageData
-buildData (dataBuildId, dataBuildName, projectId, dataProjectName, maybeSlackBuildMessageId) = do
+buildData (dataBuildId, dataBuildName, metadata, projectId, dataProjectName, maybeSlackBuildMessageId) = do
   dataEnvironments <- getEnvironments (toText projectId)
   dataSlackDeployments <-
     maybe (return []) getSlackDeployments maybeSlackBuildMessageId
+  let dataBuildMetadata =
+        case fromJSON metadata of
+          Error _ -> HashMap.empty
+          Success p -> p
   return MessageData {..}
 
 getEnvironments :: HasPostgres m => Text -> m [Environment]

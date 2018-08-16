@@ -1,6 +1,8 @@
 image: coolopsio/api-buildbase:latest
 
 variables:
+  BUILD_NAME: ${CI_COMMIT_REF_SLUG}-${CI_JOB_ID}
+  JOB_URL: ${CI_JOB_URL}
   VERSION: ${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
 
 lint:
