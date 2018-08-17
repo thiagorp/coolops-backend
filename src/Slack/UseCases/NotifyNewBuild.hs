@@ -109,7 +109,8 @@ buildMessage appBaseUrl MessageData {..} =
         }
     buildMetadataRow fields =
       slackAttachment
-        { attachmentFields =
+        { attachmentMarkdown = Just ["fields"]
+        , attachmentFields =
             Just $
             map (\(t, v) -> slackField {fieldValue = v, fieldTitle = t}) fields
         }
