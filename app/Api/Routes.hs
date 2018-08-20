@@ -23,6 +23,7 @@ import qualified Handlers.GetProfile as GetProfile
 import qualified Handlers.GetProject as GetProject
 import qualified Handlers.GetSlackConfig as GetSlackConfig
 import qualified Handlers.GetSlackProjectIntegration as GetSlackProjectIntegration
+import qualified Handlers.GraphQL as GraphQL
 import qualified Handlers.HealthCheck as HealthCheck
 import qualified Handlers.ListProjects as ListProjects
 import qualified Handlers.Login as Handlers
@@ -67,6 +68,7 @@ routes logger = do
   middleware corsMiddleware
   middleware logger
   defaultHandler errorHandler
+  post "/graphql" $ userAuth GraphQL.call
   get "/health" HealthCheck.call
   post "/signup" Handlers.signup
   post "/tokens" Handlers.login

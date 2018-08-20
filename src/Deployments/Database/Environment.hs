@@ -3,6 +3,7 @@ module Deployments.Database.Environment
   , getEnvironment
   , listEnvironments
   , listProjectEnvironments
+  , listEnvironmentsForProjects
   , updateEnvironment
   ) where
 
@@ -46,6 +47,16 @@ listProjectEnvironments companyId projectId =
       "select e.id, e.name, e.env_vars, e.project_id from environments e\
         \ left join projects p on p.id = e.project_id\
         \ where p.company_id = ? and p.id = ?"
+
+listEnvironmentsForProjects ::
+     (HasPostgres m) => CompanyID -> [ProjectID] -> m [Environment]
+listEnvironmentsForProjects companyId projectIds =
+  map buildEnvironment <$> runQuery q (companyId, In projectIds)
+  where
+    q =
+      "select e.id, e.name, e.env_vars, e.project_id from environments e\
+        \ left join projects p on p.id = e.project_id\
+        \ where p.company_id = ? and p.id in ?"
 
 createEnvironment :: (HasPostgres m) => Environment -> m ()
 createEnvironment Environment {..} = runDb' q values

@@ -15,7 +15,7 @@ import Database.PostgreSQL.Simple.ToField
 
 newtype Key a =
   Key UUID
-  deriving (Eq, ToField, FromField, ToJSON, FromJSON)
+  deriving (Eq, ToField, FromField, ToJSON, FromJSON, Hashable, Show)
 
 genID :: (MonadIO m) => m (Key a)
 genID = liftIO $ Key <$> nextRandom

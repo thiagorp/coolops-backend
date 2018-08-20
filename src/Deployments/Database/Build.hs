@@ -1,6 +1,7 @@
 module Deployments.Database.Build
   ( createBuild
   , getBuild
+  , listBuilds
   ) where
 
 import RIO
@@ -12,6 +13,16 @@ import Common.Database
 import Deployments.Domain.Build
 import Deployments.Domain.Project (CompanyID)
 
+listBuilds :: (HasPostgres m) => (Int, Int) -> CompanyID -> m [Build]
+listBuilds (limit, offset) companyId =
+  map build <$> runQuery q (companyId, limit, offset)
+  where
+    q =
+      "select b.id, b.name, b.params, b.metadata, b.project_id from builds b\
+      \ join projects p on p.id = b.project_id\
+      \ where p.company_id = ?\
+      \ limit ? offset ?"
+
 getBuild :: (HasPostgres m) => CompanyID -> Text -> m (Maybe Build)
 getBuild companyId buildId = do
   result <- runQuery q (companyId, buildId)
@@ -21,7 +32,7 @@ getBuild companyId buildId = do
   where
     q =
       "select b.id, b.name, b.params, b.metadata, b.project_id from builds b\
-        \ left join projects p on p.id = b.project_id\
+        \ join projects p on p.id = b.project_id\
         \ where p.company_id = ? and b.id = ?"
 
 createBuild :: (HasPostgres m) => Build -> m ()
