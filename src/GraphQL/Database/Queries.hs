@@ -31,14 +31,15 @@ listProjects companyId = runQuery q (Only companyId)
       "select id, name, deployment_image, access_token, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from projects \
       \where company_id = ?"
 
-listProjectsById :: (HasPostgres m) => CompanyID -> [Text] -> m [Project]
+listProjectsById :: (HasPostgres m) => CompanyID -> [ProjectID] -> m [Project]
 listProjectsById companyId ids = runQuery q (companyId, In ids)
   where
     q =
       "select id, name, deployment_image, access_token, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from projects \
       \where company_id = ? and id in ?"
 
-listEnvironments :: (HasPostgres m) => CompanyID -> [Text] -> m [Environment]
+listEnvironments ::
+     (HasPostgres m) => CompanyID -> [ProjectID] -> m [Environment]
 listEnvironments companyId projectIds = runQuery q (companyId, In projectIds)
   where
     q =
