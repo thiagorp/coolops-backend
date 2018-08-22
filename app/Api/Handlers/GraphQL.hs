@@ -5,7 +5,6 @@ module Handlers.GraphQL where
 
 import RIO hiding (Handler)
 import qualified RIO.ByteString.Lazy as LBS
-import qualified RIO.HashMap as HashMap
 import qualified RIO.Map as Map
 
 import Web.Scotty.Trans hiding (Param)
@@ -15,22 +14,20 @@ import GraphQL.API
 import GraphQL.Resolver ((:<>)(..), Handler)
 
 import Authorization (AuthenticatedUser(..))
-import qualified Deployments.Domain.Build as BB
-import qualified Deployments.Domain.Environment as BE
-import qualified Deployments.Domain.Project as BP
 import qualified GraphQL.Database as DB
+import qualified GraphQL.Database.Types as DB
 import Types (WebMonad)
 
 type App = DB.App
 
 type Project
-   = Object "Project" '[] '[ Field "id" Text, Field "name" Text, Field "deployment_image" Text, Field "access_token" Text, Field "environments" (List Environment)]
+   = Object "Project" '[] '[ Field "id" Text, Field "name" Text, Field "deployment_image" Text, Field "access_token" Text, Field "environments" (List Environment), Field "created_at" Int32, Field "updated_at" Int32]
 
 type Environment
-   = Object "Environment" '[] '[ Field "id" Text, Field "name" Text, Field "environment_variables" (List Param)]
+   = Object "Environment" '[] '[ Field "id" Text, Field "name" Text, Field "environment_variables" (List Param), Field "created_at" Int32, Field "updated_at" Int32]
 
 type Build
-   = Object "Build" '[] '[ Field "id" Text, Field "name" Text, Field "project" Project, Field "params" (List Param), Field "metadata" (List Param)]
+   = Object "Build" '[] '[ Field "id" Text, Field "name" Text, Field "project" Project, Field "params" (List Param), Field "metadata" (List Param), Field "created_at" Int32, Field "updated_at" Int32]
 
 type Param = Object "Param" '[] '[ Field "key" Text, Field "value" Text]
 
@@ -40,22 +37,23 @@ type Query
 paramHandler :: (Text, Text) -> Handler App Param
 paramHandler (key, value) = pure $ pure key :<> pure value
 
-projectHandler :: BP.Project -> Handler App Project
-projectHandler project =
+projectHandler :: DB.Project -> Handler App Project
+projectHandler DB.Project {..} =
   pure $
-  pure (BP.projectId_ project) :<> pure (BP.projectName_ project) :<>
-  pure (BP.projectDeploymentImage_ project) :<>
-  pure (BP.projectAccessToken_ project) :<>
-  listEnvironments (BP.projectId project)
+  pure projectId :<> pure projectName :<> pure projectDeploymentImage :<>
+  pure projectAccessToken :<>
+  listEnvironments projectId :<>
+  pure projectCreatedAt :<>
+  pure projectUpdatedAt
 
-getProject_ :: BP.ID -> Handler App Project
+getProject_ :: Text -> Handler App Project
 getProject_ pId = do
   maybeProject <- DB.getProject pId
   case maybeProject of
     Just p -> projectHandler p
     Nothing -> fail "Project not found"
 
-getProject :: BP.ID -> Handler App (Maybe Project)
+getProject :: Text -> Handler App (Maybe Project)
 getProject pId = do
   maybeProject <- DB.getProject pId
   case maybeProject of
@@ -65,22 +63,24 @@ getProject pId = do
 listProjects :: Handler App (List Project)
 listProjects = map projectHandler <$> DB.listProjects
 
-environmentHandler :: BE.Environment -> Handler App Environment
-environmentHandler e =
+environmentHandler :: DB.Environment -> Handler App Environment
+environmentHandler DB.Environment {..} =
   pure $
-  pure (BE.environmentId_ e) :<> pure (BE.environmentName_ e) :<>
-  pure (map paramHandler (HashMap.toList (BE.environmentEnvVars e)))
+  pure envId :<> pure envName :<> pure (map paramHandler envEnvVars) :<>
+  pure envCreatedAt :<>
+  pure envUpdatedAt
 
-listEnvironments :: BP.ID -> Handler App (List Environment)
+listEnvironments :: Text -> Handler App (List Environment)
 listEnvironments pId = map environmentHandler <$> DB.listEnvironments pId
 
-buildHandler :: BB.Build -> Handler App Build
-buildHandler build =
+buildHandler :: DB.Build -> Handler App Build
+buildHandler DB.Build {..} =
   pure $
-  pure (BB.buildId_ build) :<> pure (BB.buildName_ build) :<>
-  getProject_ (BB.buildProjectId build) :<>
-  pure (map paramHandler (HashMap.toList (BB.buildParams build))) :<>
-  pure (map paramHandler (HashMap.toList (BB.buildMetadata build)))
+  pure buildId :<> pure buildName :<> getProject_ buildProjectId :<>
+  pure (map paramHandler buildParams) :<>
+  pure (map paramHandler buildMetadata) :<>
+  pure buildCreatedAt :<>
+  pure buildUpdatedAt
 
 listBuilds :: Maybe Int32 -> Maybe Int32 -> Handler App (List Build)
 listBuilds page pageSize =

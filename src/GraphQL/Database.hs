@@ -16,12 +16,7 @@ import Haxl.Core
 
 import Auth.Domain (User(..))
 import qualified Common.App as App
-import qualified Deployments.Database.Build as DB
-import qualified Deployments.Database.Environment as DB
-import qualified Deployments.Database.Project as DB
-import qualified Deployments.Domain.Build as B
-import qualified Deployments.Domain.Environment as E
-import qualified Deployments.Domain.Project as P
+import qualified GraphQL.Database.Queries as Q
 
 type App = GenHaxl AppEnv
 
@@ -40,24 +35,24 @@ buildEnv u e = do
   liftIO $ initEnv stateStore $ AppEnv u e
 
 -- DB Functions
-listProjects :: App [P.Project]
+listProjects :: App [Q.Project]
 listProjects = dataFetch ListProjects
 
-listBuilds :: (Int, Int) -> App [B.Build]
+listBuilds :: (Int, Int) -> App [Q.Build]
 listBuilds = dataFetch . ListBuilds
 
-getProject :: P.ID -> App (Maybe P.Project)
+getProject :: Text -> App (Maybe Q.Project)
 getProject pId = dataFetch (GetProject pId)
 
-listEnvironments :: P.ID -> App [E.Environment]
+listEnvironments :: Text -> App [Q.Environment]
 listEnvironments = dataFetch . ListEnvironments
 
 -- Implementation
 data DatabaseQuery a where
-  GetProject :: P.ID -> DatabaseQuery (Maybe P.Project)
-  ListProjects :: DatabaseQuery [P.Project]
-  ListBuilds :: (Int, Int) -> DatabaseQuery [B.Build]
-  ListEnvironments :: P.ID -> DatabaseQuery [E.Environment]
+  GetProject :: Text -> DatabaseQuery (Maybe Q.Project)
+  ListProjects :: DatabaseQuery [Q.Project]
+  ListBuilds :: (Int, Int) -> DatabaseQuery [Q.Build]
+  ListEnvironments :: Text -> DatabaseQuery [Q.Environment]
   deriving (Typeable)
 
 deriving instance Eq (DatabaseQuery a)
@@ -97,8 +92,8 @@ getProject_ AppEnv {..} blockedFetches =
   runFetchByID
     appEnv
     requests
-    P.projectId
-    (DB.listProjectsById currentCompanyId (map fst requests))
+    Q.projectId
+    (Q.listProjectsById currentCompanyId (map fst requests))
   where
     currentCompanyId = userCompanyId currentUser
     requests = [(pId, r) | BlockedFetch (GetProject pId) r <- blockedFetches]
@@ -106,14 +101,10 @@ getProject_ AppEnv {..} blockedFetches =
 listEnvironments_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> IO ()
 listEnvironments_ AppEnv {..} blockedFetches = do
   results <-
-    App.run
-      (DB.listEnvironmentsForProjects currentCompanyId (map fst requests))
-      appEnv
+    App.run (Q.listEnvironments currentCompanyId (map fst requests)) appEnv
   mapM_
     (\(pId, request) ->
-       putSuccess
-         request
-         (List.filter (\e -> E.environmentProjectId e == pId) results))
+       putSuccess request (List.filter (\e -> Q.envProjectId e == pId) results))
     requests
   where
     currentCompanyId = userCompanyId currentUser
@@ -125,18 +116,18 @@ listBuilds_ e blockedFetches = mapM_ (paginatedListBuilds_ e) requests
   where
     requests = [(p, r) | BlockedFetch (ListBuilds p) r <- blockedFetches]
 
-paginatedListBuilds_ :: AppEnv -> ((Int, Int), ResultVar [B.Build]) -> IO ()
+paginatedListBuilds_ :: AppEnv -> ((Int, Int), ResultVar [Q.Build]) -> IO ()
 paginatedListBuilds_ AppEnv {..} ((page, pageSize), request) =
   runFetchAll
     appEnv
     [request]
-    (DB.listBuilds (pageSize, (page - 1) * pageSize) currentCompanyId)
+    (Q.listBuilds (pageSize, (page - 1) * pageSize) currentCompanyId)
   where
     currentCompanyId = userCompanyId currentUser
 
 listProjects_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> IO ()
 listProjects_ AppEnv {..} blockedFetches =
-  runFetchAll appEnv requests (DB.listProjects currentCompanyId)
+  runFetchAll appEnv requests (Q.listProjects currentCompanyId)
   where
     requests = [r | BlockedFetch ListProjects r <- blockedFetches]
     currentCompanyId = userCompanyId currentUser
