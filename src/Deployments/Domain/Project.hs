@@ -12,6 +12,10 @@ module Deployments.Domain.Project
   , deploymentImageText
   , accessTokenText
   , nameText
+  , projectAccessToken_
+  , projectDeploymentImage_
+  , projectId_
+  , projectName_
   ) where
 
 import RIO
@@ -29,15 +33,15 @@ type ID = Key Project
 
 newtype Name =
   Name Text
-  deriving (ToField, FromField)
+  deriving (Show, ToField, FromField)
 
 newtype DeploymentImage =
   DeploymentImage Text
-  deriving (ToField, FromField)
+  deriving (Show, ToField, FromField)
 
 newtype AccessToken =
   AccessToken ByteString
-  deriving (ToField, FromField)
+  deriving (Show, ToField, FromField)
 
 data Project = Project
   { projectId :: !ID
@@ -45,10 +49,13 @@ data Project = Project
   , projectDeploymentImage :: !DeploymentImage
   , projectCompanyId :: !CompanyID
   , projectAccessToken :: !AccessToken
-  }
+  } deriving (Show)
 
 genId :: MonadIO m => m ID
 genId = genID
+
+projectId_ :: Project -> Text
+projectId_ Project {..} = keyText projectId
 
 buildName :: Text -> Validated Name
 buildName name = Name <$> validateMinLength 1 name
@@ -56,17 +63,27 @@ buildName name = Name <$> validateMinLength 1 name
 nameText :: Name -> Text
 nameText (Name name) = name
 
+projectName_ :: Project -> Text
+projectName_ Project {..} = nameText projectName
+
 accessTokenText :: AccessToken -> Text
 accessTokenText (AccessToken value) =
   case decodeUtf8' value of
     Right t -> t
     Left e -> error (show e)
 
+projectAccessToken_ :: Project -> Text
+projectAccessToken_ Project {..} = accessTokenText projectAccessToken
+
 buildDeploymentImage :: Text -> Validated DeploymentImage
 buildDeploymentImage image = DeploymentImage <$> validateMinLength 1 image
 
 deploymentImageText :: DeploymentImage -> Text
 deploymentImageText (DeploymentImage text) = text
+
+projectDeploymentImage_ :: Project -> Text
+projectDeploymentImage_ Project {..} =
+  deploymentImageText projectDeploymentImage
 
 genAccessToken :: (MonadIO m) => m AccessToken
 genAccessToken = genAccessToken' 36 ""
