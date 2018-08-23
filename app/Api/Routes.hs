@@ -8,6 +8,7 @@ import Data.Aeson (ToJSON(..), (.=), object)
 import Network.HTTP.Types.Status
 import Network.Wai (Middleware)
 import Network.Wai.Middleware.Cors
+import Network.Wai.Middleware.Gzip
 import Web.Scotty.Trans
 
 import qualified Handlers.ConnectProjectWithSlack as ConnectProjectWithSlack
@@ -67,6 +68,7 @@ routes :: Middleware -> ScottyT WebError AppT ()
 routes logger = do
   middleware corsMiddleware
   middleware logger
+  middleware $ gzip def
   defaultHandler errorHandler
   post "/graphql" $ userAuth GraphQL.call
   get "/health" HealthCheck.call

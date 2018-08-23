@@ -40,20 +40,21 @@ paramHandler (key, value) = pure $ pure key :<> pure value
 projectHandler :: DB.Project -> Handler App Project
 projectHandler DB.Project {..} =
   pure $
-  pure projectId :<> pure projectName :<> pure projectDeploymentImage :<>
+  pure (DB.idText projectId) :<> pure projectName :<>
+  pure projectDeploymentImage :<>
   pure projectAccessToken :<>
   listEnvironments projectId :<>
   pure projectCreatedAt :<>
   pure projectUpdatedAt
 
-getProject_ :: Text -> Handler App Project
+getProject_ :: DB.ProjectID -> Handler App Project
 getProject_ pId = do
   maybeProject <- DB.getProject pId
   case maybeProject of
     Just p -> projectHandler p
     Nothing -> fail "Project not found"
 
-getProject :: Text -> Handler App (Maybe Project)
+getProject :: DB.ProjectID -> Handler App (Maybe Project)
 getProject pId = do
   maybeProject <- DB.getProject pId
   case maybeProject of
@@ -66,17 +67,17 @@ listProjects = map projectHandler <$> DB.listProjects
 environmentHandler :: DB.Environment -> Handler App Environment
 environmentHandler DB.Environment {..} =
   pure $
-  pure envId :<> pure envName :<> pure (map paramHandler envEnvVars) :<>
+  pure (DB.idText envId) :<> pure envName :<> pure (map paramHandler envEnvVars) :<>
   pure envCreatedAt :<>
   pure envUpdatedAt
 
-listEnvironments :: Text -> Handler App (List Environment)
+listEnvironments :: DB.ProjectID -> Handler App (List Environment)
 listEnvironments pId = map environmentHandler <$> DB.listEnvironments pId
 
 buildHandler :: DB.Build -> Handler App Build
 buildHandler DB.Build {..} =
   pure $
-  pure buildId :<> pure buildName :<> getProject_ buildProjectId :<>
+  pure (DB.idText buildId) :<> pure buildName :<> getProject_ buildProjectId :<>
   pure (map paramHandler buildParams) :<>
   pure (map paramHandler buildMetadata) :<>
   pure buildCreatedAt :<>

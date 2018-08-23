@@ -41,18 +41,18 @@ listProjects = dataFetch ListProjects
 listBuilds :: (Int, Int) -> App [Q.Build]
 listBuilds = dataFetch . ListBuilds
 
-getProject :: Text -> App (Maybe Q.Project)
+getProject :: Q.ProjectID -> App (Maybe Q.Project)
 getProject pId = dataFetch (GetProject pId)
 
-listEnvironments :: Text -> App [Q.Environment]
+listEnvironments :: Q.ProjectID -> App [Q.Environment]
 listEnvironments = dataFetch . ListEnvironments
 
 -- Implementation
 data DatabaseQuery a where
-  GetProject :: Text -> DatabaseQuery (Maybe Q.Project)
+  GetProject :: Q.ProjectID -> DatabaseQuery (Maybe Q.Project)
   ListProjects :: DatabaseQuery [Q.Project]
   ListBuilds :: (Int, Int) -> DatabaseQuery [Q.Build]
-  ListEnvironments :: Text -> DatabaseQuery [Q.Environment]
+  ListEnvironments :: Q.ProjectID -> DatabaseQuery [Q.Environment]
   deriving (Typeable)
 
 deriving instance Eq (DatabaseQuery a)
