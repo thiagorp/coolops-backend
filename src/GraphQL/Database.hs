@@ -1,6 +1,8 @@
 module GraphQL.Database
   ( App
   , buildEnv
+  , getBuild
+  , getEnvLastDeployment
   , getProject
   , listBuilds
   , listEnvironments
@@ -41,6 +43,12 @@ listProjects = dataFetch ListProjects
 listBuilds :: (Int, Int) -> App [Q.Build]
 listBuilds = dataFetch . ListBuilds
 
+getBuild :: Q.BuildID -> App (Maybe Q.Build)
+getBuild bId = dataFetch (GetBuild bId)
+
+getEnvLastDeployment :: Q.EnvironmentID -> App (Maybe Q.Deployment)
+getEnvLastDeployment eId = dataFetch (GetEnvLastDeployment eId)
+
 getProject :: Q.ProjectID -> App (Maybe Q.Project)
 getProject pId = dataFetch (GetProject pId)
 
@@ -49,6 +57,8 @@ listEnvironments = dataFetch . ListEnvironments
 
 -- Implementation
 data DatabaseQuery a where
+  GetBuild :: Q.BuildID -> DatabaseQuery (Maybe Q.Build)
+  GetEnvLastDeployment :: Q.EnvironmentID -> DatabaseQuery (Maybe Q.Deployment)
   GetProject :: Q.ProjectID -> DatabaseQuery (Maybe Q.Project)
   ListProjects :: DatabaseQuery [Q.Project]
   ListBuilds :: (Int, Int) -> DatabaseQuery [Q.Build]
@@ -63,12 +73,10 @@ instance Hashable (DatabaseQuery a) where
   hashWithSalt s (ListBuilds (page, pageSize)) =
     hashWithSalt s (2 :: Int, page, pageSize)
   hashWithSalt s (ListEnvironments a) = hashWithSalt s (3 :: Int, a)
+  hashWithSalt s (GetEnvLastDeployment a) = hashWithSalt s (4 :: Int, a)
+  hashWithSalt s (GetBuild a) = hashWithSalt s (5 :: Int, a)
 
-instance Show (DatabaseQuery a) where
-  show (GetProject pId) = "Fetching project " <> show pId
-  show ListProjects = "Fetching all projects"
-  show (ListBuilds _) = "Fetching all builds"
-  show (ListEnvironments pId) = "Fetching environments for project " <> show pId
+deriving instance Show (DatabaseQuery a)
 
 instance ShowP DatabaseQuery where
   showp = show
@@ -82,10 +90,35 @@ instance DataSourceName DatabaseQuery where
 instance DataSource AppEnv DatabaseQuery where
   fetch _ _ e =
     SyncFetch $ \blockedFetches -> do
+      getBuild_ e blockedFetches
       getProject_ e blockedFetches
+      getEnvLastDeployment_ e blockedFetches
       listProjects_ e blockedFetches
       listBuilds_ e blockedFetches
       listEnvironments_ e blockedFetches
+
+getBuild_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> IO ()
+getBuild_ AppEnv {..} blockedFetches =
+  runFetchByID
+    appEnv
+    requests
+    Q.buildId
+    (Q.listBuildsById currentCompanyId (map fst requests))
+  where
+    currentCompanyId = userCompanyId currentUser
+    requests = [(id_, r) | BlockedFetch (GetBuild id_) r <- blockedFetches]
+
+getEnvLastDeployment_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> IO ()
+getEnvLastDeployment_ AppEnv {..} blockedFetches =
+  runFetchByID
+    appEnv
+    requests
+    Q.deploymentEnvId
+    (Q.listEnvsLastDeployments currentCompanyId (map fst requests))
+  where
+    currentCompanyId = userCompanyId currentUser
+    requests =
+      [(eId, r) | BlockedFetch (GetEnvLastDeployment eId) r <- blockedFetches]
 
 getProject_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> IO ()
 getProject_ AppEnv {..} blockedFetches =

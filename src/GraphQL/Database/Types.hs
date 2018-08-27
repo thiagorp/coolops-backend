@@ -8,7 +8,10 @@ import qualified Data.UUID as UUID
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToField
+import GraphQL.API.Enum
 import GraphQL.Value.ToValue
+
+import Deployments.Database.Deployment (DbStatus(..))
 
 type Param = (Text, Text)
 
@@ -92,3 +95,44 @@ instance FromRow Build where
     buildCreatedAt <- field
     buildUpdatedAt <- field
     return Build {..}
+
+type DeploymentID = ID Deployment
+
+data DeploymentStatus
+  = QUEUED
+  | RUNNING
+  | SUCCEEDED
+  | FAILED
+  deriving (Generic, Show)
+
+instance FromField DeploymentStatus where
+  fromField f bs = do
+    status <- fromField f bs
+    case status of
+      DbQueued -> return QUEUED
+      DbRunning -> return RUNNING
+      DbSucceeded -> return SUCCEEDED
+      DbFailed _ -> return FAILED
+
+instance GraphQLEnum DeploymentStatus
+
+data Deployment = Deployment
+  { deploymentId :: DeploymentID
+  , deploymentStartedAt :: Maybe Int32
+  , deploymentEnvId :: EnvironmentID
+  , deploymentBuildId :: BuildID
+  , deploymentStatus :: DeploymentStatus
+  , deploymentCreatedAt :: Int32
+  , deploymentUpdatedAt :: Int32
+  } deriving (Show)
+
+instance FromRow Deployment where
+  fromRow = do
+    deploymentId <- field
+    deploymentStartedAt <- field
+    deploymentEnvId <- field
+    deploymentBuildId <- field
+    deploymentStatus <- field
+    deploymentCreatedAt <- field
+    deploymentUpdatedAt <- field
+    return Deployment {..}
