@@ -26,7 +26,6 @@ import qualified Handlers.GetSlackConfig as GetSlackConfig
 import qualified Handlers.GetSlackProjectIntegration as GetSlackProjectIntegration
 import qualified Handlers.GraphQL as GraphQL
 import qualified Handlers.HealthCheck as HealthCheck
-import qualified Handlers.ListProjects as ListProjects
 import qualified Handlers.Login as Handlers
 import qualified Handlers.Signup as Handlers
 import qualified Handlers.UpdateEnvironment as UpdateEnvironment
@@ -76,7 +75,6 @@ routes logger = do
   post "/tokens" Handlers.login
   get "/me" $ userAuth GetProfile.call
   post "/projects" $ userAuth CreateProject.call
-  get "/projects" $ userAuth ListProjects.call
   get "/projects/:id" $ userAuth GetProject.call
   patch "/projects/:id" $ userAuth UpdateProject.call
   post "/projects/:project_id/environments" $ userAuth CreateEnvironment.call
