@@ -4,9 +4,10 @@ module GraphQL.Database.Queries
   , listBuilds
   , listBuildsById
   , listEnvironments
+  , listEnvsLastDeployments
   , listProjects
   , listProjectsById
-  , listEnvsLastDeployments
+  , listSlackProjectIntegrations
   ) where
 
 import RIO
@@ -56,7 +57,7 @@ listEnvironments companyId projectIds = runQuery q (companyId, In projectIds)
   where
     q =
       "select e.id, e.name, e.env_vars, e.project_id, cast(extract(epoch from e.created_at) as integer), cast(extract(epoch from e.updated_at) as integer) from environments e \
-      \left join projects p on p.id = e.project_id \
+      \join projects p on p.id = e.project_id \
       \where p.company_id = ? and p.id in ? \
       \order by e.name asc"
 
@@ -66,7 +67,17 @@ listEnvsLastDeployments companyId envIds = runQuery q (companyId, In envIds)
   where
     q =
       "select d.id, cast(extract(epoch from d.deployment_started_at) as integer), d.environment_id, d.build_id, d.status, cast(extract(epoch from e.created_at) as integer), cast(extract(epoch from e.updated_at) as integer) from deployments d \
-      \left join environments e on d.environment_id = e.id \
-      \left join projects p on e.project_id = p.id \
+      \join environments e on d.environment_id = e.id \
+      \join projects p on e.project_id = p.id \
       \where p.company_id = ? and e.id in ? \
       \order by p.id, e.id, d.created_at desc"
+
+listSlackProjectIntegrations ::
+     (HasPostgres m) => CompanyID -> [ProjectID] -> m [SlackProjectIntegration]
+listSlackProjectIntegrations companyId projectIds =
+  runQuery q (companyId, In projectIds)
+  where
+    q =
+      "select spi.project_id, spi.workspace_name from slack_project_integrations spi \
+      \join projects p on p.id = spi.project_id \
+      \where p.company_id = ? and p.id in ?"
