@@ -35,7 +35,7 @@ instance FromJSON Request where
 builder :: User -> Request -> WebValidation App.Params
 builder User {..} Request {..} = App.Params <$> pure userCompanyId <*> code
   where
-    code = required Code reqCode >>> valid
+    code = required Code reqCode |>> valid
 
 call :: AuthenticatedUser -> WebMonad ()
 call (AuthenticatedUser user) = do

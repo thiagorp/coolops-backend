@@ -45,8 +45,8 @@ instance ToJSON Response where
 builder :: Request -> WebValidation App.Params
 builder Request {..} = App.Params <$> email <*> password
   where
-    email = required Email reqEmail >>> buildEmailAddress
-    password = required Password reqPassword >>> buildPassword
+    email = required Email reqEmail |>> buildEmailAddress
+    password = required Password reqPassword |>> buildPassword
 
 buildResponse :: User -> WebMonad Response
 buildResponse User {..} = do

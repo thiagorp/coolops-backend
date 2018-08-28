@@ -41,8 +41,8 @@ instance FromJSON Request where
 builder :: Request -> WebValidation App.Params
 builder Request {..} = App.Params <$> environmentName <*> environmentEnvVars
   where
-    environmentName = required Name reqEnvironmentName >>> buildName
-    environmentEnvVars = required EnvVars reqEnvironmentEnvVars >>> valid
+    environmentName = required Name reqEnvironmentName |>> buildName
+    environmentEnvVars = required EnvVars reqEnvironmentEnvVars |>> valid
 
 update :: Environment -> WebMonad ()
 update environment = do

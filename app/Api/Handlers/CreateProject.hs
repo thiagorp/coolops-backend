@@ -41,9 +41,9 @@ builder :: User -> Request -> WebValidation App.Params
 builder User {..} Request {..} =
   App.Params <$> projectName <*> projectDeploymentImage <*> pure userCompanyId
   where
-    projectName = required Name reqProjectName >>> buildName
+    projectName = required Name reqProjectName |>> buildName
     projectDeploymentImage =
-      required DeploymentImage reqProjectDeploymentImage >>>
+      required DeploymentImage reqProjectDeploymentImage |>>
       buildDeploymentImage
 
 call :: AuthenticatedUser -> WebMonad ()

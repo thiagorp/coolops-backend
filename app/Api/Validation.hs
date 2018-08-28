@@ -3,7 +3,7 @@ module Validation
   , HasFieldName(..)
   , WebValidation
   , WebValidationError
-  , (>>>)
+  , (|>>)
   , optional
   , required
   , validationToString
@@ -33,12 +33,12 @@ required field value = (field, onField field (validateRequired value))
 optional :: (HasFieldName f) => f -> Maybe a -> (f, WebValidation (Maybe a))
 optional field value = (field, onField field (Validation.valid value))
 
-(>>>) ::
+(|>>) ::
      (HasFieldName f)
   => (f, WebValidation a)
   -> (a -> DomainValidation b)
   -> WebValidation b
-(>>>) (field, preValidated) builder =
+(|>>) (field, preValidated) builder =
   case preValidated of
     Invalid e -> Invalid e
     Valid a -> onField field (builder a)

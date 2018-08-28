@@ -41,9 +41,9 @@ instance FromJSON Request where
 builder :: Request -> WebValidation App.Params
 builder Request {..} = App.Params <$> projectName <*> projectDeploymentImage
   where
-    projectName = required Name reqProjectName >>> buildName
+    projectName = required Name reqProjectName |>> buildName
     projectDeploymentImage =
-      required DeploymentImage reqProjectDeploymentImage >>>
+      required DeploymentImage reqProjectDeploymentImage |>>
       buildDeploymentImage
 
 update :: Project -> WebMonad ()

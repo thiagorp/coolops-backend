@@ -67,11 +67,11 @@ builder :: Request -> WebValidation App.Params
 builder Request {..} =
   App.Params <$> firstName <*> lastName <*> email <*> password <*> companyName
   where
-    password = required Password reqPassword >>> buildPassword
-    firstName = required FirstName reqFirstName >>> buildUserName
-    lastName = required LastName reqLastName >>> buildUserName
-    email = required Email reqEmail >>> buildEmailAddress
-    companyName = required CompanyName reqCompanyName >>> buildCompanyName
+    password = required Password reqPassword |>> buildPassword
+    firstName = required FirstName reqFirstName |>> buildUserName
+    lastName = required LastName reqLastName |>> buildUserName
+    email = required Email reqEmail |>> buildEmailAddress
+    companyName = required CompanyName reqCompanyName |>> buildCompanyName
 
 buildResponse :: (User, Company) -> WebMonad Response
 buildResponse (User {..}, Company {..}) = do

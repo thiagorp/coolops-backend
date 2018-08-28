@@ -42,8 +42,8 @@ builder User {..} projectId Request {..} =
   App.Params <$> environmentName <*> environmentEnvVars <*> pure projectId <*>
   pure userCompanyId
   where
-    environmentName = required Name reqEnvironmentName >>> buildName
-    environmentEnvVars = required EnvVars reqEnvironmentEnvVars >>> valid
+    environmentName = required Name reqEnvironmentName |>> buildName
+    environmentEnvVars = required EnvVars reqEnvironmentEnvVars |>> valid
 
 call :: AuthenticatedUser -> WebMonad ()
 call (AuthenticatedUser user) = do

@@ -45,10 +45,10 @@ builder :: Project -> Request -> WebValidation App.Params
 builder project Request {..} =
   App.Params <$> buildName <*> buildParams <*> buildMetadata <*> pure project
   where
-    buildName = required Name reqBuildName >>> buildBuildName
-    buildParams = required Params reqBuildParams >>> valid
+    buildName = required Name reqBuildName |>> buildBuildName
+    buildParams = required Params reqBuildParams |>> valid
     buildMetadata =
-      optional Metadata reqBuildMetadata >>> withDefault HashMap.empty
+      optional Metadata reqBuildMetadata |>> withDefault HashMap.empty
 
 call :: AuthenticatedProject -> WebMonad ()
 call (AuthenticatedProject project) = do

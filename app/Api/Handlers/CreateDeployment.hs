@@ -39,8 +39,8 @@ instance FromJSON Request where
 builder :: Request -> WebValidation (Text, Text)
 builder Request {..} = (,) <$> environmentId <*> buildId
   where
-    environmentId = required EnvironmentID reqEnvironmentId >>> valid
-    buildId = required BuildID reqBuildId >>> valid
+    environmentId = required EnvironmentID reqEnvironmentId |>> valid
+    buildId = required BuildID reqBuildId |>> valid
 
 findEntities :: User -> (Text, Text) -> WebMonad App.Params
 findEntities User {..} (environmentId, buildId) = do

@@ -40,7 +40,7 @@ builder :: User -> Text -> Request -> WebValidation App.Params
 builder User {..} projectId Request {..} =
   App.Params <$> pure userCompanyId <*> pure projectId <*> code
   where
-    code = required Code reqCode >>> valid
+    code = required Code reqCode |>> valid
 
 call :: AuthenticatedUser -> WebMonad ()
 call (AuthenticatedUser user) = do
