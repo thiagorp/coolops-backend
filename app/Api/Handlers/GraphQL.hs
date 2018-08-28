@@ -14,6 +14,8 @@ import GraphQL.API
 import GraphQL.Resolver ((:<>)(..), Handler, HasResolver(..))
 
 import Authorization (AuthenticatedUser(..))
+import Common.App (Env(..))
+import qualified Common.Config as Config
 import qualified GraphQL.Database as DB
 import qualified GraphQL.Database.Types as DB
 import Types (WebMonad)
@@ -21,7 +23,7 @@ import Types (WebMonad)
 type App = DB.App
 
 type Project
-   = Object "Project" '[] '[ Field "id" Text, Field "name" Text, Field "deploymentImage" Text, Field "accessToken" Text, Field "environments" (List Environment), Field "createdAt" Int32, Field "updatedAt" Int32]
+   = Object "Project" '[] '[ Field "id" Text, Field "name" Text, Field "deploymentImage" Text, Field "accessToken" Text, Field "environments" (List Environment), Field "slackIntegration" (Maybe SlackProjectIntegration), Field "createdAt" Int32, Field "updatedAt" Int32]
 
 type Environment
    = Object "Environment" '[] '[ Field "id" Text, Field "name" Text, Field "environmentVariables" (List Param), Field "lastDeployment" (Maybe Deployment), Field "createdAt" Int32, Field "updatedAt" Int32]
@@ -47,9 +49,16 @@ type Deployment
 
 type Param = Object "Param" '[] '[ Field "key" Text, Field "value" Text]
 
-type Query
-   = Object "Query" '[] '[ Field "projects" (List Project), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List Build)]
+type SlackConfiguration
+   = Object "SlackConfiguration" '[] '[ Field "clientId" Text]
 
+type SlackProjectIntegration
+   = Object "SlackProjectIntegration" '[] '[ Field "workspaceName" Text]
+
+type Query
+   = Object "Query" '[] '[ Field "projects" (List Project), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List Build), Argument "id" Text :> Field "project" (Maybe Project), Field "slackConfiguration" SlackConfiguration]
+
+-- Datasource
 getBuild_ :: DB.BuildID -> Handler App Build
 getBuild_ id_ = do
   maybeBuild <- DB.getBuild id_
@@ -78,6 +87,17 @@ getEnvLastDeployment eId = do
     Just d -> pure $ Just (deploymentHandler d)
     Nothing -> return Nothing
 
+getSlackConfiguration :: Config.SlackSettings -> Handler App SlackConfiguration
+getSlackConfiguration Config.SlackSettings {..} = pure $ pure slackClientId
+
+getSlackProjectIntegration ::
+     DB.ProjectID -> Handler App (Maybe SlackProjectIntegration)
+getSlackProjectIntegration pId = do
+  maybe_ <- DB.getSlackProjectIntegration pId
+  case maybe_ of
+    Just e -> pure $ Just (slackProjectIntegrationHandler e)
+    Nothing -> return Nothing
+
 listBuilds :: Maybe Int32 -> Maybe Int32 -> Handler App (List Build)
 listBuilds page pageSize =
   map buildHandler <$>
@@ -90,6 +110,7 @@ listEnvironments pId = map environmentHandler <$> DB.listEnvironments pId
 listProjects :: Handler App (List Project)
 listProjects = map projectHandler <$> DB.listProjects
 
+-- Handlers
 deploymentHandler :: DB.Deployment -> Handler App Deployment
 deploymentHandler DB.Deployment {..} =
   pure $
@@ -117,6 +138,7 @@ projectHandler DB.Project {..} =
   pure projectDeploymentImage :<>
   pure projectAccessToken :<>
   listEnvironments projectId :<>
+  getSlackProjectIntegration projectId :<>
   pure projectCreatedAt :<>
   pure projectUpdatedAt
 
@@ -129,8 +151,16 @@ buildHandler DB.Build {..} =
   pure buildCreatedAt :<>
   pure buildUpdatedAt
 
-handler :: Handler App Query
-handler = pure $ listProjects :<> listBuilds
+slackProjectIntegrationHandler ::
+     DB.SlackProjectIntegration -> Handler App SlackProjectIntegration
+slackProjectIntegrationHandler DB.SlackProjectIntegration {..} =
+  pure $ pure spiWorkspaceName
+
+handler :: Env -> Handler App Query
+handler Env {..} =
+  pure $
+  listProjects :<> listBuilds :<> (getProject . DB.ID) :<>
+  getSlackConfiguration slackSettings
 
 newtype Request = Request
   { reqQuery :: Text
@@ -148,5 +178,8 @@ call (AuthenticatedUser user) = do
   appEnv <- lift ask
   env <- lift $ DB.buildEnv user appEnv
   result <-
-    lift $ DB.run env (interpretQuery @Query handler reqQuery Nothing Map.empty)
+    lift $
+    DB.run
+      env
+      (interpretQuery @Query (handler appEnv) reqQuery Nothing Map.empty)
   json result

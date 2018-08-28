@@ -136,3 +136,18 @@ instance FromRow Deployment where
     deploymentCreatedAt <- field
     deploymentUpdatedAt <- field
     return Deployment {..}
+
+newtype SlackConfiguration = SlackConfiguration
+  { slackConfigurationClientId :: Text
+  } deriving (Show)
+
+data SlackProjectIntegration = SlackProjectIntegration
+  { spiProjectId :: ProjectID
+  , spiWorkspaceName :: Text
+  } deriving (Show)
+
+instance FromRow SlackProjectIntegration where
+  fromRow = do
+    spiProjectId <- field
+    spiWorkspaceName <- field
+    return SlackProjectIntegration {..}

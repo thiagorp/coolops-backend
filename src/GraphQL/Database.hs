@@ -4,6 +4,7 @@ module GraphQL.Database
   , getBuild
   , getEnvLastDeployment
   , getProject
+  , getSlackProjectIntegration
   , listBuilds
   , listEnvironments
   , listProjects
@@ -52,6 +53,10 @@ getEnvLastDeployment eId = dataFetch (GetEnvLastDeployment eId)
 getProject :: Q.ProjectID -> App (Maybe Q.Project)
 getProject pId = dataFetch (GetProject pId)
 
+getSlackProjectIntegration ::
+     Q.ProjectID -> App (Maybe Q.SlackProjectIntegration)
+getSlackProjectIntegration pId = dataFetch (GetSlackProjectIntegration pId)
+
 listEnvironments :: Q.ProjectID -> App [Q.Environment]
 listEnvironments = dataFetch . ListEnvironments
 
@@ -60,6 +65,8 @@ data DatabaseQuery a where
   GetBuild :: Q.BuildID -> DatabaseQuery (Maybe Q.Build)
   GetEnvLastDeployment :: Q.EnvironmentID -> DatabaseQuery (Maybe Q.Deployment)
   GetProject :: Q.ProjectID -> DatabaseQuery (Maybe Q.Project)
+  GetSlackProjectIntegration
+    :: Q.ProjectID -> DatabaseQuery (Maybe Q.SlackProjectIntegration)
   ListProjects :: DatabaseQuery [Q.Project]
   ListBuilds :: (Int, Int) -> DatabaseQuery [Q.Build]
   ListEnvironments :: Q.ProjectID -> DatabaseQuery [Q.Environment]
@@ -75,6 +82,7 @@ instance Hashable (DatabaseQuery a) where
   hashWithSalt s (ListEnvironments a) = hashWithSalt s (3 :: Int, a)
   hashWithSalt s (GetEnvLastDeployment a) = hashWithSalt s (4 :: Int, a)
   hashWithSalt s (GetBuild a) = hashWithSalt s (5 :: Int, a)
+  hashWithSalt s (GetSlackProjectIntegration a) = hashWithSalt s (6 :: Int, a)
 
 deriving instance Show (DatabaseQuery a)
 
@@ -93,6 +101,7 @@ instance DataSource AppEnv DatabaseQuery where
       getBuild_ e blockedFetches
       getProject_ e blockedFetches
       getEnvLastDeployment_ e blockedFetches
+      getSlackProjectIntegration_ e blockedFetches
       listProjects_ e blockedFetches
       listBuilds_ e blockedFetches
       listEnvironments_ e blockedFetches
@@ -130,6 +139,20 @@ getProject_ AppEnv {..} blockedFetches =
   where
     currentCompanyId = userCompanyId currentUser
     requests = [(pId, r) | BlockedFetch (GetProject pId) r <- blockedFetches]
+
+getSlackProjectIntegration_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> IO ()
+getSlackProjectIntegration_ AppEnv {..} blockedFetches =
+  runFetchByID
+    appEnv
+    requests
+    Q.spiProjectId
+    (Q.listSlackProjectIntegrations currentCompanyId (map fst requests))
+  where
+    currentCompanyId = userCompanyId currentUser
+    requests =
+      [ (id_, r)
+      | BlockedFetch (GetSlackProjectIntegration id_) r <- blockedFetches
+      ]
 
 listEnvironments_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> IO ()
 listEnvironments_ AppEnv {..} blockedFetches = do
