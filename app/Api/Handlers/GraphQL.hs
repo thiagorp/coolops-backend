@@ -56,7 +56,7 @@ type SlackProjectIntegration
    = Object "SlackProjectIntegration" '[] '[ Field "workspaceName" Text]
 
 type Query
-   = Object "Query" '[] '[ Field "projects" (List Project), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List Build), Argument "id" Text :> Field "project" (Maybe Project), Field "slackConfiguration" SlackConfiguration]
+   = Object "Query" '[] '[ Argument "id" Text :> Field "environment" (Maybe Environment), Field "projects" (List Project), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List Build), Argument "id" Text :> Field "project" (Maybe Project), Field "slackConfiguration" SlackConfiguration]
 
 -- Datasource
 getBuild_ :: DB.BuildID -> Handler App Build
@@ -65,6 +65,13 @@ getBuild_ id_ = do
   case maybeBuild of
     Just b -> buildHandler b
     Nothing -> fail "Build not found"
+
+getEnvironment :: DB.EnvironmentID -> Handler App (Maybe Environment)
+getEnvironment id_ = do
+  maybe_ <- DB.getEnvironment id_
+  case maybe_ of
+    Just e -> pure $ Just (environmentHandler e)
+    Nothing -> return Nothing
 
 getProject_ :: DB.ProjectID -> Handler App Project
 getProject_ pId = do
@@ -159,7 +166,8 @@ slackProjectIntegrationHandler DB.SlackProjectIntegration {..} =
 handler :: Env -> Handler App Query
 handler Env {..} =
   pure $
-  listProjects :<> listBuilds :<> (getProject . DB.ID) :<>
+  (getEnvironment . DB.ID) :<> listProjects :<> listBuilds :<>
+  (getProject . DB.ID) :<>
   getSlackConfiguration slackSettings
 
 newtype Request = Request

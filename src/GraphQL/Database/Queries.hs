@@ -4,6 +4,7 @@ module GraphQL.Database.Queries
   , listBuilds
   , listBuildsById
   , listEnvironments
+  , listEnvironmentsById
   , listEnvsLastDeployments
   , listProjects
   , listProjectsById
@@ -60,6 +61,15 @@ listEnvironments companyId projectIds = runQuery q (companyId, In projectIds)
       \join projects p on p.id = e.project_id \
       \where p.company_id = ? and p.id in ? \
       \order by e.name asc"
+
+listEnvironmentsById ::
+     (HasPostgres m) => CompanyID -> [EnvironmentID] -> m [Environment]
+listEnvironmentsById companyId ids = runQuery q (companyId, In ids)
+  where
+    q =
+      "select e.id, e.name, e.env_vars, e.project_id, cast(extract(epoch from e.created_at) as integer), cast(extract(epoch from e.updated_at) as integer) from environments e \
+      \join projects p on p.id = e.project_id \
+      \where p.company_id = ? and e.id in ?"
 
 listEnvsLastDeployments ::
      (HasPostgres m) => CompanyID -> [EnvironmentID] -> m [Deployment]

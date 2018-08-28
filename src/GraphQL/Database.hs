@@ -2,6 +2,7 @@ module GraphQL.Database
   ( App
   , buildEnv
   , getBuild
+  , getEnvironment
   , getEnvLastDeployment
   , getProject
   , getSlackProjectIntegration
@@ -47,6 +48,9 @@ listBuilds = dataFetch . ListBuilds
 getBuild :: Q.BuildID -> App (Maybe Q.Build)
 getBuild bId = dataFetch (GetBuild bId)
 
+getEnvironment :: Q.EnvironmentID -> App (Maybe Q.Environment)
+getEnvironment eId = dataFetch (GetEnvironment eId)
+
 getEnvLastDeployment :: Q.EnvironmentID -> App (Maybe Q.Deployment)
 getEnvLastDeployment eId = dataFetch (GetEnvLastDeployment eId)
 
@@ -63,6 +67,7 @@ listEnvironments = dataFetch . ListEnvironments
 -- Implementation
 data DatabaseQuery a where
   GetBuild :: Q.BuildID -> DatabaseQuery (Maybe Q.Build)
+  GetEnvironment :: Q.EnvironmentID -> DatabaseQuery (Maybe Q.Environment)
   GetEnvLastDeployment :: Q.EnvironmentID -> DatabaseQuery (Maybe Q.Deployment)
   GetProject :: Q.ProjectID -> DatabaseQuery (Maybe Q.Project)
   GetSlackProjectIntegration
@@ -83,6 +88,7 @@ instance Hashable (DatabaseQuery a) where
   hashWithSalt s (GetEnvLastDeployment a) = hashWithSalt s (4 :: Int, a)
   hashWithSalt s (GetBuild a) = hashWithSalt s (5 :: Int, a)
   hashWithSalt s (GetSlackProjectIntegration a) = hashWithSalt s (6 :: Int, a)
+  hashWithSalt s (GetEnvironment a) = hashWithSalt s (7 :: Int, a)
 
 deriving instance Show (DatabaseQuery a)
 
@@ -99,6 +105,7 @@ instance DataSource AppEnv DatabaseQuery where
   fetch _ _ e =
     SyncFetch $ \blockedFetches -> do
       getBuild_ e blockedFetches
+      getEnvironment_ e blockedFetches
       getProject_ e blockedFetches
       getEnvLastDeployment_ e blockedFetches
       getSlackProjectIntegration_ e blockedFetches
@@ -116,6 +123,18 @@ getBuild_ AppEnv {..} blockedFetches =
   where
     currentCompanyId = userCompanyId currentUser
     requests = [(id_, r) | BlockedFetch (GetBuild id_) r <- blockedFetches]
+
+getEnvironment_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> IO ()
+getEnvironment_ AppEnv {..} blockedFetches =
+  runFetchByID
+    appEnv
+    requests
+    Q.envId
+    (Q.listEnvironmentsById currentCompanyId (map fst requests))
+  where
+    currentCompanyId = userCompanyId currentUser
+    requests =
+      [(id_, r) | BlockedFetch (GetEnvironment id_) r <- blockedFetches]
 
 getEnvLastDeployment_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> IO ()
 getEnvLastDeployment_ AppEnv {..} blockedFetches =
