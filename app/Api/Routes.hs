@@ -12,16 +12,13 @@ import Network.Wai.Middleware.Gzip
 import Web.Scotty.Trans
 
 import qualified Handlers.ConnectProjectWithSlack as ConnectProjectWithSlack
-import qualified Handlers.ConnectWithSlack as ConnectWithSlack
 import qualified Handlers.CreateBuild as CreateBuild
 import qualified Handlers.CreateDeployment as CreateDeployment
 import qualified Handlers.CreateEnvironment as CreateEnvironment
 import qualified Handlers.CreateProject as CreateProject
-import qualified Handlers.DisconnectFromSlack as DisconnectFromSlack
 import qualified Handlers.GetDeploymentLogs as GetDeploymentLogs
 import qualified Handlers.GetEnvironment as GetEnvironment
 import qualified Handlers.GetProfile as GetProfile
-import qualified Handlers.GetSlackConfig as GetSlackConfig
 import qualified Handlers.GraphQL as GraphQL
 import qualified Handlers.HealthCheck as HealthCheck
 import qualified Handlers.Login as Handlers
@@ -82,6 +79,3 @@ routes logger = do
   post "/builds" $ projectAuth CreateBuild.call
   post "/deployments" $ userAuth CreateDeployment.call
   get "/deployments/:id/logs" GetDeploymentLogs.call
-  post "/slack_config" $ userAuth ConnectWithSlack.call
-  get "/slack_config" $ userAuth GetSlackConfig.call
-  delete "/slack_config" $ userAuth DisconnectFromSlack.call

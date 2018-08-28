@@ -20,7 +20,6 @@ import qualified Deployments.Database.Environment as DB
 import qualified Deployments.Database.Project as DB
 import qualified Slack.Database.BuildMessage as DB
 import qualified Slack.Database.Deployment as DB
-import qualified Slack.Database.Team as DB
 
 import qualified Common.Config as Config
 
@@ -96,12 +95,6 @@ instance Kubernetes.HasKubernetesSettings AppT where
   k8sHost = Config.k8sHost <$> asks kubernetesSettings
   k8sToken = Config.k8sToken <$> asks kubernetesSettings
   k8sNamespace = Config.k8sNamespace <$> asks kubernetesSettings
-
-instance SlackTeamRepo AppT where
-  createSlackTeam = DB.createSlackTeam
-  getSlackTeam = DB.getSlackTeam
-  getSlackTeamForCompany = DB.getSlackTeamForCompany
-  deleteSlackTeam = DB.deleteSlackTeam
 
 instance SlackBuildMessageRepo AppT where
   createSlackBuildMessage = DB.createSlackBuildMessage
