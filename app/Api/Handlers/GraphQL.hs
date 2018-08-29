@@ -25,8 +25,21 @@ type App = DB.App
 type Project
    = Object "Project" '[] '[ Field "id" Text, Field "name" Text, Field "deploymentImage" Text, Field "accessToken" Text, Field "environments" (List Environment), Field "slackIntegration" (Maybe SlackProjectIntegration), Field "createdAt" Int32, Field "updatedAt" Int32]
 
+newtype EnvironmentProjectD m =
+  EnvironmentProjectD (Handler m Project)
+
+data EnvironmentProject =
+  EnvironmentProject
+
+instance forall m. (Monad m) => HasResolver m EnvironmentProject where
+  type Handler m EnvironmentProject = EnvironmentProjectD m
+  resolve (EnvironmentProjectD rd) = resolve @m @Project rd
+
+instance HasAnnotatedType EnvironmentProject where
+  getAnnotatedType = getAnnotatedType @Int
+
 type Environment
-   = Object "Environment" '[] '[ Field "id" Text, Field "name" Text, Field "environmentVariables" (List Param), Field "lastDeployment" (Maybe Deployment), Field "createdAt" Int32, Field "updatedAt" Int32]
+   = Object "Environment" '[] '[ Field "id" Text, Field "name" Text, Field "environmentVariables" (List Param), Field "lastDeployment" (Maybe Deployment), Field "project" EnvironmentProject, Field "createdAt" Int32, Field "updatedAt" Int32]
 
 type Build
    = Object "Build" '[] '[ Field "id" Text, Field "name" Text, Field "project" Project, Field "params" (List Param), Field "metadata" (List Param), Field "createdAt" Int32, Field "updatedAt" Int32]
@@ -132,6 +145,7 @@ environmentHandler DB.Environment {..} =
   pure $
   pure (DB.idText envId) :<> pure envName :<> pure (map paramHandler envEnvVars) :<>
   getEnvLastDeployment envId :<>
+  (EnvironmentProjectD $ getProject_ envProjectId) :<>
   pure envCreatedAt :<>
   pure envUpdatedAt
 
