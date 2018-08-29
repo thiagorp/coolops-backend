@@ -13,12 +13,13 @@ import GraphQL
 import GraphQL.API
 import GraphQL.Resolver ((:<>)(..), Handler, HasResolver(..))
 
-import Authorization (AuthenticatedUser(..))
+import qualified Authorization as Auth
 import Common.App (Env(..))
 import qualified Common.Config as Config
 import qualified GraphQL.Database as DB
 import qualified GraphQL.Database.Types as DB
 import Types (WebMonad)
+import Util.Key as Key
 
 type App = DB.App
 
@@ -44,6 +45,9 @@ type Environment
 type Build
    = Object "Build" '[] '[ Field "id" Text, Field "name" Text, Field "project" Project, Field "params" (List Param), Field "metadata" (List Param), Field "createdAt" Int32, Field "updatedAt" Int32]
 
+type Company
+   = Object "Company" '[] '[ Field "id" Text, Field "name" Text, Field "createdAt" Int32, Field "updatedAt" Int32]
+
 newtype DeploymentBuildD m =
   DeploymentBuildD (Handler m Build)
 
@@ -68,8 +72,11 @@ type SlackConfiguration
 type SlackProjectIntegration
    = Object "SlackProjectIntegration" '[] '[ Field "workspaceName" Text]
 
+type User
+   = Object "User" '[] '[ Field "id" Text, Field "firstName" Text, Field "lastName" Text, Field "email" Text, Field "company" Company, Field "createdAt" Int32, Field "updatedAt" Int32]
+
 type Query
-   = Object "Query" '[] '[ Argument "id" Text :> Field "environment" (Maybe Environment), Field "projects" (List Project), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List Build), Argument "id" Text :> Field "project" (Maybe Project), Field "slackConfiguration" SlackConfiguration]
+   = Object "Query" '[] '[ Argument "id" Text :> Field "environment" (Maybe Environment), Field "projects" (List Project), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List Build), Argument "id" Text :> Field "project" (Maybe Project), Field "slackConfiguration" SlackConfiguration, Field "me" User]
 
 -- Datasource
 getBuild_ :: DB.BuildID -> Handler App Build
@@ -78,6 +85,13 @@ getBuild_ id_ = do
   case maybeBuild of
     Just b -> buildHandler b
     Nothing -> fail "Build not found"
+
+getCompany_ :: Handler App Company
+getCompany_ = do
+  maybe_ <- DB.getCompany
+  case maybe_ of
+    Just c -> companyHandler c
+    Nothing -> fail "Company not found"
 
 getEnvironment :: DB.EnvironmentID -> Handler App (Maybe Environment)
 getEnvironment id_ = do
@@ -118,6 +132,13 @@ getSlackProjectIntegration pId = do
     Just e -> pure $ Just (slackProjectIntegrationHandler e)
     Nothing -> return Nothing
 
+getUser_ :: DB.UserID -> Handler App User
+getUser_ pId = do
+  maybe_ <- DB.getUser pId
+  case maybe_ of
+    Just e -> userHandler e
+    Nothing -> fail "User not found"
+
 listBuilds :: Maybe Int32 -> Maybe Int32 -> Handler App (List Build)
 listBuilds page pageSize =
   map buildHandler <$>
@@ -131,6 +152,12 @@ listProjects :: Handler App (List Project)
 listProjects = map projectHandler <$> DB.listProjects
 
 -- Handlers
+companyHandler :: DB.Company -> Handler App Company
+companyHandler DB.Company {..} =
+  pure $
+  pure (DB.idText companyId) :<> pure companyName :<> pure companyCreatedAt :<>
+  pure companyUpdatedAt
+
 deploymentHandler :: DB.Deployment -> Handler App Deployment
 deploymentHandler DB.Deployment {..} =
   pure $
@@ -177,12 +204,22 @@ slackProjectIntegrationHandler ::
 slackProjectIntegrationHandler DB.SlackProjectIntegration {..} =
   pure $ pure spiWorkspaceName
 
-handler :: Env -> Handler App Query
-handler Env {..} =
+userHandler :: DB.User -> Handler App User
+userHandler DB.User {..} =
+  pure $
+  pure (DB.idText userId) :<> pure userFirstName :<> pure userLastName :<>
+  pure userEmail :<>
+  getCompany_ :<>
+  pure userCreatedAt :<>
+  pure userUpdatedAt
+
+handler :: Auth.User -> Env -> Handler App Query
+handler Auth.User {..} Env {..} =
   pure $
   (getEnvironment . DB.ID) :<> listProjects :<> listBuilds :<>
   (getProject . DB.ID) :<>
-  getSlackConfiguration slackSettings
+  getSlackConfiguration slackSettings :<>
+  getUser_ (DB.ID (Key.keyText userId))
 
 newtype Request = Request
   { reqQuery :: Text
@@ -194,8 +231,8 @@ instance FromJSON Request where
       reqQuery <- o .: "query"
       return Request {..}
 
-call :: AuthenticatedUser -> WebMonad ()
-call (AuthenticatedUser user) = do
+call :: Auth.AuthenticatedUser -> WebMonad ()
+call (Auth.AuthenticatedUser user) = do
   Request {..} <- jsonData
   appEnv <- lift ask
   env <- lift $ DB.buildEnv user appEnv
@@ -203,5 +240,5 @@ call (AuthenticatedUser user) = do
     lift $
     DB.run
       env
-      (interpretQuery @Query (handler appEnv) reqQuery Nothing Map.empty)
+      (interpretQuery @Query (handler user appEnv) reqQuery Nothing Map.empty)
   json result

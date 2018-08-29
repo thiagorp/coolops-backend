@@ -1,6 +1,7 @@
 module GraphQL.Database.Queries
   ( module GraphQL.Database.Types
   , CompanyID
+  , getCompany
   , listBuilds
   , listBuildsById
   , listEnvironments
@@ -9,6 +10,7 @@ module GraphQL.Database.Queries
   , listProjects
   , listProjectsById
   , listSlackProjectIntegrations
+  , listUsersById
   ) where
 
 import RIO
@@ -18,6 +20,16 @@ import Database.PostgreSQL.Simple
 import Auth.Domain (CompanyID)
 import Common.Database
 import GraphQL.Database.Types
+
+getCompany :: (HasPostgres m) => CompanyID -> m (Maybe Company)
+getCompany companyId = do
+  results <- runQuery q (Only companyId)
+  case results of
+    [] -> return Nothing
+    row:_ -> return $ Just row
+  where
+    q =
+      "select id, name, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from companies where id = ?"
 
 listBuilds :: (HasPostgres m) => (Int, Int) -> CompanyID -> m [Build]
 listBuilds (limit, offset) companyId = runQuery q (companyId, limit, offset)
@@ -91,3 +103,10 @@ listSlackProjectIntegrations companyId projectIds =
       "select spi.project_id, spi.workspace_name from slack_project_integrations spi \
       \join projects p on p.id = spi.project_id \
       \where p.company_id = ? and p.id in ?"
+
+listUsersById :: (HasPostgres m) => CompanyID -> [UserID] -> m [User]
+listUsersById companyId ids = runQuery q (companyId, In ids)
+  where
+    q =
+      "select id, first_name, last_name, email, company_id, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from users \
+      \where company_id = ? and id in ?"

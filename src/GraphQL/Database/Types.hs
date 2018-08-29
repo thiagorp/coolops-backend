@@ -151,3 +151,28 @@ instance FromRow SlackProjectIntegration where
     spiProjectId <- field
     spiWorkspaceName <- field
     return SlackProjectIntegration {..}
+
+type UserID = ID User
+
+data User = User
+  { userId :: UserID
+  , userFirstName :: Text
+  , userLastName :: Text
+  , userEmail :: Text
+  , userCompanyId :: DBCompanyID
+  , userCreatedAt :: Int32
+  , userUpdatedAt :: Int32
+  } deriving (Generic, Show)
+
+instance FromRow User
+
+type DBCompanyID = ID Company
+
+data Company = Company
+  { companyId :: DBCompanyID
+  , companyName :: Text
+  , companyCreatedAt :: Int32
+  , companyUpdatedAt :: Int32
+  } deriving (Generic, Show)
+
+instance FromRow Company
