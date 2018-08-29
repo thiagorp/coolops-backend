@@ -17,7 +17,6 @@ import qualified Handlers.CreateDeployment as CreateDeployment
 import qualified Handlers.CreateEnvironment as CreateEnvironment
 import qualified Handlers.CreateProject as CreateProject
 import qualified Handlers.GetDeploymentLogs as GetDeploymentLogs
-import qualified Handlers.GetProfile as GetProfile
 import qualified Handlers.GraphQL as GraphQL
 import qualified Handlers.HealthCheck as HealthCheck
 import qualified Handlers.Login as Handlers
@@ -67,7 +66,6 @@ routes logger = do
   get "/health" HealthCheck.call
   post "/signup" Handlers.signup
   post "/tokens" Handlers.login
-  get "/me" $ userAuth GetProfile.call
   post "/projects" $ userAuth CreateProject.call
   patch "/projects/:id" $ userAuth UpdateProject.call
   post "/projects/:project_id/environments" $ userAuth CreateEnvironment.call
