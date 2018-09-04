@@ -177,3 +177,12 @@ data Company = Company
   } deriving (Generic, Show)
 
 instance FromRow Company
+
+type OnboardingID = ID Onboarding
+
+data Onboarding = Onboarding
+  { onboardingCompanyId :: DBCompanyID
+  , onboardingProjectId :: Maybe ProjectID
+  } deriving (Generic, Show)
+
+instance FromRow Onboarding

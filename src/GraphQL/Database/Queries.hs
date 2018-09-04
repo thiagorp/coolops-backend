@@ -2,6 +2,7 @@ module GraphQL.Database.Queries
   ( module GraphQL.Database.Types
   , CompanyID
   , getCompany
+  , getOnboarding
   , listBuilds
   , listBuildsById
   , listEnvironments
@@ -20,6 +21,7 @@ import Database.PostgreSQL.Simple
 import Auth.Domain (CompanyID)
 import Common.Database
 import GraphQL.Database.Types
+import qualified Util.Key as Key
 
 getCompany :: (HasPostgres m) => CompanyID -> m (Maybe Company)
 getCompany companyId = do
@@ -30,6 +32,16 @@ getCompany companyId = do
   where
     q =
       "select id, name, onboarding_completed, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from companies where id = ?"
+
+getOnboarding :: (HasPostgres m) => CompanyID -> m Onboarding
+getOnboarding companyId = do
+  results <- runQuery q (Only companyId)
+  case results of
+    [] -> return $ Onboarding dbCompanyId Nothing
+    row:_ -> return row
+  where
+    dbCompanyId = ID $ Key.keyText companyId
+    q = "select company_id, project_id from onboardings where company_id = ?"
 
 listBuilds :: (HasPostgres m) => (Int, Int) -> CompanyID -> m [Build]
 listBuilds (limit, offset) companyId = runQuery q (companyId, limit, offset)

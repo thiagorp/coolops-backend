@@ -73,8 +73,10 @@ type SlackProjectIntegration = Object "SlackProjectIntegration" '[] '[ Field "wo
 type User
    = Object "User" '[] '[ Field "id" Text, Field "firstName" Text, Field "lastName" Text, Field "email" Text, Field "company" Company, Field "createdAt" Int32, Field "updatedAt" Int32]
 
+type Onboarding = Object "Onboarding" '[] '[ Field "company" Company, Field "project" (Maybe Project)]
+
 type Query
-   = Object "Query" '[] '[ Argument "id" Text :> Field "environment" (Maybe Environment), Field "projects" (List Project), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List Build), Argument "id" Text :> Field "project" (Maybe Project), Field "slackConfiguration" SlackConfiguration, Field "me" User]
+   = Object "Query" '[] '[ Argument "id" Text :> Field "environment" (Maybe Environment), Field "projects" (List Project), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List Build), Argument "id" Text :> Field "project" (Maybe Project), Field "slackConfiguration" SlackConfiguration, Field "me" User, Field "onboarding" Onboarding]
 
 -- Datasource
 getBuild_ :: DB.BuildID -> Handler App Build
@@ -97,6 +99,9 @@ getEnvironment id_ = do
   case maybe_ of
     Just e -> pure $ Just (environmentHandler e)
     Nothing -> return Nothing
+
+getOnboarding :: Handler App Onboarding
+getOnboarding = DB.getOnboarding >>= onboardingHandler
 
 getProject_ :: DB.ProjectID -> Handler App Project
 getProject_ pId = do
@@ -169,6 +174,9 @@ environmentHandler DB.Environment {..} =
   pure envCreatedAt :<>
   pure envUpdatedAt
 
+onboardingHandler :: DB.Onboarding -> Handler App Onboarding
+onboardingHandler DB.Onboarding {..} = pure $ getCompany_ :<> maybe (pure Nothing) getProject onboardingProjectId
+
 paramHandler :: (Text, Text) -> Handler App Param
 paramHandler (key, value) = pure $ pure key :<> pure value
 
@@ -204,7 +212,8 @@ handler Auth.User {..} Env {..} =
   pure $
   (getEnvironment . DB.ID) :<> listProjects :<> listBuilds :<> (getProject . DB.ID) :<>
   getSlackConfiguration slackSettings :<>
-  getUser_ (DB.ID (Key.keyText userId))
+  getUser_ (DB.ID (Key.keyText userId)) :<>
+  getOnboarding
 
 newtype Request = Request
   { reqQuery :: Text
