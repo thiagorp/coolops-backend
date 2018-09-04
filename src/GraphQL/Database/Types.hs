@@ -171,8 +171,18 @@ type DBCompanyID = ID Company
 data Company = Company
   { companyId :: DBCompanyID
   , companyName :: Text
+  , companyOnboardingCompleted :: Bool
   , companyCreatedAt :: Int32
   , companyUpdatedAt :: Int32
   } deriving (Generic, Show)
 
 instance FromRow Company
+
+type OnboardingID = ID Onboarding
+
+data Onboarding = Onboarding
+  { onboardingCompanyId :: DBCompanyID
+  , onboardingProjectId :: Maybe ProjectID
+  } deriving (Generic, Show)
+
+instance FromRow Onboarding

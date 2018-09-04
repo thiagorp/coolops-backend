@@ -37,19 +37,17 @@ instance FromJSON Request where
       reqEnvironmentEnvVars <- o .:? fieldName EnvVars
       return Request {..}
 
-builder :: User -> Text -> Request -> WebValidation App.Params
-builder User {..} projectId Request {..} =
-  App.Params <$> environmentName <*> environmentEnvVars <*> pure projectId <*>
-  pure userCompanyId
+builder :: Request -> WebValidation App.Params
+builder Request {..} = App.Params <$> environmentName <*> environmentEnvVars
   where
     environmentName = required Name reqEnvironmentName |>> buildName
     environmentEnvVars = required EnvVars reqEnvironmentEnvVars |>> valid
 
 call :: AuthenticatedUser -> WebMonad ()
-call (AuthenticatedUser user) = do
+call (AuthenticatedUser User {..}) = do
   projectId <- param "project_id"
-  requestData <- jsonData >>= parseRequest (builder user projectId)
-  maybeProject <- lift $ App.call requestData
+  requestData <- jsonData >>= parseRequest builder
+  maybeProject <- lift $ App.call projectId userCompanyId requestData
   case maybeProject of
     Left App.ProjectNotFound -> status notFound404
     Right project -> status created201 >> json (environmentResource project)

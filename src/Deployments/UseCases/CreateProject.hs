@@ -1,12 +1,20 @@
-module Deployments.UseCases.CreateProject where
+module Deployments.UseCases.CreateProject
+  ( Params(..)
+  , ProjectName
+  , ProjectRepo
+  , Project.Project
+  , call
+  ) where
 
 import RIO
 
 import Deployments.Classes (ProjectRepo, createProject)
 import qualified Deployments.Domain.Project as Project
 
+type ProjectName = Project.Name
+
 data Params = Params
-  { projectName :: !Project.Name
+  { projectName :: !ProjectName
   , projectDeploymentImage :: !Project.DeploymentImage
   , companyId :: !Project.CompanyID
   }

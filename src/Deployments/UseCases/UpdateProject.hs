@@ -1,4 +1,9 @@
-module Deployments.UseCases.UpdateProject where
+module Deployments.UseCases.UpdateProject
+  ( Params(..)
+  , ProjectRepo
+  , Project.Project
+  , call
+  ) where
 
 import RIO
 

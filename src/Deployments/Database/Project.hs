@@ -1,5 +1,6 @@
 module Deployments.Database.Project
-  ( createProject
+  ( DBProjectID
+  , createProject
   , findProjectByAccessToken
   , getProject
   , getProjectForBuild
@@ -14,6 +15,16 @@ import Database.PostgreSQL.Simple
 import Common.Database
 import qualified Deployments.Domain.Build as B
 import Deployments.Domain.Project
+import Util.Key (keyText)
+
+class DBProjectID a where
+  toDbId :: a -> Text
+
+instance DBProjectID Text where
+  toDbId = id
+
+instance DBProjectID ID where
+  toDbId = keyText
 
 createProject :: (HasPostgres m) => Project -> m ()
 createProject Project {..} = runDb' q values
@@ -43,9 +54,10 @@ listProjects companyId = map buildProject <$> runQuery q (Only companyId)
       "select id, name, deployment_image, company_id, access_token from projects\
         \ where company_id = ?"
 
-getProject :: (HasPostgres m) => CompanyID -> Text -> m (Maybe Project)
+getProject ::
+     (HasPostgres m, DBProjectID a) => CompanyID -> a -> m (Maybe Project)
 getProject companyId projectId = do
-  result <- runQuery q (companyId, projectId)
+  result <- runQuery q (companyId, toDbId projectId)
   case result of
     [] -> return Nothing
     row:_ -> return . Just $ buildProject row

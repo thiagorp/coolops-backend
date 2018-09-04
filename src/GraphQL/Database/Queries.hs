@@ -2,6 +2,7 @@ module GraphQL.Database.Queries
   ( module GraphQL.Database.Types
   , CompanyID
   , getCompany
+  , getOnboarding
   , listBuilds
   , listBuildsById
   , listEnvironments
@@ -20,6 +21,7 @@ import Database.PostgreSQL.Simple
 import Auth.Domain (CompanyID)
 import Common.Database
 import GraphQL.Database.Types
+import qualified Util.Key as Key
 
 getCompany :: (HasPostgres m) => CompanyID -> m (Maybe Company)
 getCompany companyId = do
@@ -29,7 +31,17 @@ getCompany companyId = do
     row:_ -> return $ Just row
   where
     q =
-      "select id, name, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from companies where id = ?"
+      "select id, name, onboarding_completed, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from companies where id = ?"
+
+getOnboarding :: (HasPostgres m) => CompanyID -> m Onboarding
+getOnboarding companyId = do
+  results <- runQuery q (Only companyId)
+  case results of
+    [] -> return $ Onboarding dbCompanyId Nothing
+    row:_ -> return row
+  where
+    dbCompanyId = ID $ Key.keyText companyId
+    q = "select company_id, project_id from onboardings where company_id = ?"
 
 listBuilds :: (HasPostgres m) => (Int, Int) -> CompanyID -> m [Build]
 listBuilds (limit, offset) companyId = runQuery q (companyId, limit, offset)
@@ -64,8 +76,7 @@ listProjectsById companyId ids = runQuery q (companyId, In ids)
       "select id, name, deployment_image, access_token, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from projects \
       \where company_id = ? and id in ?"
 
-listEnvironments ::
-     (HasPostgres m) => CompanyID -> [ProjectID] -> m [Environment]
+listEnvironments :: (HasPostgres m) => CompanyID -> [ProjectID] -> m [Environment]
 listEnvironments companyId projectIds = runQuery q (companyId, In projectIds)
   where
     q =
@@ -74,8 +85,7 @@ listEnvironments companyId projectIds = runQuery q (companyId, In projectIds)
       \where p.company_id = ? and p.id in ? \
       \order by e.name asc"
 
-listEnvironmentsById ::
-     (HasPostgres m) => CompanyID -> [EnvironmentID] -> m [Environment]
+listEnvironmentsById :: (HasPostgres m) => CompanyID -> [EnvironmentID] -> m [Environment]
 listEnvironmentsById companyId ids = runQuery q (companyId, In ids)
   where
     q =
@@ -83,8 +93,7 @@ listEnvironmentsById companyId ids = runQuery q (companyId, In ids)
       \join projects p on p.id = e.project_id \
       \where p.company_id = ? and e.id in ?"
 
-listEnvsLastDeployments ::
-     (HasPostgres m) => CompanyID -> [EnvironmentID] -> m [Deployment]
+listEnvsLastDeployments :: (HasPostgres m) => CompanyID -> [EnvironmentID] -> m [Deployment]
 listEnvsLastDeployments companyId envIds = runQuery q (companyId, In envIds)
   where
     q =
@@ -94,10 +103,8 @@ listEnvsLastDeployments companyId envIds = runQuery q (companyId, In envIds)
       \where p.company_id = ? and e.id in ? \
       \order by p.id, e.id, d.created_at desc"
 
-listSlackProjectIntegrations ::
-     (HasPostgres m) => CompanyID -> [ProjectID] -> m [SlackProjectIntegration]
-listSlackProjectIntegrations companyId projectIds =
-  runQuery q (companyId, In projectIds)
+listSlackProjectIntegrations :: (HasPostgres m) => CompanyID -> [ProjectID] -> m [SlackProjectIntegration]
+listSlackProjectIntegrations companyId projectIds = runQuery q (companyId, In projectIds)
   where
     q =
       "select spi.project_id, spi.workspace_name from slack_project_integrations spi \
