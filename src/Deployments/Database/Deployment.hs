@@ -73,8 +73,7 @@ convertFinishedtDeploymentStatus status =
     Failed JobFailed -> DbFailed "job_failed"
     Failed JobNotFound -> DbFailed "job_not_found"
 
-getNextQueuedDeployment ::
-     (HasPostgres m) => CompanyID -> m (Maybe QueuedDeployment)
+getNextQueuedDeployment :: (HasPostgres m) => CompanyID -> m (Maybe QueuedDeployment)
 getNextQueuedDeployment companyId = do
   result <- runQuery q (companyId, statusText DbQueued)
   case result of
@@ -89,12 +88,7 @@ getNextQueuedDeployment companyId = do
         \ order by d.created_at asc limit 1\
         \ for update skip locked"
 
-getDeploymentResources ::
-     (HasPostgres m)
-  => CompanyID
-  -> Text
-  -> Text
-  -> m (Maybe DeploymentResources)
+getDeploymentResources :: (HasPostgres m) => CompanyID -> Text -> Text -> m (Maybe DeploymentResources)
 getDeploymentResources cId eId bId = do
   maybeEnvironment <- getEnvironment cId eId
   maybeBuild <- getBuild cId bId
@@ -104,11 +98,9 @@ getDeploymentResources cId eId bId = do
       maybeProject <- getProject cId $ keyText $ buildProjectId build
       case maybeProject of
         Nothing -> return Nothing
-        Just project ->
-          return $ Just $ DeploymentResources project environment build
+        Just project -> return $ Just $ DeploymentResources project environment build
 
-listAllRunningDeployments ::
-     (HasPostgres m) => m [(CompanyID, RunningDeployment)]
+listAllRunningDeployments :: (HasPostgres m) => m [(CompanyID, RunningDeployment)]
 listAllRunningDeployments = do
   results <- runQuery q (Only (statusText DbRunning))
   return $ map buildRunningDeployment results
@@ -124,18 +116,16 @@ saveFinishedDeployment FinishedDeployment {..} = runDb' q values
   where
     q =
       "update deployments set (deployment_finished_at, status, updated_at) =\
-        \ (?, ?, NOW()) where id = ?"
+        \ (?, ?, now() at time zone 'utc') where id = ?"
     values =
-      ( deploymentFinishedAt
-      , statusText $ convertFinishedtDeploymentStatus deploymentStatus
-      , finishedDeploymentId)
+      (deploymentFinishedAt, statusText $ convertFinishedtDeploymentStatus deploymentStatus, finishedDeploymentId)
 
 saveRunningDeployment :: (HasPostgres m) => RunningDeployment -> m ()
 saveRunningDeployment RunningDeployment {..} = runDb' q values
   where
     q =
       "update deployments set (deployment_started_at, status, updated_at) =\
-        \ (?, ?, NOW()) where id = ?"
+        \ (?, ?, now() at time zone 'utc') where id = ?"
     values = (deploymentStartedAt, statusText DbRunning, runningDeploymentId)
 
 createQueuedDeployment :: (HasPostgres m) => QueuedDeployment -> m ()
@@ -143,18 +133,13 @@ createQueuedDeployment QueuedDeployment {..} = runDb' q values
   where
     q =
       "insert into deployments (id, build_id, environment_id, status, created_at, updated_at) values\
-        \ (?, ?, ?, ?, NOW(), NOW())"
-    values =
-      ( deploymentId
-      , deploymentBuildId
-      , deploymentEnvironmentId
-      , statusText DbQueued)
+        \ (?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
+    values = (deploymentId, deploymentBuildId, deploymentEnvironmentId, statusText DbQueued)
 
 type QueuedDeploymentRow = (ID, BuildID, EnvironmentID)
 
 buildQueuedDeployment :: QueuedDeploymentRow -> QueuedDeployment
-buildQueuedDeployment (deploymentId, deploymentBuildId, deploymentEnvironmentId) =
-  QueuedDeployment {..}
+buildQueuedDeployment (deploymentId, deploymentBuildId, deploymentEnvironmentId) = QueuedDeployment {..}
 
 type RunningDeploymentRow = (ID, LocalTime, BuildID, CompanyID)
 

@@ -14,8 +14,7 @@ import Deployments.Domain.Build
 import Deployments.Domain.Project (CompanyID)
 
 listBuilds :: (HasPostgres m) => (Int, Int) -> CompanyID -> m [Build]
-listBuilds (limit, offset) companyId =
-  map build <$> runQuery q (companyId, limit, offset)
+listBuilds (limit, offset) companyId = map build <$> runQuery q (companyId, limit, offset)
   where
     q =
       "select b.id, b.name, b.params, b.metadata, b.project_id from builds b\
@@ -40,13 +39,8 @@ createBuild Build {..} = runDb' q values
   where
     q =
       "insert into builds (id, name, params, metadata, project_id, created_at, updated_at) values\
-        \ (?, ?, ?, ?, ?, NOW(), NOW())"
-    values =
-      ( buildId
-      , buildName
-      , toJSON buildParams
-      , toJSON buildMetadata
-      , buildProjectId)
+        \ (?, ?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
+    values = (buildId, buildName, toJSON buildParams, toJSON buildMetadata, buildProjectId)
 
 type BuildRow = (ID, Name, Value, Value, ProjectID)
 

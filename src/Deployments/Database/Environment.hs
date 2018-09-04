@@ -30,28 +30,23 @@ getEnvironment companyId environmentId = do
         \ where p.company_id = ? and e.id = ?"
 
 listEnvironments :: (HasPostgres m) => CompanyID -> m [Environment]
-listEnvironments companyId =
-  map buildEnvironment <$> runQuery q (Only companyId)
+listEnvironments companyId = map buildEnvironment <$> runQuery q (Only companyId)
   where
     q =
       "select e.id, e.name, e.env_vars, e.project_id from environments e\
         \ left join projects p on p.id = e.project_id\
         \ where p.company_id = ?"
 
-listProjectEnvironments ::
-     (HasPostgres m) => CompanyID -> Text -> m [Environment]
-listProjectEnvironments companyId projectId =
-  map buildEnvironment <$> runQuery q (companyId, projectId)
+listProjectEnvironments :: (HasPostgres m) => CompanyID -> Text -> m [Environment]
+listProjectEnvironments companyId projectId = map buildEnvironment <$> runQuery q (companyId, projectId)
   where
     q =
       "select e.id, e.name, e.env_vars, e.project_id from environments e\
         \ left join projects p on p.id = e.project_id\
         \ where p.company_id = ? and p.id = ?"
 
-listEnvironmentsForProjects ::
-     (HasPostgres m) => CompanyID -> [ProjectID] -> m [Environment]
-listEnvironmentsForProjects companyId projectIds =
-  map buildEnvironment <$> runQuery q (companyId, In projectIds)
+listEnvironmentsForProjects :: (HasPostgres m) => CompanyID -> [ProjectID] -> m [Environment]
+listEnvironmentsForProjects companyId projectIds = map buildEnvironment <$> runQuery q (companyId, In projectIds)
   where
     q =
       "select e.id, e.name, e.env_vars, e.project_id from environments e\
@@ -63,19 +58,15 @@ createEnvironment Environment {..} = runDb' q values
   where
     q =
       "insert into environments (id, name, project_id, env_vars, created_at, updated_at) values\
-        \ (?, ?, ?, ?, NOW(), NOW())"
-    values =
-      ( environmentId
-      , environmentName
-      , environmentProjectId
-      , toJSON environmentEnvVars)
+        \ (?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
+    values = (environmentId, environmentName, environmentProjectId, toJSON environmentEnvVars)
 
 updateEnvironment :: (HasPostgres m) => Environment -> m ()
 updateEnvironment Environment {..} = runDb' q values
   where
     q =
       "update environments set (name, env_vars, updated_at) =\
-        \ (?, ?, NOW()) where id = ?"
+        \ (?, ?, now() at time zone 'utc') where id = ?"
     values = (environmentName, toJSON environmentEnvVars, environmentId)
 
 type EnvironmentRow = (ID, Name, Value, ProjectID)

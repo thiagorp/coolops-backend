@@ -27,11 +27,10 @@ createSlackBuildMessage BuildMessage {..} = runDb' q values
     q =
       "insert into slack_build_messages\
         \ (id, build_id, slack_message_id, created_at, updated_at)\
-        \ values (?, ?, ?, NOW(), NOW())"
+        \ values (?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
     values = (buildMessageId, buildMessageBuildId, buildMessageSlackMessageId)
 
 type Row = (ID, BuildID, Text)
 
 build :: Row -> BuildMessage
-build (buildMessageId, buildMessageBuildId, buildMessageSlackMessageId) =
-  BuildMessage {..}
+build (buildMessageId, buildMessageBuildId, buildMessageSlackMessageId) = BuildMessage {..}

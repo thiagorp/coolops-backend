@@ -31,21 +31,15 @@ createProject Project {..} = runDb' q values
   where
     q =
       "insert into projects (id, name, deployment_image, company_id, access_token, created_at, updated_at) values\
-        \ (?, ?, ?, ?, ?, NOW(), NOW())"
-    values =
-      ( projectId
-      , projectName
-      , projectDeploymentImage
-      , projectCompanyId
-      , projectAccessToken)
+        \ (?, ?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
+    values = (projectId, projectName, projectDeploymentImage, projectCompanyId, projectAccessToken)
 
 updateProject :: (HasPostgres m) => Project -> m ()
-updateProject Project {..} =
-  runDb' q (projectName, projectDeploymentImage, projectId)
+updateProject Project {..} = runDb' q (projectName, projectDeploymentImage, projectId)
   where
     q =
       "update projects set (name, deployment_image, updated_at) =\
-        \ (?, ?, NOW()) where id = ?"
+        \ (?, ?, now() at time zone 'utc') where id = ?"
 
 listProjects :: (HasPostgres m) => CompanyID -> m [Project]
 listProjects companyId = map buildProject <$> runQuery q (Only companyId)
@@ -54,8 +48,7 @@ listProjects companyId = map buildProject <$> runQuery q (Only companyId)
       "select id, name, deployment_image, company_id, access_token from projects\
         \ where company_id = ?"
 
-getProject ::
-     (HasPostgres m, DBProjectID a) => CompanyID -> a -> m (Maybe Project)
+getProject :: (HasPostgres m, DBProjectID a) => CompanyID -> a -> m (Maybe Project)
 getProject companyId projectId = do
   result <- runQuery q (companyId, toDbId projectId)
   case result of
@@ -91,5 +84,4 @@ findProjectByAccessToken accessToken = do
 type ProjectRow = (ID, Name, DeploymentImage, CompanyID, AccessToken)
 
 buildProject :: ProjectRow -> Project
-buildProject (projectId, projectName, projectDeploymentImage, projectCompanyId, projectAccessToken) =
-  Project {..}
+buildProject (projectId, projectName, projectDeploymentImage, projectCompanyId, projectAccessToken) = Project {..}
