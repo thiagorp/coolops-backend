@@ -17,8 +17,7 @@ import Common.Database
 import Deployments.Domain.Project (CompanyID)
 import Slack.Domain.ProjectIntegration
 
-getCompanyIdForBuildsProjectIntegration ::
-     (HasPostgres m) => Text -> Text -> m (Maybe CompanyID)
+getCompanyIdForBuildsProjectIntegration :: (HasPostgres m) => Text -> Text -> m (Maybe CompanyID)
 getCompanyIdForBuildsProjectIntegration teamId buildId = do
   rows <- runQuery q (teamId, buildId)
   case rows of
@@ -37,7 +36,7 @@ createSlackProjectIntegration ProjectIntegration {..} = runDb' q values
     q =
       "insert into slack_project_integrations\
         \ (id, project_id, access_token, workspace_name, app_id, app_user_id, installer_user_id, authorizing_user_id, team_id, channel_id, scopes, created_at, updated_at)\
-        \ values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
+        \ values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
     values =
       Row
         integrationId
@@ -52,8 +51,7 @@ createSlackProjectIntegration ProjectIntegration {..} = runDb' q values
         integrationChannelId
         integrationScopes
 
-getSlackIntegrationForProject ::
-     (HasPostgres m) => ProjectID -> m (Maybe ProjectIntegration)
+getSlackIntegrationForProject :: (HasPostgres m) => ProjectID -> m (Maybe ProjectIntegration)
 getSlackIntegrationForProject projectId = do
   result <- runQuery q (Only projectId)
   case result of
@@ -65,8 +63,7 @@ getSlackIntegrationForProject projectId = do
         \ where project_id = ? limit 1"
 
 deleteSlackProjectIntegration :: (HasPostgres m) => ProjectIntegration -> m ()
-deleteSlackProjectIntegration ProjectIntegration {..} =
-  runDb' q (Only integrationId)
+deleteSlackProjectIntegration ProjectIntegration {..} = runDb' q (Only integrationId)
   where
     q = "delete from slack_project_integrations where id = ?"
 

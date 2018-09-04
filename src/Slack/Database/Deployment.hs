@@ -17,7 +17,7 @@ createSlackDeployment Deployment {..} = runDb' q values
     q =
       "insert into slack_deployments\
         \ (id, build_message_id, deployment_id, slack_user_name, slack_user_id, deployed_at, created_at, updated_at)\
-        \ values (?, ?, ?, ?, ?, ?, NOW(), NOW())"
+        \ values (?, ?, ?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
     values =
       ( deploymentId
       , deploymentBuildMessageId

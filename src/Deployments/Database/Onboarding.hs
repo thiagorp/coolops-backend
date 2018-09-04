@@ -27,9 +27,9 @@ upsertOnboarding Onboarding {..} = runDb' q values
   where
     q =
       "insert into onboardings (id, company_id, project_id, created_at, updated_at)\
-      \ values (?, ?, ?, now(), now())\
+      \ values (?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')\
       \ on conflict (id) do update\
-      \ set project_id = excluded.project_id, updated_at = now()"
+      \ set project_id = excluded.project_id, updated_at = now() at time zone 'utc'"
     values = (onboardingId, onboardingCompanyId, onboardingProjectId)
 
 buildNew :: (MonadIO m) => CompanyID -> m Onboarding

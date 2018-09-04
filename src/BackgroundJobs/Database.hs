@@ -49,7 +49,7 @@ getNextJob = do
   where
     q =
       "select id, name, params, retry_count, next_retry, finished_at, failure_reason from background_jobs\
-        \ where (next_retry is null or next_retry <= now()) and finished_at is null\
+        \ where (next_retry is null or next_retry <= now() at time zone 'utc') and finished_at is null\
         \ order by created_at asc\
         \ limit 1\
         \ for update skip locked"
@@ -57,23 +57,15 @@ getNextJob = do
 create :: (DbMonad m) => Job -> m ()
 create Job {..} = runDb' q values
   where
-    values =
-      ( jobId
-      , jobName
-      , jobParams
-      , jobRetryCount
-      , jobNextRetry
-      , jobFinishedAt
-      , jobFailureReason)
+    values = (jobId, jobName, jobParams, jobRetryCount, jobNextRetry, jobFinishedAt, jobFailureReason)
     q =
       "insert into background_jobs (id, name, params, retry_count, next_retry, finished_at, failure_reason, created_at, updated_at) values\
-        \ (?, ?, ?, ?, ?, ?, ?, now(), now())"
+        \ (?, ?, ?, ?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
 
 update :: (DbMonad m) => Job -> m ()
 update Job {..} = runDb' q values
   where
-    values =
-      (jobRetryCount, jobNextRetry, jobFinishedAt, jobFailureReason, jobId)
+    values = (jobRetryCount, jobNextRetry, jobFinishedAt, jobFailureReason, jobId)
     q =
       "update background_jobs set (retry_count, next_retry, finished_at, failure_reason, updated_at) =\
-        \ (?, ?, ?, ?, now()) where id = ?"
+        \ (?, ?, ?, ?, now() at time zone 'utc') where id = ?"
