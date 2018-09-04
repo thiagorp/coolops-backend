@@ -171,6 +171,7 @@ type DBCompanyID = ID Company
 data Company = Company
   { companyId :: DBCompanyID
   , companyName :: Text
+  , companyOnboardingCompleted :: Bool
   , companyCreatedAt :: Int32
   , companyUpdatedAt :: Int32
   } deriving (Generic, Show)

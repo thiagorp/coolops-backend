@@ -54,7 +54,7 @@ update project = do
 
 call :: AuthenticatedUser -> WebMonad ()
 call (AuthenticatedUser user) = do
-  projectId <- param "id"
+  projectId <- param "id" :: WebMonad Text
   maybeProject <- lift $ getProject (userCompanyId user) projectId
   case maybeProject of
     Just project -> update project

@@ -2,6 +2,7 @@ module Deployments.Classes where
 
 import RIO
 
+import Deployments.Database.Project (DBProjectID)
 import Deployments.Domain.Build (Build)
 import Deployments.Domain.Deployment
   ( DeploymentResources
@@ -17,7 +18,7 @@ class (Monad m) =>
   where
   createProject :: Project -> m ()
   updateProject :: Project -> m ()
-  getProject :: CompanyID -> Text -> m (Maybe Project)
+  getProject :: (DBProjectID a) => CompanyID -> a -> m (Maybe Project)
   getProjectForBuild :: Build -> m (Maybe Project)
   listProjects :: CompanyID -> m [Project]
   findProjectByAccessToken :: Text -> m (Maybe Project)

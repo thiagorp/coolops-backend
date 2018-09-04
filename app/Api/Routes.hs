@@ -15,6 +15,7 @@ import qualified Handlers.ConnectProjectWithSlack as ConnectProjectWithSlack
 import qualified Handlers.CreateBuild as CreateBuild
 import qualified Handlers.CreateDeployment as CreateDeployment
 import qualified Handlers.CreateEnvironment as CreateEnvironment
+import qualified Handlers.CreateOnboardingProject as CreateOnboardingProject
 import qualified Handlers.CreateProject as CreateProject
 import qualified Handlers.GetDeploymentLogs as GetDeploymentLogs
 import qualified Handlers.GraphQL as GraphQL
@@ -66,6 +67,7 @@ routes logger = do
   get "/health" HealthCheck.call
   post "/signup" Handlers.signup
   post "/tokens" Handlers.login
+  post "/onboarding/project" $ userAuth CreateOnboardingProject.call
   post "/projects" $ userAuth CreateProject.call
   patch "/projects/:id" $ userAuth UpdateProject.call
   post "/projects/:project_id/environments" $ userAuth CreateEnvironment.call
