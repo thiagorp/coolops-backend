@@ -43,15 +43,18 @@ getOnboarding companyId = do
     dbCompanyId = ID $ Key.keyText companyId
     q = "select company_id, project_id from onboardings where company_id = ?"
 
-listBuilds :: (HasPostgres m) => (Int, Int) -> CompanyID -> m [Build]
-listBuilds (limit, offset) companyId = runQuery q (companyId, limit, offset)
+listBuilds :: (HasPostgres m) => (Int, Int) -> Maybe ProjectID -> CompanyID -> m [Build]
+listBuilds (limit, offset) maybeProjectId companyId =
+  case maybeProjectId of
+    Just projectId -> runQuery q (companyId, projectId, limit, offset)
+    Nothing -> runQuery q (companyId, limit, offset)
   where
     q =
       "select b.id, b.name, b.params, b.metadata, b.project_id, cast(extract(epoch from b.created_at) as integer), cast(extract(epoch from b.updated_at) as integer) from builds b \
       \join projects p on p.id = b.project_id \
-      \where p.company_id = ? \
-      \limit ? offset ? \
-      \order by b.created_at desc"
+      \where p.company_id = ? " <>
+      maybe "" (const "and b.project_id = ? ") maybeProjectId <>
+      "order by b.created_at desc limit ? offset ?"
 
 listBuildsById :: (HasPostgres m) => CompanyID -> [BuildID] -> m [Build]
 listBuildsById companyId ids = runQuery q (companyId, In ids)

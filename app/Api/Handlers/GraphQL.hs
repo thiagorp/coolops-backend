@@ -23,8 +23,21 @@ import Util.Key as Key
 
 type App = DB.App
 
+newtype ProjectBuildD m =
+  ProjectBuildD (Handler m Build)
+
+data ProjectBuild =
+  ProjectBuild
+
+instance forall m. (Monad m) => HasResolver m ProjectBuild where
+  type Handler m ProjectBuild = ProjectBuildD m
+  resolve (ProjectBuildD rd) = resolve @m @Build rd
+
+instance HasAnnotatedType ProjectBuild where
+  getAnnotatedType = getAnnotatedType @Int
+
 type Project
-   = Object "Project" '[] '[ Field "id" Text, Field "name" Text, Field "deploymentImage" Text, Field "accessToken" Text, Field "environments" (List Environment), Field "slackIntegration" (Maybe SlackProjectIntegration), Field "createdAt" Int32, Field "updatedAt" Int32]
+   = Object "Project" '[] '[ Field "id" Text, Field "name" Text, Field "deploymentImage" Text, Field "accessToken" Text, Field "environments" (List Environment), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List ProjectBuild), Field "slackIntegration" (Maybe SlackProjectIntegration), Field "createdAt" Int32, Field "updatedAt" Int32]
 
 newtype EnvironmentProjectD m =
   EnvironmentProjectD (Handler m Project)
@@ -141,9 +154,9 @@ getUser_ pId = do
     Just e -> userHandler e
     Nothing -> fail "User not found"
 
-listBuilds :: Maybe Int32 -> Maybe Int32 -> Handler App (List Build)
-listBuilds page pageSize =
-  map buildHandler <$> DB.listBuilds (fromIntegral $ fromMaybe 1 page, fromIntegral $ fromMaybe 20 pageSize)
+listBuilds :: Maybe DB.ProjectID -> Maybe Int32 -> Maybe Int32 -> Handler App (List Build)
+listBuilds projectId page pageSize =
+  map buildHandler <$> DB.listBuilds (fromIntegral $ fromMaybe 1 page, fromIntegral $ fromMaybe 20 pageSize) projectId
 
 listEnvironments :: DB.ProjectID -> Handler App (List Environment)
 listEnvironments pId = map environmentHandler <$> DB.listEnvironments pId
@@ -185,6 +198,7 @@ projectHandler DB.Project {..} =
   pure $
   pure (DB.idText projectId) :<> pure projectName :<> pure projectDeploymentImage :<> pure projectAccessToken :<>
   listEnvironments projectId :<>
+  (\x y -> map ProjectBuildD <$> listBuilds (Just projectId) x y) :<>
   getSlackProjectIntegration projectId :<>
   pure projectCreatedAt :<>
   pure projectUpdatedAt
@@ -210,7 +224,7 @@ userHandler DB.User {..} =
 handler :: Auth.User -> Env -> Handler App Query
 handler Auth.User {..} Env {..} =
   pure $
-  (getEnvironment . DB.ID) :<> listProjects :<> listBuilds :<> (getProject . DB.ID) :<>
+  (getEnvironment . DB.ID) :<> listProjects :<> listBuilds Nothing :<> (getProject . DB.ID) :<>
   getSlackConfiguration slackSettings :<>
   getUser_ (DB.ID (Key.keyText userId)) :<>
   getOnboarding

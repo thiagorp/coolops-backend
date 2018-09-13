@@ -66,8 +66,8 @@ getSlackProjectIntegration pId = dataFetch (GetSlackProjectIntegration pId)
 getUser :: Q.UserID -> App (Maybe Q.User)
 getUser uId = dataFetch (GetUser uId)
 
-listBuilds :: (Int, Int) -> App [Q.Build]
-listBuilds = dataFetch . ListBuilds
+listBuilds :: (Int, Int) -> Maybe Q.ProjectID -> App [Q.Build]
+listBuilds pagination projectId = dataFetch (ListBuilds pagination projectId)
 
 listEnvironments :: Q.ProjectID -> App [Q.Environment]
 listEnvironments = dataFetch . ListEnvironments
@@ -86,7 +86,7 @@ data DatabaseQuery a where
   GetSlackProjectIntegration :: Q.ProjectID -> DatabaseQuery (Maybe Q.SlackProjectIntegration)
   GetUser :: Q.UserID -> DatabaseQuery (Maybe Q.User)
   ListProjects :: DatabaseQuery [Q.Project]
-  ListBuilds :: (Int, Int) -> DatabaseQuery [Q.Build]
+  ListBuilds :: (Int, Int) -> Maybe Q.ProjectID -> DatabaseQuery [Q.Build]
   ListEnvironments :: Q.ProjectID -> DatabaseQuery [Q.Environment]
   deriving (Typeable)
 
@@ -95,7 +95,7 @@ deriving instance Eq (DatabaseQuery a)
 instance Hashable (DatabaseQuery a) where
   hashWithSalt s (GetProject a) = hashWithSalt s (0 :: Int, a)
   hashWithSalt s ListProjects = hashWithSalt s (1 :: Int)
-  hashWithSalt s (ListBuilds (page, pageSize)) = hashWithSalt s (2 :: Int, page, pageSize)
+  hashWithSalt s (ListBuilds (page, pageSize) pId) = hashWithSalt s (2 :: Int, page, pageSize, pId)
   hashWithSalt s (ListEnvironments a) = hashWithSalt s (3 :: Int, a)
   hashWithSalt s (GetEnvLastDeployment a) = hashWithSalt s (4 :: Int, a)
   hashWithSalt s (GetBuild a) = hashWithSalt s (5 :: Int, a)
@@ -202,11 +202,11 @@ listEnvironments_ AppEnv {..} blockedFetches = do
 listBuilds_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> IO ()
 listBuilds_ e blockedFetches = mapM_ (paginatedListBuilds_ e) requests
   where
-    requests = [(p, r) | BlockedFetch (ListBuilds p) r <- blockedFetches]
+    requests = [(pagination, projectId, r) | BlockedFetch (ListBuilds pagination projectId) r <- blockedFetches]
 
-paginatedListBuilds_ :: AppEnv -> ((Int, Int), ResultVar [Q.Build]) -> IO ()
-paginatedListBuilds_ AppEnv {..} ((page, pageSize), request) =
-  runFetchAll appEnv [request] (Q.listBuilds (pageSize, (page - 1) * pageSize) currentCompanyId)
+paginatedListBuilds_ :: AppEnv -> ((Int, Int), Maybe Q.ProjectID, ResultVar [Q.Build]) -> IO ()
+paginatedListBuilds_ AppEnv {..} ((page, pageSize), projectId, request) =
+  runFetchAll appEnv [request] (Q.listBuilds (pageSize, (page - 1) * pageSize) projectId currentCompanyId)
   where
     currentCompanyId = userCompanyId currentUser
 
