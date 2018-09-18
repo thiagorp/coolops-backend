@@ -3,6 +3,7 @@ module Deployments.Database.Project
   , createProject
   , findProjectByAccessToken
   , getProject
+  , getProjectBySlug
   , getProjectForBuild
   , listProjects
   , updateProject
@@ -30,22 +31,22 @@ createProject :: (HasPostgres m) => Project -> m ()
 createProject Project {..} = runDb' q values
   where
     q =
-      "insert into projects (id, name, deployment_image, company_id, access_token, created_at, updated_at) values\
-        \ (?, ?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
-    values = (projectId, projectName, projectDeploymentImage, projectCompanyId, projectAccessToken)
+      "insert into projects (id, name, deployment_image, company_id, slug, access_token, created_at, updated_at) values\
+        \ (?, ?, ?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
+    values = (projectId, projectName, projectDeploymentImage, projectCompanyId, projectSlug, projectAccessToken)
 
 updateProject :: (HasPostgres m) => Project -> m ()
-updateProject Project {..} = runDb' q (projectName, projectDeploymentImage, projectId)
+updateProject Project {..} = runDb' q (projectName, projectSlug, projectDeploymentImage, projectId)
   where
     q =
-      "update projects set (name, deployment_image, updated_at) =\
-        \ (?, ?, now() at time zone 'utc') where id = ?"
+      "update projects set (name, slug, deployment_image, updated_at) =\
+        \ (?, ?, ?, now() at time zone 'utc') where id = ?"
 
 listProjects :: (HasPostgres m) => CompanyID -> m [Project]
 listProjects companyId = map buildProject <$> runQuery q (Only companyId)
   where
     q =
-      "select id, name, deployment_image, company_id, access_token from projects\
+      "select id, name, deployment_image, company_id, slug, access_token from projects\
         \ where company_id = ?"
 
 getProject :: (HasPostgres m, DBProjectID a) => CompanyID -> a -> m (Maybe Project)
@@ -56,8 +57,19 @@ getProject companyId projectId = do
     row:_ -> return . Just $ buildProject row
   where
     q =
-      "select id, name, deployment_image, company_id, access_token from projects\
+      "select id, name, deployment_image, company_id, slug, access_token from projects\
         \ where company_id = ? AND id = ?"
+
+getProjectBySlug :: (HasPostgres m) => CompanyID -> Slug -> m (Maybe Project)
+getProjectBySlug companyId slug = do
+  result <- runQuery q (companyId, slug)
+  case result of
+    [] -> return Nothing
+    row:_ -> return . Just $ buildProject row
+  where
+    q =
+      "select id, name, deployment_image, company_id, slug, access_token from projects\
+        \ where company_id = ? AND slug = ?"
 
 getProjectForBuild :: (HasPostgres m) => B.Build -> m (Maybe Project)
 getProjectForBuild build = do
@@ -67,7 +79,7 @@ getProjectForBuild build = do
     row:_ -> return . Just $ buildProject row
   where
     q =
-      "select id, name, deployment_image, company_id, access_token from projects\
+      "select id, name, deployment_image, company_id, slug, access_token from projects\
         \ where id = ?"
 
 findProjectByAccessToken :: (HasPostgres m) => Text -> m (Maybe Project)
@@ -78,10 +90,11 @@ findProjectByAccessToken accessToken = do
     row:_ -> return . Just $ buildProject row
   where
     q =
-      "select id, name, deployment_image, company_id, access_token from projects\
+      "select id, name, deployment_image, company_id, slug, access_token from projects\
         \ where access_token = ?"
 
-type ProjectRow = (ID, Name, DeploymentImage, CompanyID, AccessToken)
+type ProjectRow = (ID, Name, DeploymentImage, CompanyID, Slug, AccessToken)
 
 buildProject :: ProjectRow -> Project
-buildProject (projectId, projectName, projectDeploymentImage, projectCompanyId, projectAccessToken) = Project {..}
+buildProject (projectId, projectName, projectDeploymentImage, projectCompanyId, projectSlug, projectAccessToken) =
+  Project {..}

@@ -33,11 +33,7 @@ required field value = (field, onField field (validateRequired value))
 optional :: (HasFieldName f) => f -> Maybe a -> (f, WebValidation (Maybe a))
 optional field value = (field, onField field (Validation.valid value))
 
-(|>>) ::
-     (HasFieldName f)
-  => (f, WebValidation a)
-  -> (a -> DomainValidation b)
-  -> WebValidation b
+(|>>) :: (HasFieldName f) => (f, WebValidation a) -> (a -> DomainValidation b) -> WebValidation b
 (|>>) (field, preValidated) builder =
   case preValidated of
     Invalid e -> Invalid e
@@ -55,3 +51,4 @@ validationToString v =
     ValidationTooShort m -> "must cointain at least " <> show m <> " characters"
     ValidationRequired -> "is required"
     ValidationInvalidEmail -> "is not a valid email"
+    ValidationInvalidSlug -> "is not a valid slug"

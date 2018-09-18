@@ -4,6 +4,7 @@ import RIO
 import qualified RIO.Text as Text
 
 import Util.EmailAddress
+import Util.Slug
 
 data Validation b a
   = Invalid b
@@ -24,6 +25,7 @@ data ValidationError
   = ValidationTooShort Int
   | ValidationRequired
   | ValidationInvalidEmail
+  | ValidationInvalidSlug
 
 type Validated a = Validation [ValidationError] a
 
@@ -45,6 +47,12 @@ validateMinLength :: Int -> Text -> Validated Text
 validateMinLength size text
   | Text.length text >= size = Valid text
   | otherwise = Invalid [ValidationTooShort size]
+
+validateSlug :: Text -> Validated Slug
+validateSlug s =
+  case slug s of
+    Nothing -> Invalid [ValidationInvalidSlug]
+    Just v -> Valid v
 
 validateEmailAddress :: Text -> Validated EmailAddress
 validateEmailAddress email =
