@@ -5,8 +5,10 @@ module Deployments.Domain.Project
   , DeploymentImage
   , AccessToken
   , CompanyID
+  , Slug
   , buildDeploymentImage
   , buildName
+  , buildSlug
   , genId
   , genAccessToken
   , deploymentImageText
@@ -27,6 +29,7 @@ import System.Random (randomRIO)
 
 import Auth.Domain (CompanyID)
 import Util.Key
+import Util.Slug
 import Util.Validation
 
 type ID = Key Project
@@ -49,6 +52,7 @@ data Project = Project
   , projectDeploymentImage :: !DeploymentImage
   , projectCompanyId :: !CompanyID
   , projectAccessToken :: !AccessToken
+  , projectSlug :: !Slug
   } deriving (Show)
 
 genId :: MonadIO m => m ID
@@ -82,8 +86,10 @@ deploymentImageText :: DeploymentImage -> Text
 deploymentImageText (DeploymentImage text) = text
 
 projectDeploymentImage_ :: Project -> Text
-projectDeploymentImage_ Project {..} =
-  deploymentImageText projectDeploymentImage
+projectDeploymentImage_ Project {..} = deploymentImageText projectDeploymentImage
+
+buildSlug :: Text -> Validated Slug
+buildSlug = validateSlug
 
 genAccessToken :: (MonadIO m) => m AccessToken
 genAccessToken = genAccessToken' 36 ""

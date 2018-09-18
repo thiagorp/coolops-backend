@@ -1,49 +1,45 @@
 module Deployments.UseCases.CreateEnvironment
   ( Params(..)
   , Error(..)
-  , EnvironmentRepo
   , call
-  , call_
   ) where
 
 import RIO
 
-import Deployments.Classes
+import Common.Database (HasPostgres)
+import Deployments.Database.Environment (createEnvironment, getEnvironmentBySlug)
+import Deployments.Database.Project (getProject)
 import qualified Deployments.Domain.Environment as Environment
 import qualified Deployments.Domain.Project as Project
 
 data Params = Params
   { environmentName :: !Environment.Name
   , environmentEnvVars :: !(HashMap Text Text)
+  , environmentSlug :: !Environment.Slug
   }
 
-data Error =
-  ProjectNotFound
+data Error
+  = ProjectNotFound
+  | SlugAlreadyExists
 
-build ::
-     (MonadIO m) => Environment.ProjectID -> Params -> m Environment.Environment
+build :: (MonadIO m) => Environment.ProjectID -> Params -> m Environment.Environment
 build environmentProjectId Params {..} = do
   environmentId <- Environment.genId
   return Environment.Environment {..}
 
-call_ ::
-     (MonadIO m, EnvironmentRepo m)
-  => Project.Project
-  -> Params
-  -> m Environment.Environment
+call_ :: (MonadIO m, HasPostgres m) => Project.Project -> Params -> m (Either Error Environment.Environment)
 call_ Project.Project {..} params = do
-  environment <- build projectId params
-  createEnvironment environment
-  return environment
+  maybeEnvironment <- getEnvironmentBySlug projectCompanyId projectId (environmentSlug params)
+  case maybeEnvironment of
+    Just _ -> return (Left SlugAlreadyExists)
+    Nothing -> do
+      environment <- build projectId params
+      createEnvironment environment
+      return (Right environment)
 
-call ::
-     (MonadIO m, EnvironmentRepo m, ProjectRepo m)
-  => Text
-  -> Project.CompanyID
-  -> Params
-  -> m (Either Error Environment.Environment)
+call :: (MonadIO m, HasPostgres m) => Text -> Project.CompanyID -> Params -> m (Either Error Environment.Environment)
 call pId cId params = do
   maybeProject <- getProject cId pId
   case maybeProject of
     Nothing -> return (Left ProjectNotFound)
-    Just project -> Right <$> call_ project params
+    Just project -> call_ project params

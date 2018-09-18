@@ -1,9 +1,22 @@
-module Deployments.Domain.Environment where
+module Deployments.Domain.Environment
+  ( ID
+  , ProjectID
+  , Name
+  , Environment(..)
+  , Slug
+  , genId
+  , environmentId_
+  , buildName
+  , environmentName_
+  , buildSlug
+  , nameText
+  ) where
 
 import RIO
 
 import qualified Deployments.Domain.Project as Project
 import Util.Key
+import Util.Slug
 import Util.Validation
 
 import Database.PostgreSQL.Simple.FromField (FromField(..))
@@ -22,6 +35,7 @@ data Environment = Environment
   , environmentName :: !Name
   , environmentEnvVars :: !(HashMap Text Text)
   , environmentProjectId :: !ProjectID
+  , environmentSlug :: !Slug
   } deriving (Show)
 
 genId :: MonadIO m => m ID
@@ -35,6 +49,9 @@ buildName name = Name <$> validateMinLength 1 name
 
 environmentName_ :: Environment -> Text
 environmentName_ Environment {..} = nameText environmentName
+
+buildSlug :: Text -> Validated Slug
+buildSlug = validateSlug
 
 nameText :: Name -> Text
 nameText (Name name) = name
