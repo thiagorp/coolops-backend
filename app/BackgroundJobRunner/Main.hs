@@ -22,8 +22,6 @@ loopWith env = do
 main :: IO ()
 main = do
   conn <- pgSettings >>= connectPostgreSQL . pgUrl
-  requestManager <-
-    newTlsManagerWith
-      (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
+  requestManager <- newTlsManagerWith (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
   env <- buildEnv conn requestManager
   loopWith env

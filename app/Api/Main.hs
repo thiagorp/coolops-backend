@@ -33,8 +33,7 @@ exceptionHandler r e = do
   Warp.defaultOnException r e
 
 settings :: Int -> Warp.Settings
-settings port =
-  Warp.setPort port $ Warp.setOnException exceptionHandler Warp.defaultSettings
+settings port = Warp.setPort port $ Warp.setOnException exceptionHandler Warp.defaultSettings
 
 options :: Int -> Options
 options = Options 1 . settings
@@ -42,13 +41,9 @@ options = Options 1 . settings
 main :: IO ()
 main = do
   pool <- acquirePool
-  requestManager <-
-    newTlsManagerWith
-      (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
+  requestManager <- newTlsManagerWith (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
   withResource pool migrateDb
-  logger <-
-    mkRequestLogger
-      def {outputFormat = CustomOutputFormatWithDetails formatAsJSON}
+  logger <- mkRequestLogger def {outputFormat = CustomOutputFormatWithDetails formatAsJSON}
   let runner app =
         withResource pool $ \conn -> do
           env <- buildEnv conn requestManager
