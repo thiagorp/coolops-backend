@@ -36,6 +36,7 @@ type ProjectID = ID Text
 data Project = Project
   { projectId :: ProjectID
   , projectName :: Text
+  , projectSlug :: Text
   , projectDeploymentImage :: Text
   , projectAccessToken :: Text
   , projectCreatedAt :: Int32
@@ -46,6 +47,7 @@ instance FromRow Project where
   fromRow = do
     projectId <- field
     projectName <- field
+    projectSlug <- field
     projectDeploymentImage <- field
     projectAccessToken <- field
     projectCreatedAt <- field

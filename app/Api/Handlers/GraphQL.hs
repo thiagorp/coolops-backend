@@ -37,7 +37,7 @@ instance HasAnnotatedType ProjectBuild where
   getAnnotatedType = getAnnotatedType @Int
 
 type Project
-   = Object "Project" '[] '[ Field "id" Text, Field "name" Text, Field "deploymentImage" Text, Field "accessToken" Text, Field "environments" (List Environment), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List ProjectBuild), Field "slackIntegration" (Maybe SlackProjectIntegration), Field "createdAt" Int32, Field "updatedAt" Int32]
+   = Object "Project" '[] '[ Field "id" Text, Field "name" Text, Field "slug" Text, Field "deploymentImage" Text, Field "accessToken" Text, Field "environments" (List Environment), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List ProjectBuild), Field "slackIntegration" (Maybe SlackProjectIntegration), Field "createdAt" Int32, Field "updatedAt" Int32]
 
 newtype EnvironmentProjectD m =
   EnvironmentProjectD (Handler m Project)
@@ -197,7 +197,8 @@ paramHandler (key, value) = pure $ pure key :<> pure value
 projectHandler :: DB.Project -> Handler App Project
 projectHandler DB.Project {..} =
   pure $
-  pure (DB.idText projectId) :<> pure projectName :<> pure projectDeploymentImage :<> pure projectAccessToken :<>
+  pure (DB.idText projectId) :<> pure projectName :<> pure projectSlug :<> pure projectDeploymentImage :<>
+  pure projectAccessToken :<>
   listEnvironments projectId :<>
   (\x y -> map ProjectBuildD <$> listBuilds (Just projectId) x y) :<>
   getSlackProjectIntegration projectId :<>
