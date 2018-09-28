@@ -57,6 +57,7 @@ type EnvironmentID = ID Environment
 data Environment = Environment
   { envId :: EnvironmentID
   , envName :: Text
+  , envSlug :: Text
   , envEnvVars :: [Param]
   , envProjectId :: ProjectID
   , envCreatedAt :: Int32
@@ -67,6 +68,7 @@ instance FromRow Environment where
   fromRow = do
     envId <- field
     envName <- field
+    envSlug <- field
     envEnvVars <- parseParams <$> field
     envProjectId <- field
     envCreatedAt <- field

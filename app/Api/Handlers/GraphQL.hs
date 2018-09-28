@@ -53,7 +53,7 @@ instance HasAnnotatedType EnvironmentProject where
   getAnnotatedType = getAnnotatedType @Int
 
 type Environment
-   = Object "Environment" '[] '[ Field "id" Text, Field "name" Text, Field "environmentVariables" (List Param), Field "lastDeployment" (Maybe Deployment), Field "project" EnvironmentProject, Field "createdAt" Int32, Field "updatedAt" Int32]
+   = Object "Environment" '[] '[ Field "id" Text, Field "name" Text, Field "slug" Text, Field "environmentVariables" (List Param), Field "lastDeployment" (Maybe Deployment), Field "project" EnvironmentProject, Field "createdAt" Int32, Field "updatedAt" Int32]
 
 type Build
    = Object "Build" '[] '[ Field "id" Text, Field "name" Text, Field "project" Project, Field "params" (List Param), Field "metadata" (List Param), Field "createdAt" Int32, Field "updatedAt" Int32]
@@ -182,7 +182,8 @@ deploymentHandler DB.Deployment {..} =
 environmentHandler :: DB.Environment -> Handler App Environment
 environmentHandler DB.Environment {..} =
   pure $
-  pure (DB.idText envId) :<> pure envName :<> pure (map paramHandler envEnvVars) :<> getEnvLastDeployment envId :<>
+  pure (DB.idText envId) :<> pure envName :<> pure envSlug :<> pure (map paramHandler envEnvVars) :<>
+  getEnvLastDeployment envId :<>
   (EnvironmentProjectD $ getProject_ envProjectId) :<>
   pure envCreatedAt :<>
   pure envUpdatedAt

@@ -7,6 +7,7 @@ import qualified Deployments.Domain.Environment as Environment
 
 data Params = Params
   { paramEnvironmentName :: !Environment.Name
+  , paramEnvironmentSlug :: !Environment.Slug
   , paramEnvironmentEnvVars :: !(HashMap Text Text)
   }
 
@@ -15,13 +16,10 @@ apply project Params {..} =
   project
     { Environment.environmentName = paramEnvironmentName
     , Environment.environmentEnvVars = paramEnvironmentEnvVars
+    , Environment.environmentSlug = paramEnvironmentSlug
     }
 
-call ::
-     (EnvironmentRepo m)
-  => Environment.Environment
-  -> Params
-  -> m Environment.Environment
+call :: (EnvironmentRepo m) => Environment.Environment -> Params -> m Environment.Environment
 call environment params = do
   let updatedEnvironment = apply environment params
   updateEnvironment updatedEnvironment
