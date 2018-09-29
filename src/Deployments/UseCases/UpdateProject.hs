@@ -12,6 +12,7 @@ import qualified Deployments.Domain.Project as Project
 
 data Params = Params
   { paramProjectName :: !Project.Name
+  , paramProjectSlug :: !Project.Slug
   , paramProjectDeploymentImage :: !Project.DeploymentImage
   }
 
@@ -19,6 +20,7 @@ apply :: Project.Project -> Params -> Project.Project
 apply project Params {..} =
   project
     { Project.projectName = paramProjectName
+    , Project.projectSlug = paramProjectSlug
     , Project.projectDeploymentImage = paramProjectDeploymentImage
     }
 

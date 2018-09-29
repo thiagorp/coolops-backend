@@ -10,7 +10,7 @@ import Web.Scotty.Trans
 
 import Authorization (AuthenticatedUser(..), User(..))
 import Deployments.Classes (getProject)
-import Deployments.Domain.Project (Project, buildDeploymentImage, buildName)
+import Deployments.Domain.Project (Project, buildDeploymentImage, buildName, buildSlug)
 import qualified Deployments.UseCases.UpdateProject as App
 import Resources
 import Types
@@ -19,15 +19,18 @@ import Validation
 data Fields
   = Name
   | DeploymentImage
+  | Slug
 
 instance HasFieldName Fields where
   fieldName field =
     case field of
       Name -> "name"
+      Slug -> "slug"
       DeploymentImage -> "deployment_image"
 
 data Request = Request
   { reqProjectName :: !(Maybe Text)
+  , reqProjectSlug :: !(Maybe Text)
   , reqProjectDeploymentImage :: !(Maybe Text)
   }
 
@@ -35,16 +38,16 @@ instance FromJSON Request where
   parseJSON =
     withObject "request params" $ \o -> do
       reqProjectName <- o .:? fieldName Name
+      reqProjectSlug <- o .:? fieldName Slug
       reqProjectDeploymentImage <- o .:? fieldName DeploymentImage
       return Request {..}
 
 builder :: Request -> WebValidation App.Params
-builder Request {..} = App.Params <$> projectName <*> projectDeploymentImage
+builder Request {..} = App.Params <$> projectName <*> projectSlug <*> projectDeploymentImage
   where
     projectName = required Name reqProjectName |>> buildName
-    projectDeploymentImage =
-      required DeploymentImage reqProjectDeploymentImage |>>
-      buildDeploymentImage
+    projectSlug = required Slug reqProjectSlug |>> buildSlug
+    projectDeploymentImage = required DeploymentImage reqProjectDeploymentImage |>> buildDeploymentImage
 
 update :: Project -> WebMonad ()
 update project = do
