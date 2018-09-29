@@ -62,10 +62,10 @@ getSlackIntegrationForProject projectId = do
       "select id, project_id, access_token, workspace_name, app_id, app_user_id, installer_user_id, authorizing_user_id, team_id, channel_id, scopes from slack_project_integrations\
         \ where project_id = ? limit 1"
 
-deleteSlackProjectIntegration :: (HasPostgres m) => ProjectIntegration -> m ()
-deleteSlackProjectIntegration ProjectIntegration {..} = runDb' q (Only integrationId)
+deleteSlackProjectIntegration :: (HasPostgres m) => ProjectID -> m ()
+deleteSlackProjectIntegration projectId = runDb' q (Only projectId)
   where
-    q = "delete from slack_project_integrations where id = ?"
+    q = "delete from slack_project_integrations where project_id = ?"
 
 data Row = Row
   { rowId :: ID

@@ -7,6 +7,7 @@ module Slack.UseCases.IntegrateProjectFromOAuth
 import RIO
 
 import Auth.Domain (CompanyID)
+import Common.Database (HasDBTransaction, runTransaction)
 import Deployments.Database.Project (getProject)
 import Deployments.Domain.Project (Project(..))
 import Slack.Api.OAuth
@@ -23,8 +24,7 @@ data Params = Params
   , oAuthCode :: !Text
   }
 
-build ::
-     (MonadIO m) => ProjectID -> WorkspaceTokenResponse -> m ProjectIntegration
+build :: (MonadIO m) => ProjectID -> WorkspaceTokenResponse -> m ProjectIntegration
 build integrationProjectId WorkspaceTokenResponse {..} = do
   integrationId <- genId
   let integrationAccessToken = tokenAccessToken
@@ -38,10 +38,7 @@ build integrationProjectId WorkspaceTokenResponse {..} = do
       integrationScopes = tokenScopes
   return ProjectIntegration {..}
 
-call ::
-     (HasPostgres m, SlackClientMonad m)
-  => Params
-  -> m (Either Error ProjectIntegration)
+call :: (HasPostgres m, HasDBTransaction m, SlackClientMonad m) => Params -> m (Either Error ProjectIntegration)
 call Params {..} = do
   maybeProject <- getProject companyId pId
   case maybeProject of
@@ -53,5 +50,7 @@ call Params {..} = do
         Left (UnexpectedHttpStatusError _) -> return $ Left CouldNotExchangeCode
         Right response -> do
           slackProjectIntegration <- build projectId response
-          createSlackProjectIntegration slackProjectIntegration
+          runTransaction $ do
+            deleteSlackProjectIntegration projectId
+            createSlackProjectIntegration slackProjectIntegration
           return $ Right slackProjectIntegration
