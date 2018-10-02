@@ -4,6 +4,7 @@
 
 module Api.Handler
   ( Handler
+  , module Yesod.Core
   ) where
 
 import Env

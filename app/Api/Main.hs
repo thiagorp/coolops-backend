@@ -14,9 +14,9 @@ import Network.Wai.Middleware.Cors
 import Network.Wai.Middleware.Gzip
 import Network.Wai.Middleware.RequestLogger
 import Network.Wai.Middleware.RequestLogger.JSON
-import Yesod.Core
 
-import Application
+import Api.Handler
+
 import Common.Config (appPort)
 import Common.Database (migrateDb)
 import Env

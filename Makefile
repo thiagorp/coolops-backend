@@ -22,7 +22,7 @@ notify_coolops:
 	coolops build:new ${BUILD_NAME} -t ${COOLOPS_PRODUCTION_API_TOKEN} -p DOCKER_IMAGE=${RELEASE_DOCKER_IMG} -m "Job url"="${JOB_URL}"
 
 
-dev-api:
+dev:
 	ghcid --command "stack ghci api:lib api:exe:api-exe"
 
 

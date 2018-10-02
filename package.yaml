@@ -27,6 +27,10 @@ dependencies:
 - yaml
 - yesod
 - yesod-core
+- wai
+- wai-cors
+- wai-extra
+- warp
 
 ghc-options:
 - -Wall
@@ -90,10 +94,6 @@ executables:
     - api
     - data-default-class
     - megaparsec
-    - wai
-    - wai-cors
-    - wai-extra
-    - warp
 
   deployment-runner:
     main:                Main.hs
