@@ -20,6 +20,7 @@ data Error
   = NoDeploymentToRun
   | MissingEntities
   | FailedToRunJob
+  deriving (Show)
 
 type CallMonad m = (HasDBTransaction m, HasPostgres m, RunDeploymentMonad m, Background.NotifyBuildConstraint m)
 
