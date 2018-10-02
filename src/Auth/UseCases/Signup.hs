@@ -7,7 +7,7 @@ module Auth.UseCases.Signup
 
 import RIO
 
-import Auth.Classes
+import Auth.Database
 import Auth.Domain
 import Common.Database
 
@@ -39,7 +39,7 @@ signupToCompany p = do
   companyId <- genID
   return Company {..}
 
-type SignupMonad m = (MonadIO m, UserRepo m, CompanyRepo m, HasDBTransaction m)
+type SignupMonad m = (MonadIO m, HasPostgres m, HasDBTransaction m)
 
 signup :: SignupMonad m => Params -> m (Either SignupError (User, Company))
 signup params = do

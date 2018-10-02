@@ -1,19 +1,11 @@
-module Handlers.CreateEnvironment
-  ( call
+module Api.Handlers.CreateEnvironment
+  ( postProjectsEnvironmentsR
   ) where
 
-import RIO
+import Api.Import
 
-import Data.Aeson hiding (json)
-import Network.HTTP.Types.Status (conflict409, created201, notFound404)
-import Web.Scotty.Trans
-
-import Authorization (AuthenticatedUser(..), User(..))
 import Deployments.Domain.Environment (buildName, buildSlug)
 import qualified Deployments.UseCases.CreateEnvironment as App
-import Resources
-import Types
-import Validation
 
 data Fields
   = Name
@@ -44,16 +36,18 @@ instance FromJSON Request where
 builder :: Request -> WebValidation App.Params
 builder Request {..} = App.Params <$> environmentName <*> environmentEnvVars <*> environmentSlug
   where
-    environmentName = required Name reqEnvironmentName |>> buildName
-    environmentEnvVars = required EnvVars reqEnvironmentEnvVars |>> valid
-    environmentSlug = required Slug reqEnvironmentSlug |>> buildSlug
+    environmentName = required_ Name reqEnvironmentName |>> buildName
+    environmentEnvVars = required_ EnvVars reqEnvironmentEnvVars |>> valid
+    environmentSlug = required_ Slug reqEnvironmentSlug |>> buildSlug
 
-call :: AuthenticatedUser -> WebMonad ()
-call (AuthenticatedUser User {..}) = do
-  projectId <- param "project_id"
-  requestData <- jsonData >>= parseRequest builder
-  maybeProject <- lift $ App.call projectId userCompanyId requestData
+call :: Text -> AuthenticatedUser -> Handler Value
+call projectId (AuthenticatedUser User {..}) = do
+  requestData <- requireJsonBody >>= parseValidatedRequest builder
+  maybeProject <- App.call projectId userCompanyId requestData
   case maybeProject of
-    Left App.ProjectNotFound -> status notFound404
-    Left App.SlugAlreadyExists -> status conflict409
-    Right project -> status created201 >> json (environmentResource project)
+    Left App.ProjectNotFound -> notFound
+    Left App.SlugAlreadyExists -> sendResponseStatus conflict409 ()
+    Right project -> sendStatusJSON created201 $ toJSON (environmentResource project)
+
+postProjectsEnvironmentsR :: Text -> Handler Value
+postProjectsEnvironmentsR projectId = userAuth (call projectId)

@@ -5,8 +5,9 @@ module Auth.UseCases.Login
 
 import RIO
 
-import Auth.Classes (UserRepo, findUserByEmail)
+import Auth.Database
 import Auth.Domain (RawPassword, User, UserEmail, authenticate)
+import Common.Database
 
 data Params = Params
   { paramEmail :: !UserEmail
@@ -19,7 +20,7 @@ verify password user =
     then Just user
     else Nothing
 
-login :: (UserRepo m, Monad m) => Params -> m (Maybe User)
+login :: (HasPostgres m) => Params -> m (Maybe User)
 login Params {..} = do
   maybeUser <- findUserByEmail paramEmail
   return $ maybeUser >>= verify paramPassword

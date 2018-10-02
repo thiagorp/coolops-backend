@@ -1,11 +1,11 @@
-module Validation
+module Api.Validation
   ( module Util.Validation
   , HasFieldName(..)
   , WebValidation
   , WebValidationError
   , (|>>)
-  , optional
-  , required
+  , optional_
+  , required_
   , validationToString
   , Validation.valid
   , Validation.withDefault
@@ -27,11 +27,11 @@ type WebValidation a = Validation WebValidationError a
 class HasFieldName field where
   fieldName :: field -> Text
 
-required :: (HasFieldName f) => f -> Maybe a -> (f, WebValidation a)
-required field value = (field, onField field (validateRequired value))
+required_ :: (HasFieldName f) => f -> Maybe a -> (f, WebValidation a)
+required_ field value = (field, onField field (validateRequired value))
 
-optional :: (HasFieldName f) => f -> Maybe a -> (f, WebValidation (Maybe a))
-optional field value = (field, onField field (Validation.valid value))
+optional_ :: (HasFieldName f) => f -> Maybe a -> (f, WebValidation (Maybe a))
+optional_ field value = (field, onField field (Validation.valid value))
 
 (|>>) :: (HasFieldName f) => (f, WebValidation a) -> (a -> DomainValidation b) -> WebValidation b
 (|>>) (field, preValidated) builder =

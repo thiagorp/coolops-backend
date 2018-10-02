@@ -10,7 +10,7 @@ import Control.Monad.Except
 
 import qualified BackgroundJobs.AppJobs as Background
 import Common.Database
-import Deployments.Classes
+import Deployments.Database.Deployment (getDeploymentResources, getNextQueuedDeployment, saveRunningDeployment)
 import Deployments.Domain.Deployment
 import Deployments.Domain.Project (CompanyID)
 import Deployments.Gateway.Kubernetes
@@ -20,20 +20,14 @@ data Error
   = NoDeploymentToRun
   | MissingEntities
   | FailedToRunJob
+  deriving (Show)
 
-type CallMonad m
-   = ( HasDBTransaction m
-     , DeploymentRepo m
-     , RunDeploymentMonad m
-     , Background.NotifyBuildConstraint m)
+type CallMonad m = (HasDBTransaction m, HasPostgres m, RunDeploymentMonad m, Background.NotifyBuildConstraint m)
 
 type RunMonad m a = ExceptT Error m a
 
 runNext ::
-     (DeploymentRepo m, RunDeploymentMonad m)
-  => QueuedDeployment
-  -> DeploymentResources
-  -> RunMonad m RunningDeployment
+     (HasPostgres m, RunDeploymentMonad m) => QueuedDeployment -> DeploymentResources -> RunMonad m RunningDeployment
 runNext queued resources = do
   running <- run queued
   result <- lift $ runDeployment queued resources
@@ -42,30 +36,20 @@ runNext queued resources = do
     then return running
     else throwError FailedToRunJob
 
-getDeploymentResources_ ::
-     DeploymentRepo m
-  => CompanyID
-  -> QueuedDeployment
-  -> RunMonad m DeploymentResources
+getDeploymentResources_ :: HasPostgres m => CompanyID -> QueuedDeployment -> RunMonad m DeploymentResources
 getDeploymentResources_ cId QueuedDeployment {..} =
   handleEntity MissingEntities $
-  getDeploymentResources
-    cId
-    (keyText deploymentEnvironmentId)
-    (keyText deploymentBuildId)
+  getDeploymentResources cId (keyText deploymentEnvironmentId) (keyText deploymentBuildId)
 
-getNextQueuedDeployment_ ::
-     DeploymentRepo m => CompanyID -> RunMonad m QueuedDeployment
-getNextQueuedDeployment_ cId =
-  handleEntity NoDeploymentToRun $ getNextQueuedDeployment cId
+getNextQueuedDeployment_ :: HasPostgres m => CompanyID -> RunMonad m QueuedDeployment
+getNextQueuedDeployment_ cId = handleEntity NoDeploymentToRun $ getNextQueuedDeployment cId
 
 call_ :: CallMonad m => CompanyID -> RunMonad m RunningDeployment
 call_ companyId = do
   deployment <- getNextQueuedDeployment_ companyId
   resources <- getDeploymentResources_ companyId deployment
   running <- runNext deployment resources
-  lift $
-    Background.notifyBuild companyId (keyText $ deploymentBuildId deployment)
+  lift $ Background.notifyBuild companyId (keyText $ deploymentBuildId deployment)
   return running
 
 call :: CallMonad m => CompanyID -> m (Either Error RunningDeployment)

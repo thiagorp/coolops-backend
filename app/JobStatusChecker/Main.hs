@@ -2,18 +2,18 @@ module Main where
 
 import RIO
 
-import Database.PostgreSQL.Simple
 import Network.Connection (TLSSettings(..))
 import Network.HTTP.Client.TLS
 
-import Common.App
-import Common.Config (PGSettings(..), pgSettings)
 import Deployments.Database.Deployment as DB
-import Deployments.Domain.Deployment hiding (run)
+import Deployments.Domain.Deployment
 import qualified Deployments.UseCases.FinishDeployment as App
+import Env
 import qualified Kubernetes.Job as Job
 import qualified Kubernetes.Pod as Pod
 import Util.Key
+
+type AppT = RIO Env
 
 data DeploymentJobStatus
   = StillRunning
@@ -29,8 +29,7 @@ deploymentPodStatus Job.Job {..} = do
         Nothing -> return StillRunning
         Just Pod.Running -> return StillRunning
         Just Pod.Terminated -> return StillRunning
-        Just (Pod.Waiting "ImagePullBackOff") ->
-          return $ Finished (Failed InvalidDockerImage)
+        Just (Pod.Waiting "ImagePullBackOff") -> return $ Finished (Failed InvalidDockerImage)
         Just (Pod.Waiting _) -> return StillRunning
 
 deploymentJobStatus :: RunningDeployment -> AppT DeploymentJobStatus
@@ -58,15 +57,12 @@ app = do
 
 loopWith :: Env -> IO ()
 loopWith env = do
-  run app env
+  runRIO env app
   threadDelay 1000000
   loopWith env
 
 main :: IO ()
 main = do
-  conn <- pgSettings >>= connectPostgreSQL . pgUrl
-  requestManager <-
-    newTlsManagerWith
-      (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
-  env <- buildEnv conn requestManager
+  requestManager <- newTlsManagerWith (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
+  env <- buildEnv 1 requestManager
   loopWith env

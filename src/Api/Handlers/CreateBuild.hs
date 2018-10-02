@@ -1,19 +1,13 @@
-module Handlers.CreateBuild
-  ( call
+module Api.Handlers.CreateBuild
+  ( postBuildsR
   ) where
 
-import RIO hiding (optional)
+import Api.Import
+
 import qualified RIO.HashMap as HashMap
 
-import Data.Aeson hiding (json)
-import Network.HTTP.Types.Status (created201)
-import Web.Scotty.Trans
-
-import Authorization (AuthenticatedProject(..), Project(..))
 import Deployments.Domain.Build (buildBuildName)
 import qualified Deployments.UseCases.CreateBuild as App
-import Types
-import Validation
 
 data Fields
   = Name
@@ -42,16 +36,17 @@ instance FromJSON Request where
       return Request {..}
 
 builder :: Project -> Request -> WebValidation App.Params
-builder project Request {..} =
-  App.Params <$> buildName <*> buildParams <*> buildMetadata <*> pure project
+builder project Request {..} = App.Params <$> buildName <*> buildParams <*> buildMetadata <*> pure project
   where
-    buildName = required Name reqBuildName |>> buildBuildName
-    buildParams = required Params reqBuildParams |>> valid
-    buildMetadata =
-      optional Metadata reqBuildMetadata |>> withDefault HashMap.empty
+    buildName = required_ Name reqBuildName |>> buildBuildName
+    buildParams = required_ Params reqBuildParams |>> valid
+    buildMetadata = optional_ Metadata reqBuildMetadata |>> withDefault HashMap.empty
 
-call :: AuthenticatedProject -> WebMonad ()
+call :: AuthenticatedProject -> Handler ()
 call (AuthenticatedProject project) = do
-  requestData <- jsonData >>= parseRequest (builder project)
-  _ <- lift $ App.call requestData
-  status created201
+  requestData <- requireJsonBody >>= parseValidatedRequest (builder project)
+  _ <- App.call requestData
+  sendResponseStatus created201 ()
+
+postBuildsR :: Handler ()
+postBuildsR = projectAuth call

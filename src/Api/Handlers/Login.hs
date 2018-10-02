@@ -1,17 +1,11 @@
-module Handlers.Login
-  ( login
+module Api.Handlers.Login
+  ( postTokensR
   ) where
 
-import RIO
-
-import Data.Aeson hiding (json)
-import Network.HTTP.Types.Status (unauthorized401)
-import Web.Scotty.Trans
+import Api.Import
 
 import Auth.Domain
 import qualified Auth.UseCases.Login as App
-import Types (WebMonad, parseRequest)
-import Validation
 
 data Fields
   = Email
@@ -45,18 +39,18 @@ instance ToJSON Response where
 builder :: Request -> WebValidation App.Params
 builder Request {..} = App.Params <$> email <*> password
   where
-    email = required Email reqEmail |>> buildEmailAddress
-    password = required Password reqPassword |>> buildPassword
+    email = required_ Email reqEmail |>> buildEmailAddress
+    password = required_ Password reqPassword |>> buildPassword
 
-buildResponse :: User -> WebMonad Response
+buildResponse :: User -> Handler Response
 buildResponse User {..} = do
   resAccessToken <- accessTokenTextM userAccessToken
   return Response {..}
 
-login :: WebMonad ()
-login = do
-  requestData <- jsonData >>= parseRequest builder
-  result <- lift $ App.login requestData
+postTokensR :: Handler Value
+postTokensR = do
+  requestData <- requireJsonBody >>= parseValidatedRequest builder
+  result <- App.login requestData
   case result of
-    Just u -> buildResponse u >>= json
-    Nothing -> status unauthorized401
+    Just u -> toJSON <$> buildResponse u
+    Nothing -> sendResponseStatus unauthorized401 ()

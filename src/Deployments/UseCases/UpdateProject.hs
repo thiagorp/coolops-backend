@@ -1,13 +1,13 @@
 module Deployments.UseCases.UpdateProject
   ( Params(..)
-  , ProjectRepo
   , Project.Project
   , call
   ) where
 
 import RIO
 
-import Deployments.Classes (ProjectRepo, updateProject)
+import Common.Database
+import Deployments.Database.Project (updateProject)
 import qualified Deployments.Domain.Project as Project
 
 data Params = Params
@@ -24,7 +24,7 @@ apply project Params {..} =
     , Project.projectDeploymentImage = paramProjectDeploymentImage
     }
 
-call :: (ProjectRepo m) => Project.Project -> Params -> m Project.Project
+call :: (HasPostgres m) => Project.Project -> Params -> m Project.Project
 call project params = do
   let updatedProject = apply project params
   updateProject updatedProject

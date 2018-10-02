@@ -25,6 +25,12 @@ dependencies:
 - time
 - uuid
 - yaml
+- yesod
+- yesod-core
+- wai
+- wai-cors
+- wai-extra
+- warp
 
 ghc-options:
 - -Wall
@@ -87,29 +93,6 @@ executables:
     dependencies:
     - api
     - data-default-class
-    - megaparsec
-    - scotty
-    - wai
-    - wai-cors
-    - wai-extra
-    - warp
-
-  slack-api:
-    main:                Main.hs
-    source-dirs:         app/SlackApi
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - api
-    - data-default-class
-    - megaparsec
-    - scotty
-    - wai
-    - wai-cors
-    - wai-extra
-    - warp
 
   deployment-runner:
     main:                Main.hs

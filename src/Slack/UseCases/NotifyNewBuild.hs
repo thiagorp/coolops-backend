@@ -16,12 +16,12 @@ import Data.UUID (toText)
 import Common.Config (frontendBaseUrl)
 import Common.Database (HasPostgres)
 import Database.Queries.SlackBuildMessageData
-import Deployments.Classes
+import Deployments.Database.Build (getBuild)
 import qualified Deployments.Domain.Build as B
 import qualified Deployments.Domain.Project as P
 import Slack.Api.ChatMessages
 import Slack.Api.Message
-import Slack.Classes
+import Slack.Database.BuildMessage (createSlackBuildMessage, getSlackBuildMessage)
 import Slack.Database.ProjectIntegration (getSlackIntegrationForProject)
 import Slack.Domain.BuildMessage
 import Slack.Domain.ProjectIntegration hiding (genId)
@@ -32,38 +32,22 @@ data Error
   | BuildNotFound
   | SlackConfigNotFound
 
-saveSlackBuildMessage ::
-     (SlackBuildMessageRepo m, MonadIO m) => B.ID -> Text -> m ()
+saveSlackBuildMessage :: (HasPostgres m) => B.ID -> Text -> m ()
 saveSlackBuildMessage buildMessageBuildId buildMessageSlackMessageId = do
   buildMessageId <- genId
   createSlackBuildMessage BuildMessage {..}
 
-createMessage ::
-     (SlackClientMonad m, SlackBuildMessageRepo m)
-  => ProjectIntegration
-  -> B.Build
-  -> Message
-  -> m ()
+createMessage :: (SlackClientMonad m, HasPostgres m) => ProjectIntegration -> B.Build -> Message -> m ()
 createMessage ProjectIntegration {..} B.Build {..} m = do
   maybeResponseTs <- postMessage integrationAccessToken integrationChannelId m
   forM_ maybeResponseTs (saveSlackBuildMessage buildId)
 
-sendMessage ::
-     (SlackClientMonad m, SlackBuildMessageRepo m)
-  => ProjectIntegration
-  -> B.Build
-  -> Message
-  -> m ()
+sendMessage :: (SlackClientMonad m, HasPostgres m) => ProjectIntegration -> B.Build -> Message -> m ()
 sendMessage config@ProjectIntegration {..} build@B.Build {..} m = do
   maybeExistingMesage <- getSlackBuildMessage buildId
   case maybeExistingMesage of
     Nothing -> createMessage config build m
-    Just BuildMessage {..} ->
-      updateMessage
-        integrationAccessToken
-        integrationChannelId
-        buildMessageSlackMessageId
-        m
+    Just BuildMessage {..} -> updateMessage integrationAccessToken integrationChannelId buildMessageSlackMessageId m
 
 handleEntity :: Monad m => Error -> m (Maybe a) -> ExceptT Error m a
 handleEntity e wrappedEntity = do
@@ -73,14 +57,12 @@ handleEntity e wrappedEntity = do
     Just a -> return a
 
 getSlackConfig_ :: HasPostgres m => P.ID -> ExceptT Error m ProjectIntegration
-getSlackConfig_ projectId =
-  handleEntity SlackConfigNotFound (getSlackIntegrationForProject projectId)
+getSlackConfig_ projectId = handleEntity SlackConfigNotFound (getSlackIntegrationForProject projectId)
 
-getBuild_ :: BuildRepo m => P.CompanyID -> Text -> ExceptT Error m B.Build
+getBuild_ :: HasPostgres m => P.CompanyID -> Text -> ExceptT Error m B.Build
 getBuild_ cId bId = handleEntity BuildNotFound (getBuild cId bId)
 
-type CallConstraint m
-   = (HasPostgres m, BuildRepo m, SlackBuildMessageRepo m, SlackClientMonad m)
+type CallConstraint m = (HasPostgres m, HasPostgres m, SlackClientMonad m)
 
 colorOf :: DbStatus -> Maybe Text
 colorOf status =
@@ -92,14 +74,11 @@ colorOf status =
 
 buildMessage :: Text -> MessageData -> Message
 buildMessage appBaseUrl MessageData {..} =
-  slackMessage
-    {messageText = Just messageText, messageAttachments = Just attachments}
+  slackMessage {messageText = Just messageText, messageAttachments = Just attachments}
   where
-    messageText =
-      "*" <> dataProjectName <> "* has a new build: *" <> dataBuildName <> "*"
+    messageText = "*" <> dataProjectName <> "* has a new build: *" <> dataBuildName <> "*"
     attachments =
-      [deploymentButtons] <>
-      [buildMetadataRow (HashMap.toList dataBuildMetadata)] <>
+      [deploymentButtons] <> [buildMetadataRow (HashMap.toList dataBuildMetadata)] <>
       map buildDeploymentRow dataSlackDeployments
     deploymentButtons =
       slackAttachment
@@ -110,21 +89,14 @@ buildMessage appBaseUrl MessageData {..} =
     buildMetadataRow fields =
       slackAttachment
         { attachmentMarkdown = Just ["fields"]
-        , attachmentFields =
-            Just $
-            map (\(t, v) -> slackField {fieldValue = v, fieldTitle = t}) fields
+        , attachmentFields = Just $ map (\(t, v) -> slackField {fieldValue = v, fieldTitle = t}) fields
         }
     buildDeploymentRow SlackDeployment {..} =
       slackAttachment
-        { attachmentText =
-            Just $
-            "<@" <> deploymentUserId <> "> deployed to *" <>
-            deploymentEnvironmentName <>
-            "*"
+        { attachmentText = Just $ "<@" <> deploymentUserId <> "> deployed to *" <> deploymentEnvironmentName <> "*"
         , attachmentFooter =
             Just $
-            "<!date^" <>
-            Text.pack (formatTime defaultTimeLocale "%s" deploymentTime) <>
+            "<!date^" <> Text.pack (formatTime defaultTimeLocale "%s" deploymentTime) <>
             "^{date_pretty} - {time}|Deployment time conversion failed> | " <>
             "<" <>
             appBaseUrl <>
@@ -140,14 +112,9 @@ buildMessage appBaseUrl MessageData {..} =
         , actionValue = toText environmentId
         }
 
-message_ ::
-     (MonadIO m, HasPostgres m)
-  => P.CompanyID
-  -> Text
-  -> ExceptT Error m Message
+message_ :: (MonadIO m, HasPostgres m) => P.CompanyID -> Text -> ExceptT Error m Message
 message_ cId bId = do
-  messageData <-
-    handleEntity MessageDataNotFound (getSlackBuildMessageData cId bId)
+  messageData <- handleEntity MessageDataNotFound (getSlackBuildMessageData cId bId)
   appBaseUrl <- frontendBaseUrl
   return $ buildMessage appBaseUrl messageData
 
