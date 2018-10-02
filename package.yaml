@@ -93,7 +93,6 @@ executables:
     dependencies:
     - api
     - data-default-class
-    - megaparsec
 
   deployment-runner:
     main:                Main.hs
