@@ -2,7 +2,8 @@ module Deployments.UseCases.UpdateEnvironment where
 
 import RIO
 
-import Deployments.Classes (EnvironmentRepo, updateEnvironment)
+import Common.Database
+import Deployments.Database.Environment (updateEnvironment)
 import qualified Deployments.Domain.Environment as Environment
 
 data Params = Params
@@ -19,7 +20,7 @@ apply project Params {..} =
     , Environment.environmentSlug = paramEnvironmentSlug
     }
 
-call :: (EnvironmentRepo m) => Environment.Environment -> Params -> m Environment.Environment
+call :: (HasPostgres m) => Environment.Environment -> Params -> m Environment.Environment
 call environment params = do
   let updatedEnvironment = apply environment params
   updateEnvironment updatedEnvironment

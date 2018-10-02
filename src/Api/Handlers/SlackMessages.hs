@@ -1,18 +1,12 @@
-module Handlers.Messages
-  ( call
+module Api.Handlers.SlackMessages
+  ( postSlackMessagesR
   ) where
 
-import RIO
-import qualified RIO.Text.Lazy as LText
+import Api.Import
 
-import Data.Aeson hiding (json)
-import Network.HTTP.Types.Status (status400, status401)
-import Web.Scotty.Trans
-
-import qualified Handlers.MessageButtons.DeployBuild as DeployBuild
+import qualified Api.Handlers.SlackMessageButtons.DeployBuild as DeployBuild
 import Slack.Api.Classes
 import Slack.MessageButtons
-import Types
 
 data Request = Request
   { reqMessageType :: !MessageButtonAction
@@ -42,31 +36,24 @@ instance FromJSON Request where
           _ -> fail "Only one action is supported"
       return Request {..}
 
-verifyToken :: Text -> WebHandler ()
+verifyToken :: Text -> Handler ()
 verifyToken token = do
-  configToken <- lift slackVerificationToken
-  if token == configToken
-    then return ()
-    else status status401 >> finish
+  configToken <- slackVerificationToken
+  unless (token == configToken) notAuthenticated
 
-handleMessage :: Request -> WebHandler ()
+handleMessage :: Request -> Handler ()
 handleMessage Request {..} =
   case reqMessageType of
-    DeployBuild buildId ->
-      DeployBuild.call
-        reqActionValue
-        buildId
-        reqTeamId
-        (reqSenderId, reqSenderName)
+    DeployBuild buildId -> DeployBuild.call reqActionValue buildId reqTeamId (reqSenderId, reqSenderName)
 
-process :: Request -> WebHandler ()
+process :: Request -> Handler ()
 process req@Request {..} = do
   verifyToken reqVerificationToken
   handleMessage req
 
-call :: WebHandler ()
-call = do
-  eitherReq <- eitherDecode <$> param "payload"
-  case eitherReq of
-    Right req -> process req
-    Left err -> text (LText.pack err) >> status status400
+postSlackMessagesR :: Handler ()
+postSlackMessagesR = do
+  maybeRequest <- lookupPostParam "payload"
+  case encodeUtf8 <$> maybeRequest >>= decodeStrict of
+    Nothing -> sendResponseStatus status400 ("Invalid request" :: Text)
+    Just request -> process request

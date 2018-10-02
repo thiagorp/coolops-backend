@@ -25,9 +25,6 @@ notify_coolops:
 dev-api:
 	ghcid --command "stack ghci api:lib api:exe:api-exe"
 
-dev-slack-api:
-	ghcid --command "stack ghci api:lib api:exe:slack-api"
-
 
 run-tests:
 	ghcid --command "stack ghci api:lib api:test:api-test" --test "main"
@@ -38,8 +35,7 @@ live-backend:
 
 run:
 	stack build --fast
-	stack exec slack-api | sed -e 's/^/[Slack Api] /' & \
-		stack exec deployment-runner | sed -e 's/^/[Deployment Runner] /' & \
+	stack exec deployment-runner | sed -e 's/^/[Deployment Runner] /' & \
 		stack exec job-status-checker | sed -e 's/^/[Job Status Checker] /' & \
 		stack exec background-job-runner | sed -e 's/^/[Background Jobs Runner] /' & \
 		stack exec api-exe | sed -e 's/^/[Api] /' &

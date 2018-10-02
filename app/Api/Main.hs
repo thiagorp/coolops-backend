@@ -6,26 +6,20 @@ import qualified RIO.Text as T
 
 import Data.Default.Class (def)
 import Data.Pool
-import Database.PostgreSQL.Simple
 import Network.Connection (TLSSettings(..))
 import Network.HTTP.Client.TLS
-import Network.Wai (Request)
+import Network.Wai (Middleware, Request)
 import qualified Network.Wai.Handler.Warp as Warp
+import Network.Wai.Middleware.Cors
+import Network.Wai.Middleware.Gzip
 import Network.Wai.Middleware.RequestLogger
 import Network.Wai.Middleware.RequestLogger.JSON
-import Web.Scotty.Trans (Options(Options), scottyOptsT)
+import Yesod.Core
 
-import Common.App
-import Common.Config (PGSettings(..), appPort, pgSettings)
+import Application
+import Common.Config (appPort)
 import Common.Database (migrateDb)
-import Routes (routes)
-
-acquirePool :: IO (Pool Connection)
-acquirePool = do
-  s <- pgSettings
-  createPool (connection s) close 1 10 (poolSize s)
-  where
-    connection s = connectPostgreSQL $ pgUrl s
+import Env
 
 exceptionHandler :: Maybe Request -> SomeException -> IO ()
 exceptionHandler r e = do
@@ -35,18 +29,26 @@ exceptionHandler r e = do
 settings :: Int -> Warp.Settings
 settings port = Warp.setPort port $ Warp.setOnException exceptionHandler Warp.defaultSettings
 
-options :: Int -> Options
-options = Options 1 . settings
+corsMiddleware :: Middleware
+corsMiddleware = cors $ const (Just policy)
+  where
+    policy =
+      simpleCorsResourcePolicy
+        { corsRequestHeaders = ["content-type", "authorization"]
+        , corsMethods = ["GET", "HEAD", "POST", "PATCH", "DELETE"]
+        }
+
+mkApp :: Env -> IO Application
+mkApp env = do
+  logger <- mkRequestLogger def {outputFormat = CustomOutputFormatWithDetails formatAsJSON}
+  appPlain <- toWaiAppPlain env
+  return $ gzip def $ corsMiddleware $ logger appPlain
 
 main :: IO ()
 main = do
-  pool <- acquirePool
   requestManager <- newTlsManagerWith (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
-  withResource pool migrateDb
-  logger <- mkRequestLogger def {outputFormat = CustomOutputFormatWithDetails formatAsJSON}
-  let runner app =
-        withResource pool $ \conn -> do
-          env <- buildEnv conn requestManager
-          run app env
+  env <- buildEnv 10 requestManager
+  withResource (pgConnPool env) migrateDb
   port <- appPort
-  scottyOptsT (options port) runner (routes logger)
+  app <- mkApp env
+  Warp.runSettings (settings port) app

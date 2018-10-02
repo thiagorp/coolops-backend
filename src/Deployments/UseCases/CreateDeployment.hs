@@ -7,7 +7,8 @@ module Deployments.UseCases.CreateDeployment
 
 import RIO
 
-import Deployments.Classes
+import Common.Database
+import Deployments.Database.Deployment (createQueuedDeployment)
 import qualified Deployments.Domain.Build as Build
 import qualified Deployments.Domain.Deployment as Deployment
 import qualified Deployments.Domain.Environment as Environment
@@ -20,7 +21,7 @@ data Params = Params
 data Error =
   ProjectsDontMatch
 
-type CallMonad m = (MonadIO m, DeploymentRepo m)
+type CallMonad m = (MonadIO m, HasPostgres m)
 
 entity :: (MonadIO m) => Params -> m Deployment.QueuedDeployment
 entity Params {..} = do

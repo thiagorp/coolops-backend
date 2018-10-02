@@ -1,24 +1,23 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Handlers.GraphQL where
+module Api.Handlers.GraphQL
+  ( postGraphQLR
+  ) where
 
-import RIO hiding (Enum, Handler)
+import Api.Import hiding (Enum, Handler, Object, Project, User)
+import qualified Api.Import as Api
+
 import qualified RIO.Map as Map
-
-import Data.Aeson hiding (Object, json)
-import Web.Scotty.Trans hiding (Param)
 
 import GraphQL
 import GraphQL.API
 import GraphQL.Resolver ((:<>)(..), Handler, HasResolver(..))
 
-import qualified Authorization as Auth
-import Common.App (Env(..))
 import qualified Common.Config as Config
+import Env
 import qualified GraphQL.Database as DB
 import qualified GraphQL.Database.Types as DB
-import Types (WebMonad)
 import Util.Key as Key
 
 type App = DB.App
@@ -26,8 +25,7 @@ type App = DB.App
 newtype ProjectBuildD m =
   ProjectBuildD (Handler m Build)
 
-data ProjectBuild =
-  ProjectBuild
+data ProjectBuild
 
 instance forall m. (Monad m) => HasResolver m ProjectBuild where
   type Handler m ProjectBuild = ProjectBuildD m
@@ -42,8 +40,7 @@ type Project
 newtype EnvironmentProjectD m =
   EnvironmentProjectD (Handler m Project)
 
-data EnvironmentProject =
-  EnvironmentProject
+data EnvironmentProject
 
 instance forall m. (Monad m) => HasResolver m EnvironmentProject where
   type Handler m EnvironmentProject = EnvironmentProjectD m
@@ -64,8 +61,7 @@ type Company
 newtype DeploymentBuildD m =
   DeploymentBuildD (Handler m Build)
 
-data DeploymentBuild =
-  DeploymentBuild
+data DeploymentBuild
 
 instance forall m. (Monad m) => HasResolver m DeploymentBuild where
   type Handler m DeploymentBuild = DeploymentBuildD m
@@ -223,8 +219,8 @@ userHandler DB.User {..} =
   pure userCreatedAt :<>
   pure userUpdatedAt
 
-handler :: Auth.User -> Env -> Handler App Query
-handler Auth.User {..} Env {..} =
+handler :: Api.User -> Env -> Handler App Query
+handler Api.User {..} Env {..} =
   pure $
   (getEnvironment . DB.ID) :<> listProjects :<> listBuilds Nothing :<> (getProject . DB.ID) :<>
   getSlackConfiguration slackSettings :<>
@@ -241,10 +237,12 @@ instance FromJSON Request where
       reqQuery <- o .: "query"
       return Request {..}
 
-call :: Auth.AuthenticatedUser -> WebMonad ()
-call (Auth.AuthenticatedUser user) = do
-  Request {..} <- jsonData
-  appEnv <- lift ask
-  env <- lift $ DB.buildEnv user appEnv
-  result <- lift $ DB.run env (interpretQuery @Query (handler user appEnv) reqQuery Nothing Map.empty)
-  json result
+call :: Api.AuthenticatedUser -> Api.Handler Api.Value
+call (Api.AuthenticatedUser user) = do
+  Request {..} <- requireJsonBody
+  appEnv <- getYesod
+  env <- DB.buildEnv user appEnv
+  toJSON <$> DB.run env (interpretQuery @Query (handler user appEnv) reqQuery Nothing Map.empty)
+
+postGraphQLR :: Api.Handler Api.Value
+postGraphQLR = userAuth call

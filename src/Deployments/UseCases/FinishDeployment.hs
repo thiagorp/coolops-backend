@@ -5,16 +5,14 @@ module Deployments.UseCases.FinishDeployment
 import RIO
 
 import qualified BackgroundJobs.AppJobs as Background
-import Deployments.Classes
+import Common.Database
+import Deployments.Database.Deployment (saveFinishedDeployment)
 import Deployments.Domain.Deployment
 import Deployments.Domain.Project (CompanyID)
 import Util.Key
 
 call ::
-     ( DeploymentRepo m
-     , Background.NotifyBuildConstraint m
-     , Background.NotifySlackDeployerConstraint m
-     )
+     (HasPostgres m, Background.NotifyBuildConstraint m, Background.NotifySlackDeployerConstraint m)
   => Status
   -> CompanyID
   -> RunningDeployment

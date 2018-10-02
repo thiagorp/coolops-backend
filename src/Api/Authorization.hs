@@ -1,4 +1,4 @@
-module Authorization
+module Api.Authorization
   ( AuthenticatedUser(..)
   , AuthenticatedProject(..)
   , User(..)
@@ -7,20 +7,21 @@ module Authorization
   , projectAuth
   ) where
 
-import RIO hiding (some)
+import RIO hiding (Handler)
 import RIO.Text (pack)
-import RIO.Text.Lazy (toStrict)
+
+import Api.Instances
 
 import Network.HTTP.Types.Status
-import Text.Megaparsec
+import Network.Wai (requestHeaders)
+import Text.Megaparsec as Parser
 import Text.Megaparsec.Char
-import Web.Scotty.Trans
+import Yesod.Core
 
-import Auth.Classes
+import Auth.Database
 import Auth.Domain (User(..))
-import Deployments.Classes (findProjectByAccessToken)
+import Deployments.Database.Project (findProjectByAccessToken)
 import Deployments.Domain.Project (Project(..))
-import Types (WebMonad)
 
 newtype AuthenticatedUser =
   AuthenticatedUser User
@@ -28,31 +29,30 @@ newtype AuthenticatedUser =
 newtype AuthenticatedProject =
   AuthenticatedProject Project
 
-unauthorized :: WebMonad a
-unauthorized = do
-  status status401
-  finish
+unauthorized :: Handler a
+unauthorized = sendResponseStatus unauthorized401 ()
 
-userAuth :: (AuthenticatedUser -> WebMonad ()) -> WebMonad ()
+userAuth :: (AuthenticatedUser -> Handler a) -> Handler a
 userAuth handler = do
   authToken <- readToken
-  maybeUser <- lift $ findUserByAccessToken authToken
+  maybeUser <- findUserByAccessToken authToken
   case maybeUser of
     Just user -> handler (AuthenticatedUser user)
     Nothing -> unauthorized
 
-projectAuth :: (AuthenticatedProject -> WebMonad ()) -> WebMonad ()
+projectAuth :: (AuthenticatedProject -> Handler a) -> Handler a
 projectAuth handler = do
   authToken <- readToken
-  maybeProject <- lift $ findProjectByAccessToken authToken
+  maybeProject <- findProjectByAccessToken authToken
   case maybeProject of
     Just project -> handler (AuthenticatedProject project)
     Nothing -> unauthorized
 
-readToken :: WebMonad Text
+readToken :: Handler Text
 readToken = do
-  authHeader <- fromMaybe "" <$> header "Authorization"
-  case parseAuthHeader (toStrict authHeader) of
+  req <- waiRequest
+  let authHeader = fromMaybe "" $ lookup "authorization" (requestHeaders req)
+  case parseAuthHeader (decodeUtf8Lenient authHeader) of
     Just authToken -> return authToken
     Nothing -> unauthorized
 
@@ -60,4 +60,4 @@ parseAuthHeader :: Text -> Maybe Text
 parseAuthHeader = parseMaybe authHeaderParser
 
 authHeaderParser :: Parsec Void Text Text
-authHeaderParser = pack <$> (string' "Token " >> some asciiChar)
+authHeaderParser = pack <$> (string' "Token " >> Parser.some asciiChar)

@@ -1,17 +1,11 @@
-module Handlers.Signup
-  ( signup
+module Api.Handlers.Signup
+  ( postSignupR
   ) where
 
-import RIO
-
-import Data.Aeson hiding (json)
-import Network.HTTP.Types.Status (status409)
-import Web.Scotty.Trans
+import Api.Import
 
 import Auth.Domain
 import qualified Auth.UseCases.Signup as App
-import Types
-import Validation
 
 data Fields
   = FirstName
@@ -64,16 +58,15 @@ instance ToJSON Response where
       ]
 
 builder :: Request -> WebValidation App.Params
-builder Request {..} =
-  App.Params <$> firstName <*> lastName <*> email <*> password <*> companyName
+builder Request {..} = App.Params <$> firstName <*> lastName <*> email <*> password <*> companyName
   where
-    password = required Password reqPassword |>> buildPassword
-    firstName = required FirstName reqFirstName |>> buildUserName
-    lastName = required LastName reqLastName |>> buildUserName
-    email = required Email reqEmail |>> buildEmailAddress
-    companyName = required CompanyName reqCompanyName |>> buildCompanyName
+    password = required_ Password reqPassword |>> buildPassword
+    firstName = required_ FirstName reqFirstName |>> buildUserName
+    lastName = required_ LastName reqLastName |>> buildUserName
+    email = required_ Email reqEmail |>> buildEmailAddress
+    companyName = required_ CompanyName reqCompanyName |>> buildCompanyName
 
-buildResponse :: (User, Company) -> WebMonad Response
+buildResponse :: (User, Company) -> Handler Response
 buildResponse (User {..}, Company {..}) = do
   resUserToken <- accessTokenTextM userAccessToken
   resCompanyToken <- accessTokenTextM companyToken
@@ -81,10 +74,10 @@ buildResponse (User {..}, Company {..}) = do
   let resCompanyId = keyText companyId
   return Response {..}
 
-signup :: WebMonad ()
-signup = do
-  requestData <- jsonData >>= parseRequest builder
-  result <- lift $ App.signup requestData
+postSignupR :: Handler Value
+postSignupR = do
+  requestData <- requireJsonBody >>= parseValidatedRequest builder
+  result <- App.signup requestData
   case result of
-    Left App.UserAlreadyExists -> status status409 >> text "User already exists"
-    Right value -> buildResponse value >>= json
+    Left App.UserAlreadyExists -> sendResponseStatus status409 ("User already exists" :: Text)
+    Right value -> toJSON <$> buildResponse value

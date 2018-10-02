@@ -1,20 +1,12 @@
-module Handlers.UpdateProject
-  ( call
+module Api.Handlers.UpdateProject
+  ( patchUpdateProjectR
   ) where
 
-import RIO
+import Api.Import
 
-import Data.Aeson hiding (json)
-import Network.HTTP.Types.Status (notFound404)
-import Web.Scotty.Trans
-
-import Authorization (AuthenticatedUser(..), User(..))
-import Deployments.Classes (getProject)
+import Deployments.Database.Project (getProject)
 import Deployments.Domain.Project (Project, buildDeploymentImage, buildName, buildSlug)
 import qualified Deployments.UseCases.UpdateProject as App
-import Resources
-import Types
-import Validation
 
 data Fields
   = Name
@@ -45,20 +37,22 @@ instance FromJSON Request where
 builder :: Request -> WebValidation App.Params
 builder Request {..} = App.Params <$> projectName <*> projectSlug <*> projectDeploymentImage
   where
-    projectName = required Name reqProjectName |>> buildName
-    projectSlug = required Slug reqProjectSlug |>> buildSlug
-    projectDeploymentImage = required DeploymentImage reqProjectDeploymentImage |>> buildDeploymentImage
+    projectName = required_ Name reqProjectName |>> buildName
+    projectSlug = required_ Slug reqProjectSlug |>> buildSlug
+    projectDeploymentImage = required_ DeploymentImage reqProjectDeploymentImage |>> buildDeploymentImage
 
-update :: Project -> WebMonad ()
+update :: Project -> Handler ProjectResource
 update project = do
-  requestData <- jsonData >>= parseRequest builder
-  updatedProject <- lift $ App.call project requestData
-  json $ projectResource updatedProject
+  requestData <- requireJsonBody >>= parseValidatedRequest builder
+  updatedProject <- App.call project requestData
+  return $ projectResource updatedProject
 
-call :: AuthenticatedUser -> WebMonad ()
-call (AuthenticatedUser user) = do
-  projectId <- param "id" :: WebMonad Text
-  maybeProject <- lift $ getProject (userCompanyId user) projectId
+call :: Text -> AuthenticatedUser -> Handler Value
+call projectId (AuthenticatedUser user) = do
+  maybeProject <- getProject (userCompanyId user) projectId
   case maybeProject of
-    Just project -> update project
-    Nothing -> status notFound404
+    Just project -> toJSON <$> update project
+    Nothing -> notFound
+
+patchUpdateProjectR :: Text -> Handler Value
+patchUpdateProjectR = userAuth . call

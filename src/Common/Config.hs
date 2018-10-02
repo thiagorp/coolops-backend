@@ -5,17 +5,15 @@ import RIO.Map as M
 import RIO.Process
 import RIO.Text (encodeUtf8, unpack)
 
-data PGSettings = PGSettings
-  { pgUrl :: !ByteString
-  , poolSize :: !Int
+newtype PGSettings = PGSettings
+  { pgUrl :: ByteString
   }
 
 envVars :: (MonadIO m) => m EnvVars
 envVars = view envVarsL <$> mkDefaultProcessContext
 
 frontendBaseUrl :: (MonadIO m) => m Text
-frontendBaseUrl =
-  liftIO $ envVar "FRONTEND_APP_BASE_URL" "http://localhost:3000"
+frontendBaseUrl = liftIO $ envVar "FRONTEND_APP_BASE_URL" "http://localhost:3000"
 
 appPort :: (MonadIO m) => m Int
 appPort = do
@@ -33,10 +31,7 @@ slackApiPort = do
 
 pgSettings :: IO PGSettings
 pgSettings = do
-  pgUrl <-
-    encodeUtf8 <$>
-    envVar "DATABASE_URL" "postgresql://localhost/deployment-development"
-  let poolSize = 10
+  pgUrl <- encodeUtf8 <$> envVar "DATABASE_URL" "postgresql://localhost/deployment-development"
   return $ PGSettings {..}
 
 data KubernetesSettings = KubernetesSettings
@@ -51,8 +46,7 @@ envVar key defaultValue = do
   return $ fromMaybe defaultValue maybeValue
 
 kubernetesSettings :: IO KubernetesSettings
-kubernetesSettings =
-  KubernetesSettings <$> k8sHost_ <*> k8sToken_ <*> k8sNamespace_
+kubernetesSettings = KubernetesSettings <$> k8sHost_ <*> k8sToken_ <*> k8sNamespace_
   where
     k8sHost_ = envVar "K8S_HOST" "https://192.168.99.100:8443"
     k8sNamespace_ = encodeUtf8 <$> envVar "K8S_NAMESPACE" "default"
@@ -69,13 +63,8 @@ data SlackSettings = SlackSettings
   }
 
 slackSettings :: IO SlackSettings
-slackSettings =
-  SlackSettings <$> slackClientId_ <*> slackClientSecret_ <*>
-  slackVerificationToken_
+slackSettings = SlackSettings <$> slackClientId_ <*> slackClientSecret_ <*> slackVerificationToken_
   where
-    slackVerificationToken_ =
-      envVar "SLACK_VERIFICATION_TOKEN" "AtSllqYHHdWAUpiVuuNfPTU1"
+    slackVerificationToken_ = envVar "SLACK_VERIFICATION_TOKEN" "AtSllqYHHdWAUpiVuuNfPTU1"
     slackClientId_ = envVar "SLACK_CLIENT_ID" "388050218183.406662000402"
-    slackClientSecret_ =
-      encodeUtf8 <$>
-      envVar "SLACK_CLIENT_SECRET" "8bca4209d59b84e8f341c5e49cc3d26b"
+    slackClientSecret_ = encodeUtf8 <$> envVar "SLACK_CLIENT_SECRET" "8bca4209d59b84e8f341c5e49cc3d26b"

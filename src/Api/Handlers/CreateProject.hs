@@ -1,19 +1,11 @@
-module Handlers.CreateProject
-  ( call
+module Api.Handlers.CreateProject
+  ( postProjectsR
   ) where
 
-import RIO
+import Api.Import
 
-import Data.Aeson hiding (json)
-import Network.HTTP.Types.Status (conflict409, created201)
-import Web.Scotty.Trans
-
-import Authorization (AuthenticatedUser(..), User(..))
 import Deployments.Domain.Project (buildDeploymentImage, buildName, buildSlug)
 import qualified Deployments.UseCases.CreateProject as App
-import Resources
-import Types
-import Validation
 
 data Fields
   = Name
@@ -45,16 +37,17 @@ builder :: User -> Request -> WebValidation App.Params
 builder User {..} Request {..} =
   App.Params <$> projectName <*> projectSlug <*> projectDeploymentImage <*> pure userCompanyId
   where
-    projectName = required Name reqProjectName |>> buildName
-    projectSlug = required Slug reqProjectSlug |>> buildSlug
-    projectDeploymentImage = required DeploymentImage reqProjectDeploymentImage |>> buildDeploymentImage
+    projectName = required_ Name reqProjectName |>> buildName
+    projectSlug = required_ Slug reqProjectSlug |>> buildSlug
+    projectDeploymentImage = required_ DeploymentImage reqProjectDeploymentImage |>> buildDeploymentImage
 
-call :: AuthenticatedUser -> WebMonad ()
+call :: AuthenticatedUser -> Handler Value
 call (AuthenticatedUser user) = do
-  requestData <- jsonData >>= parseRequest (builder user)
-  result <- lift $ App.call requestData
+  requestData <- requireJsonBody >>= parseValidatedRequest (builder user)
+  result <- App.call requestData
   case result of
-    Left App.SlugAlreadyExists -> status conflict409
-    Right project -> do
-      status created201
-      json $ projectResource project
+    Left App.SlugAlreadyExists -> sendResponseStatus conflict409 ()
+    Right project -> sendStatusJSON created201 $ toJSON (projectResource project)
+
+postProjectsR :: Handler Value
+postProjectsR = userAuth call

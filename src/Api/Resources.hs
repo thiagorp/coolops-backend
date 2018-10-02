@@ -1,4 +1,4 @@
-module Resources where
+module Api.Resources where
 
 import RIO
 
@@ -29,8 +29,7 @@ projectResource Project.Project {..} =
   let resProjectId = keyText projectId
       resProjectName = Project.nameText projectName
       resProjectAccessToken = Project.accessTokenText projectAccessToken
-      resProjectDeploymentImage =
-        Project.deploymentImageText projectDeploymentImage
+      resProjectDeploymentImage = Project.deploymentImageText projectDeploymentImage
    in ProjectResource {..}
 
 data EnvironmentResource = EnvironmentResource
