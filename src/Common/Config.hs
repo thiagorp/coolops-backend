@@ -60,11 +60,13 @@ data SlackSettings = SlackSettings
   { slackClientId :: !Text
   , slackClientSecret :: !ByteString
   , slackVerificationToken :: !Text
+  , slackSigningSecret :: !ByteString
   }
 
 slackSettings :: IO SlackSettings
-slackSettings = SlackSettings <$> slackClientId_ <*> slackClientSecret_ <*> slackVerificationToken_
-  where
-    slackVerificationToken_ = envVar "SLACK_VERIFICATION_TOKEN" "AtSllqYHHdWAUpiVuuNfPTU1"
-    slackClientId_ = envVar "SLACK_CLIENT_ID" "388050218183.406662000402"
-    slackClientSecret_ = encodeUtf8 <$> envVar "SLACK_CLIENT_SECRET" "8bca4209d59b84e8f341c5e49cc3d26b"
+slackSettings = do
+  slackClientId <- envVar "SLACK_CLIENT_ID" "388050218183.406662000402"
+  slackClientSecret <- encodeUtf8 <$> envVar "SLACK_CLIENT_SECRET" "8bca4209d59b84e8f341c5e49cc3d26b"
+  slackVerificationToken <- envVar "SLACK_VERIFICATION_TOKEN" "AtSllqYHHdWAUpiVuuNfPTU1"
+  slackSigningSecret <- encodeUtf8 <$> envVar "SLACK_SIGNING_SECRET" "b2891586cb97af67450b9b85dd6a4295"
+  return SlackSettings {..}

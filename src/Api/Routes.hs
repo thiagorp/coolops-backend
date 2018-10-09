@@ -26,4 +26,5 @@ mkYesodData
 /deployments DeploymentsR POST
 /deployments/#Text/logs DeploymentLogsR GET
 /slack/messages SlackMessagesR POST
+/slack/commands SlackCommandsR POST
 |]

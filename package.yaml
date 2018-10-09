@@ -22,6 +22,7 @@ dependencies:
 - resource-pool
 - rio
 - safe-exceptions
+- SHA
 - time
 - uuid
 - yaml
