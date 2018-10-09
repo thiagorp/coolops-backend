@@ -43,3 +43,4 @@ instance HasSlackSettings Handler where
   slackClientId = Config.slackClientId . slackSettings <$> getYesod
   slackClientSecret = Config.slackClientSecret . slackSettings <$> getYesod
   slackVerificationToken = Config.slackVerificationToken . slackSettings <$> getYesod
+  slackSigningSecret = Config.slackSigningSecret . slackSettings <$> getYesod
