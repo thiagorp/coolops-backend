@@ -5,45 +5,29 @@ module Api.Handlers.UpdateEnvironment
 import Api.Import
 
 import Deployments.Database.Environment (getEnvironment)
-import Deployments.Domain.Environment (Environment, buildName, buildSlug)
+import qualified Deployments.Domain.Environment as Environment
 import qualified Deployments.UseCases.UpdateEnvironment as App
 
-data Fields
-  = Name
-  | Slug
-  | EnvVars
-
-instance HasFieldName Fields where
-  fieldName field =
-    case field of
-      Name -> "name"
-      Slug -> "slug"
-      EnvVars -> "env_vars"
-
 data Request = Request
-  { reqEnvironmentName :: !(Maybe Text)
-  , reqEnvironmentSlug :: !(Maybe Text)
-  , reqEnvironmentEnvVars :: !(Maybe (HashMap Text Text))
+  { reqEnvironmentName :: !Environment.Name
+  , reqEnvironmentSlug :: !Environment.Slug
+  , reqEnvironmentEnvVars :: !(HashMap Text Text)
   }
 
 instance FromJSON Request where
   parseJSON =
     withObject "request params" $ \o -> do
-      reqEnvironmentName <- o .:? fieldName Name
-      reqEnvironmentSlug <- o .:? fieldName Slug
-      reqEnvironmentEnvVars <- o .:? fieldName EnvVars
+      reqEnvironmentName <- o .: "name"
+      reqEnvironmentSlug <- o .: "slug"
+      reqEnvironmentEnvVars <- o .: "env_vars"
       return Request {..}
 
-builder :: Request -> WebValidation App.Params
-builder Request {..} = App.Params <$> environmentName <*> environmentSlug <*> environmentEnvVars
-  where
-    environmentName = required_ Name reqEnvironmentName |>> buildName
-    environmentSlug = required_ Slug reqEnvironmentSlug |>> buildSlug
-    environmentEnvVars = required_ EnvVars reqEnvironmentEnvVars |>> valid
+mapRequest :: Request -> App.Params
+mapRequest Request {..} = App.Params reqEnvironmentName reqEnvironmentSlug reqEnvironmentEnvVars
 
-update :: Environment -> Handler EnvironmentResource
+update :: Environment.Environment -> Handler EnvironmentResource
 update environment = do
-  requestData <- requireJsonBody >>= parseValidatedRequest builder
+  requestData <- mapRequest <$> requireJsonBody
   updatedEnvironment <- App.call environment requestData
   return $ environmentResource updatedEnvironment
 

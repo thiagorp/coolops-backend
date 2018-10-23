@@ -11,10 +11,6 @@ module Auth.Domain
   , SafePassword
   , accessTokenTextM
   , authenticate
-  , buildCompanyName
-  , buildEmailAddress
-  , buildPassword
-  , buildUserName
   , genAccessToken
   , genID
   , keyText
@@ -35,17 +31,13 @@ import System.Random (randomRIO)
 
 type UserID = Key User
 
-newtype UserName =
-  UserName Text
-  deriving (ToField, FromField)
+type UserName = Validated (SizeGreaterThan 2) Text
 
 type UserEmail = EmailAddress
 
 type CompanyID = Key Company
 
-newtype CompanyName =
-  CompanyName Text
-  deriving (ToField, FromField)
+type CompanyName = Validated (SizeGreaterThan 2) Text
 
 newtype AccessToken =
   AccessToken ByteString
@@ -67,43 +59,28 @@ data User = User
   , userCompanyId :: !CompanyID
   }
 
-newtype RawPassword =
-  RawPassword ByteString
+type RawPassword = Validated (SizeGreaterThan 8) ByteString
 
 newtype SafePassword =
   SafePassword ByteString
   deriving (ToField, FromField)
 
 protectPassword :: (MonadIO m) => RawPassword -> m SafePassword
-protectPassword (RawPassword p) = liftIO $ SafePassword <$> makePassword p 17
+protectPassword p = liftIO $ SafePassword <$> makePassword (getValue p) 17
 
 userPassword_ :: User -> ByteString
 userPassword_ = extract . userPassword
   where
     extract (SafePassword password) = password
 
-authenticate :: User -> RawPassword -> Bool
-authenticate user (RawPassword password) =
-  verifyPassword password $ userPassword_ user
+authenticate :: User -> Text -> Bool
+authenticate user password = verifyPassword (encodeUtf8 password) $ userPassword_ user
 
 accessTokenTextM :: (MonadIO m) => AccessToken -> m Text
 accessTokenTextM (AccessToken token) =
   case decodeUtf8' token of
     Right t -> return t
     Left e -> error (show e)
-
-buildUserName :: Text -> Validated UserName
-buildUserName name = UserName <$> validateMinLength 2 name
-
-buildCompanyName :: Text -> Validated CompanyName
-buildCompanyName name = CompanyName <$> validateMinLength 2 name
-
-buildEmailAddress :: Text -> Validated EmailAddress
-buildEmailAddress = validateEmailAddress
-
-buildPassword :: Text -> Validated RawPassword
-buildPassword password =
-  RawPassword <$> (encodeUtf8 <$> validateMinLength 8 password)
 
 genAccessToken :: (MonadIO m) => m AccessToken
 genAccessToken = genAccessToken' 36 ""

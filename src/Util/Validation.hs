@@ -1,73 +1,75 @@
-module Util.Validation where
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
+
+module Util.Validation
+  ( IsSlug
+  , SizeGreaterThan
+  , Validated
+  , type (&&)
+  , getValue
+  ) where
 
 import RIO
+import qualified RIO.ByteString as ByteString
 import qualified RIO.Text as Text
 
-import Util.EmailAddress
+import Data.Aeson
+import Data.Aeson.Types (Parser)
+import Database.PostgreSQL.Simple.FromField (FromField(..))
+import Database.PostgreSQL.Simple.ToField
+import GHC.TypeLits (KnownNat, Nat, natVal)
+
 import Util.Slug
 
-data Validation b a
-  = Invalid b
-  | Valid a
+newtype Validated p x =
+  Validated x
+  deriving (FromField, ToField, ToJSON, Show)
 
-instance Functor (Validation b) where
-  fmap _ (Invalid e) = Invalid e
-  fmap f (Valid a) = Valid (f a)
+parseJSON_ :: (Predicate p a) => a -> Parser (Validated p a)
+parseJSON_ t =
+  case validate t of
+    Left err -> fail err
+    Right x -> return x
 
-instance (Semigroup b, Monoid b) => Applicative (Validation b) where
-  pure = Valid
-  Invalid e1 <*> Invalid e2 = Invalid (e1 <> e2)
-  Invalid e1 <*> Valid _ = Invalid e1
-  Valid _ <*> Invalid e2 = Invalid e2
-  Valid f <*> Valid a = Valid (f a)
+instance (Predicate p Text) => FromJSON (Validated p Text) where
+  parseJSON = withText "Text" parseJSON_
 
-data ValidationError
-  = ValidationTooShort Int
-  | ValidationRequired
-  | ValidationInvalidEmail
-  | ValidationInvalidSlug
+instance (Predicate p ByteString) => FromJSON (Validated p ByteString) where
+  parseJSON = withText "Text" $ \t -> parseJSON_ (encodeUtf8 t)
 
-type Validated a = Validation [ValidationError] a
+class Predicate p x where
+  validate :: x -> Either String (Validated p x)
 
-also :: (a -> Validated a) -> (a -> Validated a) -> a -> Validated a
-also validation1 validation2 value =
-  case (validation1 value, validation2 value) of
-    (Invalid e1, Invalid e2) -> Invalid (e1 <> e2)
-    (Invalid e1, _) -> Invalid e1
-    (_, Invalid e2) -> Invalid e2
-    _ -> Valid value
+data SizeGreaterThan (n :: Nat)
 
-andThen :: Validated a -> (a -> Validated b) -> Validated b
-andThen validated validation =
-  case validated of
-    Invalid e -> Invalid e
-    Valid value -> validation value
+data IsSlug
 
-validateMinLength :: Int -> Text -> Validated Text
-validateMinLength size text
-  | Text.length text >= size = Valid text
-  | otherwise = Invalid [ValidationTooShort size]
+data (&&) l r
 
-validateSlug :: Text -> Validated Slug
-validateSlug s =
-  case slug s of
-    Nothing -> Invalid [ValidationInvalidSlug]
-    Just v -> Valid v
+validateSizeGreaterThan :: (KnownNat n) => proxy n -> (a -> Int) -> a -> Either String (Validated (SizeGreaterThan n) a)
+validateSizeGreaterThan nat sizeFn text =
+  if textSize > minSize
+    then Right (Validated text)
+    else Left errorMessage
+  where
+    textSize = sizeFn text
+    minSize = fromIntegral $ natVal nat
+    errorMessage = "needs to be bigger than " <> show minSize <> " characters"
 
-validateEmailAddress :: Text -> Validated EmailAddress
-validateEmailAddress email =
-  case emailAddress (encodeUtf8 email) of
-    Nothing -> Invalid [ValidationInvalidEmail]
-    Just validEmail -> Valid validEmail
+instance (KnownNat n) => Predicate (SizeGreaterThan n) Text where
+  validate = validateSizeGreaterThan (Proxy @n) Text.length
 
-validateRequired :: Maybe a -> Validated a
-validateRequired value =
-  case value of
-    Nothing -> Invalid [ValidationRequired]
-    Just a -> Valid a
+instance (KnownNat n) => Predicate (SizeGreaterThan n) ByteString where
+  validate = validateSizeGreaterThan (Proxy @n) ByteString.length
 
-valid :: a -> Validated a
-valid = Valid
+instance Predicate IsSlug Text where
+  validate text =
+    if isValidSlug text
+      then Right (Validated text)
+      else Left "is not a valid slug"
 
-withDefault :: a -> Maybe a -> Validated a
-withDefault def maybeValue = Valid (fromMaybe def maybeValue)
+instance (Predicate m x, Predicate n x) => Predicate (m && n) x where
+  validate text = validate @m text >> validate @n text >> Right (Validated text)
+
+getValue :: Validated p x -> x
+getValue (Validated value) = value

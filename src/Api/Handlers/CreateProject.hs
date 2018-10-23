@@ -4,46 +4,29 @@ module Api.Handlers.CreateProject
 
 import Api.Import
 
-import Deployments.Domain.Project (buildDeploymentImage, buildName, buildSlug)
+import qualified Deployments.Domain.Project as Project
 import qualified Deployments.UseCases.CreateProject as App
 
-data Fields
-  = Name
-  | DeploymentImage
-  | Slug
-
-instance HasFieldName Fields where
-  fieldName field =
-    case field of
-      Name -> "name"
-      DeploymentImage -> "deployment_image"
-      Slug -> "slug"
-
 data Request = Request
-  { reqProjectName :: !(Maybe Text)
-  , reqProjectDeploymentImage :: !(Maybe Text)
-  , reqProjectSlug :: !(Maybe Text)
+  { reqProjectName :: !Project.Name
+  , reqProjectDeploymentImage :: !Project.DeploymentImage
+  , reqProjectSlug :: !Project.Slug
   }
 
 instance FromJSON Request where
   parseJSON =
     withObject "request params" $ \o -> do
-      reqProjectName <- o .:? fieldName Name
-      reqProjectDeploymentImage <- o .:? fieldName DeploymentImage
-      reqProjectSlug <- o .:? fieldName Slug
+      reqProjectName <- o .: "name"
+      reqProjectDeploymentImage <- o .: "deployment_image"
+      reqProjectSlug <- o .: "slug"
       return Request {..}
 
-builder :: User -> Request -> WebValidation App.Params
-builder User {..} Request {..} =
-  App.Params <$> projectName <*> projectSlug <*> projectDeploymentImage <*> pure userCompanyId
-  where
-    projectName = required_ Name reqProjectName |>> buildName
-    projectSlug = required_ Slug reqProjectSlug |>> buildSlug
-    projectDeploymentImage = required_ DeploymentImage reqProjectDeploymentImage |>> buildDeploymentImage
+mapRequest :: User -> Request -> App.Params
+mapRequest User {..} Request {..} = App.Params reqProjectName reqProjectSlug reqProjectDeploymentImage userCompanyId
 
 call :: AuthenticatedUser -> Handler Value
 call (AuthenticatedUser user) = do
-  requestData <- requireJsonBody >>= parseValidatedRequest (builder user)
+  requestData <- mapRequest user <$> requireJsonBody
   result <- App.call requestData
   case result of
     Left App.SlugAlreadyExists -> sendResponseStatus conflict409 ()

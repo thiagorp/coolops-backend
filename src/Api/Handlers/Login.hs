@@ -7,26 +7,16 @@ import Api.Import
 import Auth.Domain
 import qualified Auth.UseCases.Login as App
 
-data Fields
-  = Email
-  | Password
-
-instance HasFieldName Fields where
-  fieldName field =
-    case field of
-      Email -> "email"
-      Password -> "password"
-
 data Request = Request
-  { reqEmail :: !(Maybe Text)
-  , reqPassword :: !(Maybe Text)
+  { reqEmail :: !UserEmail
+  , reqPassword :: !Text
   }
 
 instance FromJSON Request where
   parseJSON =
     withObject "" $ \o -> do
-      reqEmail <- o .:? fieldName Email
-      reqPassword <- o .:? fieldName Password
+      reqEmail <- o .: "email"
+      reqPassword <- o .: "password"
       return Request {..}
 
 newtype Response = Response
@@ -36,11 +26,8 @@ newtype Response = Response
 instance ToJSON Response where
   toJSON Response {..} = object ["access_token" .= resAccessToken]
 
-builder :: Request -> WebValidation App.Params
-builder Request {..} = App.Params <$> email <*> password
-  where
-    email = required_ Email reqEmail |>> buildEmailAddress
-    password = required_ Password reqPassword |>> buildPassword
+mapParams :: Request -> App.Params
+mapParams Request {..} = App.Params reqEmail reqPassword
 
 buildResponse :: User -> Handler Response
 buildResponse User {..} = do
@@ -49,7 +36,7 @@ buildResponse User {..} = do
 
 postTokensR :: Handler Value
 postTokensR = do
-  requestData <- requireJsonBody >>= parseValidatedRequest builder
+  requestData <- mapParams <$> requireJsonBody
   result <- App.login requestData
   case result of
     Just u -> toJSON <$> buildResponse u

@@ -4,45 +4,29 @@ module Api.Handlers.CreateEnvironment
 
 import Api.Import
 
-import Deployments.Domain.Environment (buildName, buildSlug)
+import qualified Deployments.Domain.Environment as Environment
 import qualified Deployments.UseCases.CreateEnvironment as App
 
-data Fields
-  = Name
-  | EnvVars
-  | Slug
-
-instance HasFieldName Fields where
-  fieldName field =
-    case field of
-      Name -> "name"
-      EnvVars -> "env_vars"
-      Slug -> "slug"
-
 data Request = Request
-  { reqEnvironmentName :: !(Maybe Text)
-  , reqEnvironmentEnvVars :: !(Maybe (HashMap Text Text))
-  , reqEnvironmentSlug :: !(Maybe Text)
+  { reqEnvironmentName :: !Environment.Name
+  , reqEnvironmentEnvVars :: !(HashMap Text Text)
+  , reqEnvironmentSlug :: !Environment.Slug
   }
 
 instance FromJSON Request where
   parseJSON =
     withObject "request params" $ \o -> do
-      reqEnvironmentName <- o .:? fieldName Name
-      reqEnvironmentEnvVars <- o .:? fieldName EnvVars
-      reqEnvironmentSlug <- o .:? fieldName Slug
+      reqEnvironmentName <- o .: "name"
+      reqEnvironmentEnvVars <- o .: "env_vars"
+      reqEnvironmentSlug <- o .: "slug"
       return Request {..}
 
-builder :: Request -> WebValidation App.Params
-builder Request {..} = App.Params <$> environmentName <*> environmentEnvVars <*> environmentSlug
-  where
-    environmentName = required_ Name reqEnvironmentName |>> buildName
-    environmentEnvVars = required_ EnvVars reqEnvironmentEnvVars |>> valid
-    environmentSlug = required_ Slug reqEnvironmentSlug |>> buildSlug
+mapRequest :: Request -> App.Params
+mapRequest Request {..} = App.Params reqEnvironmentName reqEnvironmentEnvVars reqEnvironmentSlug
 
 call :: Text -> AuthenticatedUser -> Handler Value
 call projectId (AuthenticatedUser User {..}) = do
-  requestData <- requireJsonBody >>= parseValidatedRequest builder
+  requestData <- mapRequest <$> requireJsonBody
   maybeProject <- App.call projectId userCompanyId requestData
   case maybeProject of
     Left App.ProjectNotFound -> notFound

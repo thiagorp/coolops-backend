@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeOperators #-}
+
 module Deployments.Domain.Project
   ( Project(..)
   , ID
@@ -6,9 +8,6 @@ module Deployments.Domain.Project
   , AccessToken
   , CompanyID
   , Slug
-  , buildDeploymentImage
-  , buildName
-  , buildSlug
   , genId
   , genAccessToken
   , deploymentImageText
@@ -29,18 +28,15 @@ import System.Random (randomRIO)
 
 import Auth.Domain (CompanyID)
 import Util.Key
-import Util.Slug
 import Util.Validation
 
 type ID = Key Project
 
-newtype Name =
-  Name Text
-  deriving (Show, ToField, FromField)
+type Name = Validated (SizeGreaterThan 1) Text
 
-newtype DeploymentImage =
-  DeploymentImage Text
-  deriving (Show, ToField, FromField)
+type DeploymentImage = Validated (SizeGreaterThan 1) Text
+
+type Slug = Validated (IsSlug && SizeGreaterThan 1) Text
 
 newtype AccessToken =
   AccessToken ByteString
@@ -61,11 +57,8 @@ genId = genID
 projectId_ :: Project -> Text
 projectId_ Project {..} = keyText projectId
 
-buildName :: Text -> Validated Name
-buildName name = Name <$> validateMinLength 1 name
-
 nameText :: Name -> Text
-nameText (Name name) = name
+nameText = getValue
 
 projectName_ :: Project -> Text
 projectName_ Project {..} = nameText projectName
@@ -79,17 +72,11 @@ accessTokenText (AccessToken value) =
 projectAccessToken_ :: Project -> Text
 projectAccessToken_ Project {..} = accessTokenText projectAccessToken
 
-buildDeploymentImage :: Text -> Validated DeploymentImage
-buildDeploymentImage image = DeploymentImage <$> validateMinLength 1 image
-
 deploymentImageText :: DeploymentImage -> Text
-deploymentImageText (DeploymentImage text) = text
+deploymentImageText = getValue
 
 projectDeploymentImage_ :: Project -> Text
 projectDeploymentImage_ Project {..} = deploymentImageText projectDeploymentImage
-
-buildSlug :: Text -> Validated Slug
-buildSlug = validateSlug
 
 genAccessToken :: (MonadIO m) => m AccessToken
 genAccessToken = genAccessToken' 36 ""

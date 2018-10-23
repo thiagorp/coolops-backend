@@ -6,32 +6,22 @@ import Api.Import
 
 import qualified Slack.UseCases.IntegrateProjectFromOAuth as App
 
-data Fields =
-  Code
-
-instance HasFieldName Fields where
-  fieldName field =
-    case field of
-      Code -> "code"
-
 newtype Request = Request
-  { reqCode :: Maybe Text
+  { reqCode :: Text
   }
 
 instance FromJSON Request where
   parseJSON =
     withObject "request params" $ \o -> do
-      reqCode <- o .:? fieldName Code
+      reqCode <- o .: "code"
       return Request {..}
 
-builder :: User -> Text -> Request -> WebValidation App.Params
-builder User {..} projectId Request {..} = App.Params <$> pure userCompanyId <*> pure projectId <*> code
-  where
-    code = required_ Code reqCode |>> valid
+mapRequest :: User -> Text -> Request -> App.Params
+mapRequest User {..} projectId Request {..} = App.Params userCompanyId projectId reqCode
 
 call :: Text -> AuthenticatedUser -> Handler ()
 call projectId (AuthenticatedUser user) = do
-  appParams <- requireJsonBody >>= parseValidatedRequest (builder user projectId)
+  appParams <- mapRequest user projectId <$> requireJsonBody
   result <- App.call appParams
   case result of
     Right _ -> sendResponseStatus created201 ()
