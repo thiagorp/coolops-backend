@@ -45,7 +45,7 @@ handleCommand = do
   commandText <- fromMaybe "" . lookup "text" <$> getPostParams
   case parseMaybe commandParser commandText of
     Nothing -> return $ String "Command not found"
-    Just command -> return $ object [("command", String "Help")]
+    Just _ -> return $ object [("command", String "Help")]
 
 postSlackCommandsR :: Handler Value
 postSlackCommandsR = do

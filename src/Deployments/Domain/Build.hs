@@ -6,14 +6,10 @@ module Deployments.Domain.Build
   , buildId_
   , buildName_
   , genId
-  , buildBuildName
   , nameText
   ) where
 
 import RIO
-
-import Database.PostgreSQL.Simple.FromField (FromField(..))
-import Database.PostgreSQL.Simple.ToField (ToField(..))
 
 import qualified Deployments.Domain.Project as Project
 import Util.Key
@@ -23,9 +19,7 @@ type ID = Key Build
 
 type ProjectID = Project.ID
 
-newtype Name =
-  Name Text
-  deriving (Show, ToField, FromField)
+type Name = Validated (SizeGreaterThan 1) Text
 
 data Build = Build
   { buildId :: !ID
@@ -41,11 +35,8 @@ genId = genID
 buildId_ :: Build -> Text
 buildId_ Build {..} = keyText buildId
 
-buildBuildName :: Text -> Validated Name
-buildBuildName name = Name <$> validateMinLength 1 name
-
 nameText :: Name -> Text
-nameText (Name name) = name
+nameText = getValue
 
 buildName_ :: Build -> Text
 buildName_ Build {..} = nameText buildName

@@ -7,38 +7,22 @@ import Api.Import
 import Auth.Domain
 import qualified Auth.UseCases.Signup as App
 
-data Fields
-  = FirstName
-  | LastName
-  | Email
-  | Password
-  | CompanyName
-
-instance HasFieldName Fields where
-  fieldName field =
-    case field of
-      FirstName -> "first_name"
-      LastName -> "last_name"
-      Email -> "email"
-      Password -> "password"
-      CompanyName -> "company_name"
-
 data Request = Request
-  { reqFirstName :: !(Maybe Text)
-  , reqLastName :: !(Maybe Text)
-  , reqEmail :: !(Maybe Text)
-  , reqPassword :: !(Maybe Text)
-  , reqCompanyName :: !(Maybe Text)
+  { reqFirstName :: !UserName
+  , reqLastName :: !UserName
+  , reqEmail :: !UserEmail
+  , reqPassword :: !RawPassword
+  , reqCompanyName :: !CompanyName
   }
 
 instance FromJSON Request where
   parseJSON =
     withObject "signup params" $ \o -> do
-      reqFirstName <- o .:? fieldName FirstName
-      reqLastName <- o .:? fieldName LastName
-      reqEmail <- o .:? fieldName Email
-      reqPassword <- o .:? fieldName Password
-      reqCompanyName <- o .:? fieldName CompanyName
+      reqFirstName <- o .: "first_name"
+      reqLastName <- o .: "last_name"
+      reqEmail <- o .: "email"
+      reqPassword <- o .: "password"
+      reqCompanyName <- o .: "company_name"
       return Request {..}
 
 data Response = Response
@@ -57,14 +41,8 @@ instance ToJSON Response where
       , "company_id" .= resCompanyId
       ]
 
-builder :: Request -> WebValidation App.Params
-builder Request {..} = App.Params <$> firstName <*> lastName <*> email <*> password <*> companyName
-  where
-    password = required_ Password reqPassword |>> buildPassword
-    firstName = required_ FirstName reqFirstName |>> buildUserName
-    lastName = required_ LastName reqLastName |>> buildUserName
-    email = required_ Email reqEmail |>> buildEmailAddress
-    companyName = required_ CompanyName reqCompanyName |>> buildCompanyName
+mapRequest :: Request -> App.Params
+mapRequest Request {..} = App.Params reqFirstName reqLastName reqEmail reqPassword reqCompanyName
 
 buildResponse :: (User, Company) -> Handler Response
 buildResponse (User {..}, Company {..}) = do
@@ -76,7 +54,7 @@ buildResponse (User {..}, Company {..}) = do
 
 postSignupR :: Handler Value
 postSignupR = do
-  requestData <- requireJsonBody >>= parseValidatedRequest builder
+  requestData <- mapRequest <$> requireJsonBody
   result <- App.signup requestData
   case result of
     Left App.UserAlreadyExists -> sendResponseStatus status409 ("User already exists" :: Text)

@@ -6,15 +6,15 @@ module Auth.UseCases.Login
 import RIO
 
 import Auth.Database
-import Auth.Domain (RawPassword, User, UserEmail, authenticate)
+import Auth.Domain (User, UserEmail, authenticate)
 import Common.Database
 
 data Params = Params
   { paramEmail :: !UserEmail
-  , paramPassword :: !RawPassword
+  , paramPassword :: !Text
   }
 
-verify :: RawPassword -> User -> Maybe User
+verify :: Text -> User -> Maybe User
 verify password user =
   if authenticate user password
     then Just user

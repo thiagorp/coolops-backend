@@ -5,45 +5,29 @@ module Api.Handlers.UpdateProject
 import Api.Import
 
 import Deployments.Database.Project (getProject)
-import Deployments.Domain.Project (Project, buildDeploymentImage, buildName, buildSlug)
+import qualified Deployments.Domain.Project as Project
 import qualified Deployments.UseCases.UpdateProject as App
 
-data Fields
-  = Name
-  | DeploymentImage
-  | Slug
-
-instance HasFieldName Fields where
-  fieldName field =
-    case field of
-      Name -> "name"
-      Slug -> "slug"
-      DeploymentImage -> "deployment_image"
-
 data Request = Request
-  { reqProjectName :: !(Maybe Text)
-  , reqProjectSlug :: !(Maybe Text)
-  , reqProjectDeploymentImage :: !(Maybe Text)
+  { reqProjectName :: !Project.Name
+  , reqProjectSlug :: !Project.Slug
+  , reqProjectDeploymentImage :: !Project.DeploymentImage
   }
 
 instance FromJSON Request where
   parseJSON =
     withObject "request params" $ \o -> do
-      reqProjectName <- o .:? fieldName Name
-      reqProjectSlug <- o .:? fieldName Slug
-      reqProjectDeploymentImage <- o .:? fieldName DeploymentImage
+      reqProjectName <- o .: "name"
+      reqProjectSlug <- o .: "slug"
+      reqProjectDeploymentImage <- o .: "deployment_image"
       return Request {..}
 
-builder :: Request -> WebValidation App.Params
-builder Request {..} = App.Params <$> projectName <*> projectSlug <*> projectDeploymentImage
-  where
-    projectName = required_ Name reqProjectName |>> buildName
-    projectSlug = required_ Slug reqProjectSlug |>> buildSlug
-    projectDeploymentImage = required_ DeploymentImage reqProjectDeploymentImage |>> buildDeploymentImage
+mapRequest :: Request -> App.Params
+mapRequest Request {..} = App.Params reqProjectName reqProjectSlug reqProjectDeploymentImage
 
 update :: Project -> Handler ProjectResource
 update project = do
-  requestData <- requireJsonBody >>= parseValidatedRequest builder
+  requestData <- mapRequest <$> requireJsonBody
   updatedProject <- App.call project requestData
   return $ projectResource updatedProject
 

@@ -1,5 +1,6 @@
 module Util.Slug
   ( Slug
+  , isValidSlug
   , slug
   ) where
 
@@ -26,3 +27,6 @@ slugParser = do
 
 slug :: Text -> Maybe Slug
 slug = parseMaybe slugParser
+
+isValidSlug :: Text -> Bool
+isValidSlug = isJust . slug
