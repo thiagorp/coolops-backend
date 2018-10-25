@@ -46,6 +46,7 @@ data Action
   | IncomingWebhook Text
                     Message
   | ListConversations Text
+                      (Maybe Text)
   | PostMessageAsBot ChatPostMessageAsBot
   | RevokeToken ByteString
   | UpdateMessage ChatUpdateMessage
@@ -70,12 +71,13 @@ buildRequest request clientId clientSecret action =
         }
     IncomingWebhook url message ->
       (parseRequest_ $ Text.unpack url) {method = "POST", requestBody = RequestBodyLBS $ encode message}
-    ListConversations token ->
+    ListConversations token cursor ->
       request
         { method = "GET"
         , path = "/api/conversations.list"
         , queryString =
-            "token=" <> encodeUtf8 token <> "&exclude_archived=true&limit=1000&types=public_channel,private_channel"
+            "token=" <> encodeUtf8 token <> "&exclude_archived=true&limit=1000&types=public_channel,private_channel" <>
+            maybe "" (("&cursor=" <>) . encodeUtf8) cursor
         }
     PostMessageAsBot message@(ChatPostMessageAsBot token _ _) ->
       request

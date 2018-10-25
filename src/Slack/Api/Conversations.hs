@@ -25,19 +25,39 @@ instance FromJSON Conversation where
       conversationName <- o .: "name"
       return Conversation {..}
 
+data IntermediateResponse = IntermediateResponse
+  { conversations_ :: ![Conversation]
+  , nextCursor :: !Text
+  }
+
+instance FromJSON IntermediateResponse where
+  parseJSON =
+    withObject "" $ \o -> do
+      conversations_ <- o .: "channels"
+      metadataO <- o .: "response_metadata"
+      nextCursor <- metadataO .: "next_cursor"
+      return IntermediateResponse {..}
+
 newtype Response = Response
   { conversations :: [Conversation]
   }
 
-instance FromJSON Response where
-  parseJSON =
-    withObject "" $ \o -> do
-      conversations <- o .: "channels"
-      return Response {..}
+emptyIntermediateResponse :: IntermediateResponse
+emptyIntermediateResponse = IntermediateResponse {conversations_ = [], nextCursor = ""}
+
+fetchRecursive :: (SlackClientMonad m) => Text -> [Conversation] -> Maybe Text -> m [Conversation]
+fetchRecursive token conversations cursor = do
+  response <- slackRequest (ListConversations token cursor)
+  case statusCode (responseStatus response) of
+    200 -> do
+      let IntermediateResponse {..} = fromMaybe emptyIntermediateResponse $ decode (responseBody response)
+      let newConversations = conversations <> conversations_
+      case nextCursor of
+        "" -> return newConversations
+        newCursor -> fetchRecursive token newConversations (Just newCursor)
+    _ -> return conversations
 
 list :: (SlackClientMonad m) => Text -> m Response
 list token = do
-  response <- slackRequest (ListConversations token)
-  case statusCode (responseStatus response) of
-    200 -> return $ fromMaybe (Response {conversations = []}) $decode (responseBody response)
-    _ -> return Response {conversations = []}
+  conversations <- fetchRecursive token [] Nothing
+  return Response {..}
