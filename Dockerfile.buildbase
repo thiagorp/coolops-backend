@@ -12,4 +12,5 @@ COPY stack.yaml .
 COPY package.yaml .
 
 RUN stack build --only-dependencies 
+RUN stack build --test --no-run-tests
 RUN stack install hlint
