@@ -21,8 +21,10 @@ import qualified Deployments.Domain.Build as B
 import qualified Deployments.Domain.Project as P
 import Slack.Api.ChatMessages
 import Slack.Api.Message
+import qualified Slack.Database.AccessToken as AT
 import Slack.Database.BuildMessage (createSlackBuildMessage, getSlackBuildMessage)
-import Slack.Database.ProjectIntegration (getSlackIntegrationForProject)
+import qualified Slack.Database.ProjectIntegration as PI
+import Slack.Domain.AccessToken hiding (genId)
 import Slack.Domain.BuildMessage
 import Slack.Domain.ProjectIntegration hiding (genId)
 import Util.FrontendEndpoints (logsPage)
@@ -31,23 +33,24 @@ data Error
   = MessageDataNotFound
   | BuildNotFound
   | SlackConfigNotFound
+  | SlackAccessTokenNotFound
 
 saveSlackBuildMessage :: (HasPostgres m) => B.ID -> Text -> m ()
 saveSlackBuildMessage buildMessageBuildId buildMessageSlackMessageId = do
   buildMessageId <- genId
   createSlackBuildMessage BuildMessage {..}
 
-createMessage :: (SlackClientMonad m, HasPostgres m) => ProjectIntegration -> B.Build -> Message -> m ()
-createMessage ProjectIntegration {..} B.Build {..} m = do
-  maybeResponseTs <- postMessage integrationAccessToken integrationChannelId m
+createMessage :: (SlackClientMonad m, HasPostgres m) => ProjectIntegration -> AccessToken -> B.Build -> Message -> m ()
+createMessage ProjectIntegration {..} AccessToken {..} B.Build {..} m = do
+  maybeResponseTs <- postMessage tokenBotAccessToken integrationChannelId m
   forM_ maybeResponseTs (saveSlackBuildMessage buildId)
 
-sendMessage :: (SlackClientMonad m, HasPostgres m) => ProjectIntegration -> B.Build -> Message -> m ()
-sendMessage config@ProjectIntegration {..} build@B.Build {..} m = do
+sendMessage :: (SlackClientMonad m, HasPostgres m) => ProjectIntegration -> AccessToken -> B.Build -> Message -> m ()
+sendMessage config@ProjectIntegration {..} at@AccessToken {..} build@B.Build {..} m = do
   maybeExistingMesage <- getSlackBuildMessage buildId
   case maybeExistingMesage of
-    Nothing -> createMessage config build m
-    Just BuildMessage {..} -> updateMessage integrationAccessToken integrationChannelId buildMessageSlackMessageId m
+    Nothing -> createMessage config at build m
+    Just BuildMessage {..} -> updateMessage tokenBotAccessToken integrationChannelId buildMessageSlackMessageId m
 
 handleEntity :: Monad m => Error -> m (Maybe a) -> ExceptT Error m a
 handleEntity e wrappedEntity = do
@@ -57,7 +60,10 @@ handleEntity e wrappedEntity = do
     Just a -> return a
 
 getSlackConfig_ :: HasPostgres m => P.ID -> ExceptT Error m ProjectIntegration
-getSlackConfig_ projectId = handleEntity SlackConfigNotFound (getSlackIntegrationForProject projectId)
+getSlackConfig_ projectId = handleEntity SlackConfigNotFound (PI.findByProjectId projectId)
+
+getSlackAccessToken_ :: HasPostgres m => P.ID -> ExceptT Error m AccessToken
+getSlackAccessToken_ projectId = handleEntity SlackConfigNotFound (AT.findByProjectId projectId)
 
 getBuild_ :: HasPostgres m => P.CompanyID -> Text -> ExceptT Error m B.Build
 getBuild_ cId bId = handleEntity BuildNotFound (getBuild cId bId)
@@ -125,8 +131,9 @@ call_ :: CallConstraint m => P.CompanyID -> Text -> ExceptT Error m ()
 call_ cId bId = do
   build <- getBuild_ cId bId
   slackConfig <- getSlackConfig_ (B.buildProjectId build)
+  slackAccessToken <- getSlackAccessToken_ (B.buildProjectId build)
   m <- message_ cId bId
-  lift $ sendMessage slackConfig build m
+  lift $ sendMessage slackConfig slackAccessToken build m
 
 call :: CallConstraint m => P.CompanyID -> Text -> m (Either Error ())
 call cId bId = runExceptT $ call_ cId bId

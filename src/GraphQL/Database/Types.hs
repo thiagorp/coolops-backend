@@ -145,16 +145,21 @@ newtype SlackConfiguration = SlackConfiguration
   { slackConfigurationClientId :: Text
   } deriving (Show)
 
+data SlackAccessToken = SlackAccessToken
+  { satCompanyId :: DBCompanyID
+  , satTeamName :: Text
+  , satToken :: Text
+  } deriving (Generic, Show)
+
+instance FromRow SlackAccessToken
+
 data SlackProjectIntegration = SlackProjectIntegration
   { spiProjectId :: ProjectID
-  , spiWorkspaceName :: Text
-  } deriving (Show)
+  , spiChannelId :: Text
+  , spiChannelName :: Text
+  } deriving (Generic, Show)
 
-instance FromRow SlackProjectIntegration where
-  fromRow = do
-    spiProjectId <- field
-    spiWorkspaceName <- field
-    return SlackProjectIntegration {..}
+instance FromRow SlackProjectIntegration
 
 type UserID = ID User
 

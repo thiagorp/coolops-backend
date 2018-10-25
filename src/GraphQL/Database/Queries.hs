@@ -3,6 +3,7 @@ module GraphQL.Database.Queries
   , CompanyID
   , getCompany
   , getOnboarding
+  , getSlackAccessToken
   , listBuilds
   , listBuildsById
   , listEnvironments
@@ -32,6 +33,15 @@ getCompany companyId = do
   where
     q =
       "select id, name, onboarding_completed, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from companies where id = ?"
+
+getSlackAccessToken :: (HasPostgres m) => CompanyID -> m (Maybe SlackAccessToken)
+getSlackAccessToken companyId = do
+  results <- runQuery q (Only companyId)
+  case results of
+    [] -> return Nothing
+    row:_ -> return $ Just row
+  where
+    q = "select company_id, team_name, bot_access_token from slack_access_tokens where company_id = ?"
 
 getOnboarding :: (HasPostgres m) => CompanyID -> m Onboarding
 getOnboarding companyId = do
@@ -110,7 +120,7 @@ listSlackProjectIntegrations :: (HasPostgres m) => CompanyID -> [ProjectID] -> m
 listSlackProjectIntegrations companyId projectIds = runQuery q (companyId, In projectIds)
   where
     q =
-      "select spi.project_id, spi.workspace_name from slack_project_integrations spi \
+      "select spi.project_id, spi.channel_id, spi.channel_name from slack_project_integrations spi \
       \join projects p on p.id = spi.project_id \
       \where p.company_id = ? and p.id in ?"
 

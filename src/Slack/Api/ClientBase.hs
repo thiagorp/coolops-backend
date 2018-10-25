@@ -29,11 +29,7 @@ data ChatPostMessageAsBot =
 
 instance ToJSON ChatPostMessageAsBot where
   toJSON (ChatPostMessageAsBot _ channel Message {..}) =
-    object
-      [ "channel" .= channel
-      , "text" .= messageText
-      , "attachments" .= messageAttachments
-      ]
+    object ["channel" .= channel, "text" .= messageText, "attachments" .= messageAttachments]
 
 data ChatUpdateMessage =
   ChatUpdateMessage Text
@@ -43,21 +39,16 @@ data ChatUpdateMessage =
 
 instance ToJSON ChatUpdateMessage where
   toJSON (ChatUpdateMessage _ channel ts Message {..}) =
-    object
-      [ "channel" .= channel
-      , "text" .= messageText
-      , "ts" .= ts
-      , "attachments" .= messageAttachments
-      ]
+    object ["channel" .= channel, "text" .= messageText, "ts" .= ts, "attachments" .= messageAttachments]
 
 data Action
   = GetOAuthToken ByteString
-  | GetWorkspaceToken ByteString
-  | RevokeToken ByteString
-  | PostMessageAsBot ChatPostMessageAsBot
-  | UpdateMessage ChatUpdateMessage
   | IncomingWebhook Text
                     Message
+  | ListConversations Text
+  | PostMessageAsBot ChatPostMessageAsBot
+  | RevokeToken ByteString
+  | UpdateMessage ChatUpdateMessage
 
 type SlackClientMonad m = (HasHttp m, HasSlackSettings m, MonadThrow m)
 
@@ -75,46 +66,31 @@ buildRequest request clientId clientSecret action =
       request
         { method = "GET"
         , path = "/api/oauth.access"
-        , queryString =
-            "code=" <> code <> "&client_id=" <> clientId <> "&client_secret=" <>
-            clientSecret
-        }
-    GetWorkspaceToken code ->
-      request
-        { method = "GET"
-        , path = "/api/oauth.access"
-        , queryString =
-            "code=" <> code <> "&client_id=" <> clientId <> "&client_secret=" <>
-            clientSecret
-        }
-    RevokeToken token ->
-      request
-        { method = "GET"
-        , path = "/api/auth.revoke"
-        , queryString = "token=" <> token
+        , queryString = "code=" <> code <> "&client_id=" <> clientId <> "&client_secret=" <> clientSecret
         }
     IncomingWebhook url message ->
-      (parseRequest_ $ Text.unpack url)
-        {method = "POST", requestBody = RequestBodyLBS $ encode message}
+      (parseRequest_ $ Text.unpack url) {method = "POST", requestBody = RequestBodyLBS $ encode message}
+    ListConversations token ->
+      request
+        { method = "GET"
+        , path = "/api/conversations.list"
+        , queryString =
+            "token=" <> encodeUtf8 token <> "&exclude_archived=true&limit=1000&types=public_channel,private_channel"
+        }
     PostMessageAsBot message@(ChatPostMessageAsBot token _ _) ->
       request
         { method = "POST"
         , path = "/api/chat.postMessage"
         , requestBody = RequestBodyLBS $ encode message
-        , requestHeaders =
-            [ (hContentType, "application/json")
-            , (hAuthorization, "Bearer " <> encodeUtf8 token)
-            ]
+        , requestHeaders = [(hContentType, "application/json"), (hAuthorization, "Bearer " <> encodeUtf8 token)]
         }
+    RevokeToken token -> request {method = "GET", path = "/api/auth.revoke", queryString = "token=" <> token}
     UpdateMessage message@(ChatUpdateMessage token _ _ _) ->
       request
         { method = "POST"
         , path = "/api/chat.update"
         , requestBody = RequestBodyLBS $ encode message
-        , requestHeaders =
-            [ (hContentType, "application/json")
-            , (hAuthorization, "Bearer " <> encodeUtf8 token)
-            ]
+        , requestHeaders = [(hContentType, "application/json"), (hAuthorization, "Bearer " <> encodeUtf8 token)]
         }
 
 baseRequest :: (Monad m) => m Request

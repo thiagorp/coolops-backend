@@ -16,6 +16,7 @@ import GraphQL.Resolver ((:<>)(..), Handler, HasResolver(..))
 
 import qualified Common.Config as Config
 import Env
+import qualified GraphQL.Api.Types as Api
 import qualified GraphQL.Database as DB
 import qualified GraphQL.Database.Types as DB
 import Util.Key as Key
@@ -77,7 +78,11 @@ type Param = Object "Param" '[] '[ Field "key" Text, Field "value" Text]
 
 type SlackConfiguration = Object "SlackConfiguration" '[] '[ Field "clientId" Text]
 
-type SlackProjectIntegration = Object "SlackProjectIntegration" '[] '[ Field "workspaceName" Text]
+type SlackChannel = Object "SlackChannel" '[] '[ Field "id" Text, Field "name" Text]
+
+type SlackAccessToken = Object "SlackAccessToken" '[] '[ Field "teamName" Text, Field "channels" (List SlackChannel)]
+
+type SlackProjectIntegration = Object "SlackProjectIntegration" '[] '[ Field "channelName" Text, Field "channelId" Text]
 
 type User
    = Object "User" '[] '[ Field "id" Text, Field "firstName" Text, Field "lastName" Text, Field "email" Text, Field "company" Company, Field "createdAt" Int32, Field "updatedAt" Int32]
@@ -85,7 +90,7 @@ type User
 type Onboarding = Object "Onboarding" '[] '[ Field "company" Company, Field "project" (Maybe Project)]
 
 type Query
-   = Object "Query" '[] '[ Argument "id" Text :> Field "environment" (Maybe Environment), Field "projects" (List Project), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List Build), Argument "id" Text :> Field "project" (Maybe Project), Field "slackConfiguration" SlackConfiguration, Field "me" User, Field "onboarding" Onboarding]
+   = Object "Query" '[] '[ Argument "id" Text :> Field "environment" (Maybe Environment), Field "projects" (List Project), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List Build), Argument "id" Text :> Field "project" (Maybe Project), Field "slackAccessToken" (Maybe SlackAccessToken), Field "slackConfiguration" SlackConfiguration, Field "me" User, Field "onboarding" Onboarding]
 
 -- Datasource
 getBuild_ :: DB.BuildID -> Handler App Build
@@ -133,6 +138,13 @@ getEnvLastDeployment eId = do
     Just d -> pure $ Just (deploymentHandler d)
     Nothing -> return Nothing
 
+getSlackAccessToken :: Handler App (Maybe SlackAccessToken)
+getSlackAccessToken = do
+  maybe_ <- DB.getSlackAccessToken
+  case maybe_ of
+    Just at -> pure $ Just (slackAccessTokenHandler at)
+    Nothing -> return Nothing
+
 getSlackConfiguration :: Config.SlackSettings -> Handler App SlackConfiguration
 getSlackConfiguration Config.SlackSettings {..} = pure $ pure slackClientId
 
@@ -159,6 +171,9 @@ listEnvironments pId = map environmentHandler <$> DB.listEnvironments pId
 
 listProjects :: Handler App (List Project)
 listProjects = map projectHandler <$> DB.listProjects
+
+listSlackChannels :: Text -> Handler App (List SlackChannel)
+listSlackChannels token = map slackChannelHandler <$> DB.listSlackChannels token
 
 -- Handlers
 companyHandler :: DB.Company -> Handler App Company
@@ -209,8 +224,14 @@ buildHandler DB.Build {..} =
   pure buildCreatedAt :<>
   pure buildUpdatedAt
 
+slackAccessTokenHandler :: DB.SlackAccessToken -> Handler App SlackAccessToken
+slackAccessTokenHandler DB.SlackAccessToken {..} = pure $ pure satTeamName :<> listSlackChannels satToken
+
+slackChannelHandler :: Api.SlackChannel -> Handler App SlackChannel
+slackChannelHandler Api.SlackChannel {..} = pure $ pure slackChannelId :<> pure slackChannelName
+
 slackProjectIntegrationHandler :: DB.SlackProjectIntegration -> Handler App SlackProjectIntegration
-slackProjectIntegrationHandler DB.SlackProjectIntegration {..} = pure $ pure spiWorkspaceName
+slackProjectIntegrationHandler DB.SlackProjectIntegration {..} = pure $ pure spiChannelName :<> pure spiChannelId
 
 userHandler :: DB.User -> Handler App User
 userHandler DB.User {..} =
@@ -222,7 +243,7 @@ userHandler DB.User {..} =
 handler :: Api.User -> Env -> Handler App Query
 handler Api.User {..} Env {..} =
   pure $
-  (getEnvironment . DB.ID) :<> listProjects :<> listBuilds Nothing :<> (getProject . DB.ID) :<>
+  (getEnvironment . DB.ID) :<> listProjects :<> listBuilds Nothing :<> (getProject . DB.ID) :<> getSlackAccessToken :<>
   getSlackConfiguration slackSettings :<>
   getUser_ (DB.ID (Key.keyText userId)) :<>
   getOnboarding

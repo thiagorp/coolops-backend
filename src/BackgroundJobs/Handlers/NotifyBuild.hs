@@ -19,8 +19,7 @@ data Params =
          Text
 
 instance FromJSON Params where
-  parseJSON =
-    withObject "" $ \o -> Params <$> o .: "company_id" <*> o .: "build_id"
+  parseJSON = withObject "" $ \o -> Params <$> o .: "company_id" <*> o .: "build_id"
 
 instance ToJSON Params where
   toJSON (Params cId bId) = object ["company_id" .= cId, "build_id" .= bId]
@@ -32,4 +31,5 @@ call (Params cId bId) = do
     Left App.MessageDataNotFound -> finishWithFailure "Message data not found"
     Left App.BuildNotFound -> finishWithFailure "Build not found"
     Left App.SlackConfigNotFound -> finishWithFailure "Slack config not found"
+    Left App.SlackAccessTokenNotFound -> finishWithFailure "Slack access token not found"
     Right _ -> finishWithSuccess

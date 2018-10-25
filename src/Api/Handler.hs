@@ -12,11 +12,12 @@ import Yesod.Core
 
 import Api.Routes
 
-import Api.Handlers.ConnectProjectWithSlack
 import Api.Handlers.CreateBuild
 import Api.Handlers.CreateDeployment
 import Api.Handlers.CreateEnvironment
 import Api.Handlers.CreateProject
+import Api.Handlers.CreateProjectSlackIntegration
+import Api.Handlers.CreateSlackAccessToken
 import Api.Handlers.GetDeploymentLogs
 import Api.Handlers.GraphQL
 import Api.Handlers.HealthCheck

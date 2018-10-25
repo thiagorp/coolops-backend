@@ -19,12 +19,13 @@ mkYesodData
 /tokens TokensR POST
 /projects ProjectsR POST
 /projects/#Text UpdateProjectR PATCH
+/projects/#Text/slack_integration CreateProjectSlackIntegrationR POST
 /projects/#Text/environments ProjectsEnvironmentsR POST
-/projects/#Text/slack_integration ProjectsSlackIntegrationR POST
 /environments/#Text UpdateEnvironmentR PATCH
 /builds BuildsR POST
 /deployments DeploymentsR POST
 /deployments/#Text/logs DeploymentLogsR GET
+/slack/access_tokens CreateSlackAccessTokenR POST
 /slack/messages SlackMessagesR POST
 /slack/commands SlackCommandsR POST
 |]
