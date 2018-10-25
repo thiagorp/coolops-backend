@@ -4,11 +4,13 @@ variables:
   BUILD_NAME: ${CI_COMMIT_REF_SLUG}-${CI_JOB_ID}
   JOB_URL: ${CI_JOB_URL}
   VERSION: ${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
+  STACK_ROOT: ${CI_PROJECT_DIR}/.stack-root
 
 cache:
   key: stack-libraries
   paths:
   - .stack-work/
+  - .stack-root/
 
 lint:
   stage: test
