@@ -20,8 +20,7 @@ data MessageData = MessageData
   , dataDbStatus :: !DbStatus
   }
 
-getSlackDeploymentMessageData ::
-     HasPostgres m => CompanyID -> Text -> m (Maybe MessageData)
+getSlackDeploymentMessageData :: HasPostgres m => CompanyID -> Text -> m (Maybe MessageData)
 getSlackDeploymentMessageData cId dId = do
   results <- runQuery q (cId, dId, In notFinishedStatuses)
   case results of
@@ -29,13 +28,13 @@ getSlackDeploymentMessageData cId dId = do
     row:_ -> return $ Just (build row)
   where
     q =
-      "select b.name, e.name, p.name, sd.slack_user_id, spi.access_token, d.status\
+      "select b.name, e.name, p.name, sd.slack_user_id, sa.bot_access_token, d.status\
         \ from deployments d\
         \ join builds b on d.build_id = b.id\
         \ join environments e on d.environment_id = e.id\
         \ join projects p on e.project_id = p.id\ 
         \ join slack_deployments sd on d.id = sd.deployment_id\
-        \ join slack_project_integrations spi on p.id = spi.project_id\
+        \ join slack_access_tokens sa on p.company_id = sa.company_id\
         \ where p.company_id = ? and d.id = ? and d.status not in ?\
         \ limit 1"
 

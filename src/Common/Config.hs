@@ -65,8 +65,8 @@ data SlackSettings = SlackSettings
 
 slackSettings :: IO SlackSettings
 slackSettings = do
-  slackClientId <- envVar "SLACK_CLIENT_ID" "388050218183.406662000402"
-  slackClientSecret <- encodeUtf8 <$> envVar "SLACK_CLIENT_SECRET" "8bca4209d59b84e8f341c5e49cc3d26b"
-  slackVerificationToken <- envVar "SLACK_VERIFICATION_TOKEN" "AtSllqYHHdWAUpiVuuNfPTU1"
-  slackSigningSecret <- encodeUtf8 <$> envVar "SLACK_SIGNING_SECRET" "b2891586cb97af67450b9b85dd6a4295"
+  slackClientId <- envVar "SLACK_CLIENT_ID" "388050218183.462003618976"
+  slackClientSecret <- encodeUtf8 <$> envVar "SLACK_CLIENT_SECRET" "04b53f7f4b23220c911c97a1d1ce19fa"
+  slackVerificationToken <- envVar "SLACK_VERIFICATION_TOKEN" "P9nDkXewY8jodbt5KJfJ75XE"
+  slackSigningSecret <- encodeUtf8 <$> envVar "SLACK_SIGNING_SECRET" "30dfb8b2bb8afca48a58ad4d32c418d3"
   return SlackSettings {..}

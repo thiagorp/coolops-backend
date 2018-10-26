@@ -10,7 +10,8 @@ import Auth.Domain (CompanyID)
 import Deployments.Database.Deployment (getDeploymentResources)
 import Deployments.Domain.Deployment (DeploymentResources(..))
 import qualified Deployments.Domain.Project as P
-import Slack.Database.ProjectIntegration (getCompanyIdForBuildsProjectIntegration)
+import qualified Slack.Database.AccessToken as AT
+import Slack.Domain.AccessToken (AccessToken(..))
 import qualified Slack.UseCases.CreateDeployment as App
 
 resourcesMissing :: TL.Text
@@ -40,15 +41,15 @@ getResources_ cId eId bId = do
     Nothing -> sendResponse resourcesMissing
     Just resources -> return resources
 
-getCompanyId_ :: Text -> Text -> Handler CompanyID
-getCompanyId_ teamId buildId = do
-  maybeCompanyId <- getCompanyIdForBuildsProjectIntegration teamId buildId
+getCompanyId_ :: Text -> Handler CompanyID
+getCompanyId_ teamId = do
+  maybeCompanyId <- AT.findByTeamId teamId
   case maybeCompanyId of
     Nothing -> sendResponse integrationMissing
-    Just companyId -> return companyId
+    Just AccessToken {..} -> return tokenCompanyId
 
 call :: Text -> Text -> Text -> (Text, Text) -> Handler ()
 call environmentId buildId teamId slackUser = do
-  companyId <- getCompanyId_ teamId buildId
+  companyId <- getCompanyId_ teamId
   resources <- getResources_ companyId environmentId buildId
   runApp resources slackUser

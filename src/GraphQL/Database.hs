@@ -7,11 +7,13 @@ module GraphQL.Database
   , getEnvLastDeployment
   , getOnboarding
   , getProject
+  , getSlackAccessToken
   , getSlackProjectIntegration
   , getUser
   , listBuilds
   , listEnvironments
   , listProjects
+  , listSlackChannels
   , run
   ) where
 
@@ -23,9 +25,13 @@ import Data.Pool
 import Haxl.Core
 
 import Auth.Domain (User(..))
+import qualified Common.Config as Config
 import Common.Database hiding (runDb)
 import qualified Env as App
+import qualified GraphQL.Api.Calls as Api
 import qualified GraphQL.Database.Queries as Q
+import Http.Classes
+import Slack.Api.Classes
 
 type App = GenHaxl AppEnv
 
@@ -36,12 +42,21 @@ data AppEnv = AppEnv
 
 newtype Db a =
   Db (ReaderT App.Env IO a)
-  deriving (Functor, Applicative, Monad, MonadIO, MonadReader App.Env, MonadUnliftIO)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadReader App.Env, MonadUnliftIO, MonadThrow)
 
 instance HasPostgres Db where
   getPostgresConn fx = do
     pool <- asks App.pgConnPool
     withRunInIO $ \r -> withResource pool (r . fx)
+
+instance HasHttp Db where
+  getHttpRequestManager = asks App.requestManager
+
+instance HasSlackSettings Db where
+  slackClientId = Config.slackClientId <$> asks App.slackSettings
+  slackClientSecret = Config.slackClientSecret <$> asks App.slackSettings
+  slackVerificationToken = Config.slackVerificationToken <$> asks App.slackSettings
+  slackSigningSecret = Config.slackSigningSecret <$> asks App.slackSettings
 
 runDb :: App.Env -> Db a -> IO a
 runDb e (Db m) = runReaderT m e
@@ -74,6 +89,9 @@ getOnboarding = dataFetch GetOnboarding
 getProject :: Q.ProjectID -> App (Maybe Q.Project)
 getProject pId = dataFetch (GetProject pId)
 
+getSlackAccessToken :: App (Maybe Q.SlackAccessToken)
+getSlackAccessToken = dataFetch GetSlackAccessToken
+
 getSlackProjectIntegration :: Q.ProjectID -> App (Maybe Q.SlackProjectIntegration)
 getSlackProjectIntegration pId = dataFetch (GetSlackProjectIntegration pId)
 
@@ -89,6 +107,9 @@ listEnvironments = dataFetch . ListEnvironments
 listProjects :: App [Q.Project]
 listProjects = dataFetch ListProjects
 
+listSlackChannels :: Text -> App [Api.SlackChannel]
+listSlackChannels = dataFetch . ListSlackChannels
+
 -- Implementation
 data DatabaseQuery a where
   GetBuild :: Q.BuildID -> DatabaseQuery (Maybe Q.Build)
@@ -97,11 +118,13 @@ data DatabaseQuery a where
   GetEnvLastDeployment :: Q.EnvironmentID -> DatabaseQuery (Maybe Q.Deployment)
   GetOnboarding :: DatabaseQuery Q.Onboarding
   GetProject :: Q.ProjectID -> DatabaseQuery (Maybe Q.Project)
+  GetSlackAccessToken :: DatabaseQuery (Maybe Q.SlackAccessToken)
   GetSlackProjectIntegration :: Q.ProjectID -> DatabaseQuery (Maybe Q.SlackProjectIntegration)
   GetUser :: Q.UserID -> DatabaseQuery (Maybe Q.User)
   ListProjects :: DatabaseQuery [Q.Project]
   ListBuilds :: (Int, Int) -> Maybe Q.ProjectID -> DatabaseQuery [Q.Build]
   ListEnvironments :: Q.ProjectID -> DatabaseQuery [Q.Environment]
+  ListSlackChannels :: Text -> DatabaseQuery [Api.SlackChannel]
   deriving (Typeable)
 
 deriving instance Eq (DatabaseQuery a)
@@ -118,6 +141,8 @@ instance Hashable (DatabaseQuery a) where
   hashWithSalt s (GetUser a) = hashWithSalt s (8 :: Int, a)
   hashWithSalt s GetCompany = hashWithSalt s (9 :: Int)
   hashWithSalt s GetOnboarding = hashWithSalt s (10 :: Int)
+  hashWithSalt s GetSlackAccessToken = hashWithSalt s (11 :: Int)
+  hashWithSalt s (ListSlackChannels a) = hashWithSalt s (12 :: Int, a)
 
 deriving instance Show (DatabaseQuery a)
 
@@ -140,11 +165,13 @@ instance DataSource AppEnv DatabaseQuery where
         getOnboarding_ e blockedFetches
         getProject_ e blockedFetches
         getEnvLastDeployment_ e blockedFetches
+        getSlackAccessToken_ e blockedFetches
         getSlackProjectIntegration_ e blockedFetches
         getUser_ e blockedFetches
         listProjects_ e blockedFetches
         listBuilds_ e blockedFetches
         listEnvironments_ e blockedFetches
+        listSlackChannels_ e blockedFetches
 
 getBuild_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
 getBuild_ AppEnv {..} blockedFetches =
@@ -192,6 +219,15 @@ getProject_ AppEnv {..} blockedFetches =
     currentCompanyId = userCompanyId currentUser
     requests = [(pId, r) | BlockedFetch (GetProject pId) r <- blockedFetches]
 
+getSlackAccessToken_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+getSlackAccessToken_ AppEnv {..} blockedFetches =
+  unless (null requests) $ do
+    company <- Q.getSlackAccessToken currentCompanyId
+    mapM_ (liftIO . flip putSuccess company) requests
+  where
+    currentCompanyId = userCompanyId currentUser
+    requests = [r | BlockedFetch GetSlackAccessToken r <- blockedFetches]
+
 getSlackProjectIntegration_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
 getSlackProjectIntegration_ AppEnv {..} blockedFetches =
   runFetchByID requests Q.spiProjectId (Q.listSlackProjectIntegrations currentCompanyId (map fst requests))
@@ -230,6 +266,15 @@ listProjects_ AppEnv {..} blockedFetches = runFetchAll requests (Q.listProjects 
   where
     requests = [r | BlockedFetch ListProjects r <- blockedFetches]
     currentCompanyId = userCompanyId currentUser
+
+listSlackChannels_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+listSlackChannels_ AppEnv {..} blockedFetches = do
+  results <- Api.listSlackConversations (map fst requests)
+  traverse_
+    (\(token, r) -> liftIO $ putSuccess r (snd (fromMaybe (token, []) (List.find (\(t, _) -> t == token) results))))
+    requests
+  where
+    requests = [(token, r) | BlockedFetch (ListSlackChannels token) r <- blockedFetches]
 
 runFetchByID :: Eq id => [(id, ResultVar (Maybe a))] -> (a -> id) -> Db [a] -> Db ()
 runFetchByID requests readId m =
