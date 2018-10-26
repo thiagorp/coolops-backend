@@ -3,13 +3,19 @@ FROM haskell:8.4
 RUN apt-get update && apt-get install -y curl lsb-release
 RUN echo "deb http://packages.cloud.google.com/apt cloud-sdk-$(lsb_release -c -s) main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
 RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-
-RUN stack install hpack --install-ghc
 RUN curl -sSL https://get.docker.com/ | sh
 RUN apt-get update && apt-get install -y libpq-dev google-cloud-sdk
+
+ENV STACK_ROOT /builds/coolops.io/api/.stack-root
+RUN mkdir -p /builds/coolops.io/api/.stack-root
+RUN stack install hpack --install-ghc
 
 COPY stack.yaml .
 COPY package.yaml .
 
 RUN stack build --only-dependencies 
 RUN stack install hlint
+
+RUN stack install base58-bytestring
+RUN stack install pwstore-fast
+RUN stack install graphql-api
