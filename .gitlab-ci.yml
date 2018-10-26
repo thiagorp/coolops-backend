@@ -14,7 +14,9 @@ cache:
 
 lint:
   stage: test
-  script: hlint .
+  script:
+  - stack install hlint
+  - hlint .
 
 test:
   stage: test
