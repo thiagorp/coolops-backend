@@ -12,11 +12,12 @@ import Deployments.Domain.Build
 import Deployments.Domain.Deployment as Deployment
 import Deployments.Domain.Environment
 import Deployments.Domain.Project
+import qualified Kubernetes.ClientBase as K8s
 import qualified Kubernetes.Job as K8s
 import qualified Kubernetes.Pod as K8s
 import Util.Key
 
-type GetDeploymentLogsMonad m = (K8s.GetPodMonad m, K8s.GetLogsMonad m)
+type GetDeploymentLogsMonad m = (K8s.KubernetesMonad m, K8s.GetLogsMonad m)
 
 getDeploymentLogs :: (GetDeploymentLogsMonad m) => Maybe Int -> Deployment.ID -> m (Maybe LBS.ByteString)
 getDeploymentLogs nLines deploymentId = do
@@ -29,7 +30,7 @@ getDeploymentLogs nLines deploymentId = do
         Just (K8s.Waiting _) -> return Nothing
         _ -> K8s.getLogs nLines podName
 
-type RunDeploymentMonad m = K8s.CreateJobMonad m
+type RunDeploymentMonad m = K8s.KubernetesMonad m
 
 runDeployment :: (RunDeploymentMonad m) => QueuedDeployment -> DeploymentResources -> m Bool
 runDeployment QueuedDeployment {..} DeploymentResources {..} = K8s.createJob jobDescription

@@ -5,7 +5,6 @@ module Api.Handlers.SlackMessages
 import Api.Import
 
 import qualified Api.Handlers.SlackMessageButtons.DeployBuild as DeployBuild
-import Slack.Api.Classes
 import Slack.MessageButtons
 
 data Request = Request
@@ -38,7 +37,8 @@ instance FromJSON Request where
 
 verifyToken :: Text -> Handler ()
 verifyToken token = do
-  configToken <- slackVerificationToken
+  settings <- slackSettings <$> getEnv
+  let configToken = slackVerificationToken settings
   unless (token == configToken) notAuthenticated
 
 handleMessage :: Request -> Handler ()

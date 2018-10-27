@@ -16,8 +16,8 @@ import qualified RIO.Text as Text
 import Network.HTTP.Client
 import Network.HTTP.Types
 
+import Env
 import Http.Classes
-import Slack.Api.Classes
 import Slack.Api.Message (Message(..))
 
 type SlackResponse = Response LBS.ByteString
@@ -51,13 +51,14 @@ data Action
   | RevokeToken ByteString
   | UpdateMessage ChatUpdateMessage
 
-type SlackClientMonad m = (HasHttp m, HasSlackSettings m, MonadThrow m)
+type SlackClientMonad m = (HasEnv m, MonadIO m, MonadThrow m)
 
 slackRequest :: (SlackClientMonad m) => Action -> m (Response LBS.ByteString)
 slackRequest action = do
+  settings <- slackSettings <$> getEnv
   request <- baseRequest
-  clientId <- Text.encodeUtf8 <$> slackClientId
-  clientSecret <- slackClientSecret
+  let clientId = Text.encodeUtf8 (slackClientId settings)
+  let clientSecret = slackClientSecret settings
   makeRequest $ buildRequest request clientId clientSecret action
 
 buildRequest :: Request -> ByteString -> ByteString -> Action -> Request

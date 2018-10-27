@@ -19,8 +19,6 @@ import Data.Aeson.Types
 import Network.HTTP.Client
 import Network.HTTP.Types
 
-import Http.Classes
-import Kubernetes.Classes
 import Kubernetes.ClientBase
 
 data ContainerState
@@ -49,7 +47,7 @@ data GetPodError
 
 instance Exception GetPodError
 
-type GetPodMonad m = (HasHttp m, HasKubernetesSettings m, MonadThrow m)
+type GetPodMonad m = (KubernetesMonad m, MonadThrow m)
 
 getPodForJob :: (GetPodMonad m) => Text -> m (Maybe Pod)
 getPodForJob jobName = do
@@ -66,8 +64,7 @@ getPodForJob jobName = do
     _ -> throwM (HttpStatusError $ statusCode $ responseStatus response)
 
 findContainerStatusByName :: Text -> [ContainerStatus] -> Maybe ContainerStatus
-findContainerStatusByName name =
-  List.find (\status -> containerName status == name)
+findContainerStatusByName name = List.find (\status -> containerName status == name)
 
 getPodContainerState :: Text -> Pod -> Maybe ContainerState
 getPodContainerState name Pod {..} =
@@ -99,10 +96,8 @@ instance FromJSON ContainerStatus where
       containerState <- parseContainerState stateO
       return ContainerStatus {..}
 
-parseContainerState ::
-     HashMap Text (HashMap Text Value) -> Parser ContainerState
-parseContainerState =
-  HashMap.foldlWithKey' convertState (return $ Waiting "Unknown")
+parseContainerState :: HashMap Text (HashMap Text Value) -> Parser ContainerState
+parseContainerState = HashMap.foldlWithKey' convertState (return $ Waiting "Unknown")
   where
     convertState _ key stateHash =
       case key of
@@ -117,7 +112,7 @@ parseWaitingState stateHash = do
   reason <- maybe (return "NoReasonOnStateHash") parseJSON maybeReason
   return $ Waiting reason
 
-type GetLogsMonad m = (HasHttp m, HasKubernetesSettings m, MonadThrow m)
+type GetLogsMonad m = (KubernetesMonad m, MonadThrow m)
 
 getLogs :: (GetPodMonad m) => Maybe Int -> Text -> m (Maybe LBS.ByteString)
 getLogs nLines name = do

@@ -25,13 +25,10 @@ import Data.Pool
 import Haxl.Core
 
 import Auth.Domain (User(..))
-import qualified Common.Config as Config
 import Common.Database hiding (runDb)
 import qualified Env as App
 import qualified GraphQL.Api.Calls as Api
 import qualified GraphQL.Database.Queries as Q
-import Http.Classes
-import Slack.Api.Classes
 
 type App = GenHaxl AppEnv
 
@@ -42,21 +39,12 @@ data AppEnv = AppEnv
 
 newtype Db a =
   Db (ReaderT App.Env IO a)
-  deriving (Functor, Applicative, Monad, MonadIO, MonadReader App.Env, MonadUnliftIO, MonadThrow)
+  deriving (Applicative, Functor, App.HasEnv, Monad, MonadIO, MonadReader App.Env, MonadUnliftIO, MonadThrow)
 
 instance HasPostgres Db where
   getPostgresConn fx = do
     pool <- asks App.pgConnPool
     withRunInIO $ \r -> withResource pool (r . fx)
-
-instance HasHttp Db where
-  getHttpRequestManager = asks App.requestManager
-
-instance HasSlackSettings Db where
-  slackClientId = Config.slackClientId <$> asks App.slackSettings
-  slackClientSecret = Config.slackClientSecret <$> asks App.slackSettings
-  slackVerificationToken = Config.slackVerificationToken <$> asks App.slackSettings
-  slackSigningSecret = Config.slackSigningSecret <$> asks App.slackSettings
 
 runDb :: App.Env -> Db a -> IO a
 runDb e (Db m) = runReaderT m e
