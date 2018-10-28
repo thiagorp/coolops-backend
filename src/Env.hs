@@ -34,6 +34,9 @@ class HasEnv m where
 instance (Monad m) => HasEnv (ReaderT Env m) where
   getEnv = ask
 
+instance HasEnv (RIO Env) where
+  getEnv = ask
+
 acquirePool :: Int -> IO (Pool PG.Connection)
 acquirePool size = do
   s <- Config.pgSettings
