@@ -21,12 +21,8 @@ create = runDb' q
         \ (id, company_id, team_name, team_id, scopes, user_access_token, bot_access_token, bot_user_id)\
         \ values (?, ?, ?, ?, ?, ?, ?, ?)"
 
-findByTeamId :: (HasPostgres m) => Text -> m (Maybe AccessToken)
-findByTeamId tId = do
-  result <- runQuery q (Only tId)
-  case result of
-    [] -> return Nothing
-    row:_ -> return $ Just row
+findByTeamId :: (HasPostgres m) => Text -> m [AccessToken]
+findByTeamId tId = runQuery q (Only tId)
   where
     q =
       "select id, company_id, team_name, team_id, scopes, user_access_token, bot_access_token, bot_user_id from slack_access_tokens\

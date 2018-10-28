@@ -34,19 +34,22 @@ runApp DeploymentResources {..} (slackUserId, slackUserName) = do
     appParams =
       App.Params deploymentBuild deploymentEnvironment (P.projectCompanyId deploymentProject) slackUserId slackUserName
 
-getResources_ :: CompanyID -> Text -> Text -> Handler DeploymentResources
-getResources_ cId eId bId = do
-  maybeResources <- getDeploymentResources cId eId bId
-  case maybeResources of
-    Nothing -> sendResponse resourcesMissing
-    Just resources -> return resources
+getDeploymentResources_ :: Text -> Text -> CompanyID -> Handler (Maybe DeploymentResources)
+getDeploymentResources_ eId bId cId = getDeploymentResources cId eId bId
 
-getCompanyId_ :: Text -> Handler CompanyID
+getResources_ :: [CompanyID] -> Text -> Text -> Handler DeploymentResources
+getResources_ cId eId bId = do
+  maybeResources <- traverse (getDeploymentResources_ eId bId) cId
+  case catMaybes maybeResources of
+    [] -> sendResponse resourcesMissing
+    (resources:_) -> return resources
+
+getCompanyId_ :: Text -> Handler [CompanyID]
 getCompanyId_ teamId = do
-  maybeCompanyId <- AT.findByTeamId teamId
-  case maybeCompanyId of
-    Nothing -> sendResponse integrationMissing
-    Just AccessToken {..} -> return tokenCompanyId
+  accessTokens <- AT.findByTeamId teamId
+  case accessTokens of
+    [] -> sendResponse integrationMissing
+    _ -> return (map tokenCompanyId accessTokens)
 
 call :: Text -> Text -> Text -> (Text, Text) -> Handler ()
 call environmentId buildId teamId slackUser = do
