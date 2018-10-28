@@ -1,5 +1,6 @@
 module Kubernetes.ClientBase
   ( Action(..)
+  , KubernetesMonad
   , kubernetesRequest
   ) where
 
@@ -10,8 +11,8 @@ import qualified RIO.Text as Text
 import Network.HTTP.Client
 import Network.HTTP.Types
 
+import Env
 import Http.Classes
-import Kubernetes.Classes
 
 data Action
   = CreateJob ByteString
@@ -20,12 +21,12 @@ data Action
   | GetPodLogs (Maybe Int)
                ByteString
 
-type KubernetesMonad m = (HasHttp m, HasKubernetesSettings m)
+type KubernetesMonad m = (HasEnv m, MonadIO m)
 
-kubernetesRequest ::
-     (KubernetesMonad m) => Action -> m (Response LBS.ByteString)
+kubernetesRequest :: (KubernetesMonad m) => Action -> m (Response LBS.ByteString)
 kubernetesRequest action = do
-  namespace <- k8sNamespace
+  settings <- kubernetesSettings <$> getEnv
+  let namespace = k8sNamespace settings
   request <- baseRequest
   makeRequest $ buildRequest request action namespace
 
@@ -34,24 +35,11 @@ buildRequest request action namespace =
   case action of
     GetPodForJob jobName ->
       request
-        { method = "GET"
-        , path =
-            "/api/v1/namespaces/" <> namespace <>
-            "/pods/?labelSelector=job-name%3D" <>
-            jobName
-        }
-    GetJob jobName ->
-      request
-        { method = "GET"
-        , path =
-            "/apis/batch/v1/namespaces/" <> namespace <> "/jobs/" <> jobName
-        }
+        {method = "GET", path = "/api/v1/namespaces/" <> namespace <> "/pods/?labelSelector=job-name%3D" <> jobName}
+    GetJob jobName -> request {method = "GET", path = "/apis/batch/v1/namespaces/" <> namespace <> "/jobs/" <> jobName}
     CreateJob body ->
       request
-        { method = "POST"
-        , path = "/apis/batch/v1/namespaces/" <> namespace <> "/jobs"
-        , requestBody = RequestBodyBS body
-        }
+        {method = "POST", path = "/apis/batch/v1/namespaces/" <> namespace <> "/jobs", requestBody = RequestBodyBS body}
     GetPodLogs tailSize podName ->
       request
         { method = "GET"
@@ -60,13 +48,12 @@ buildRequest request action namespace =
             maybe "" (\n -> "?tailLines=" <> encodeUtf8 (tshow n)) tailSize
         }
 
-baseRequest :: (HasKubernetesSettings m) => m Request
+baseRequest :: (HasEnv m, Monad m) => m Request
 baseRequest = do
-  token <- k8sToken
-  host <- k8sHost
-  return $
-    (parseRequest_ (Text.unpack host)) {requestHeaders = defaultHeaders token}
+  settings <- kubernetesSettings <$> getEnv
+  let token = k8sToken settings
+  let host = k8sHost settings
+  return $ (parseRequest_ (Text.unpack host)) {requestHeaders = defaultHeaders token}
 
 defaultHeaders :: ByteString -> [Header]
-defaultHeaders token =
-  [(hContentType, "application/yaml"), (hAuthorization, "Bearer " <> token)]
+defaultHeaders token = [(hContentType, "application/yaml"), (hAuthorization, "Bearer " <> token)]

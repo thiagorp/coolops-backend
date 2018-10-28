@@ -1,11 +1,22 @@
 module Env
   ( Env(..)
+  , HasEnv(..)
+  , Config.PGSettings(..)
+  , Config.KubernetesSettings(..)
+  , Config.SlackSettings(..)
   , buildEnv
   ) where
 
 import RIO
 
-import qualified Common.Config as Config
+import Common.Config as Config
+  ( KubernetesSettings(..)
+  , PGSettings(..)
+  , SlackSettings(..)
+  , kubernetesSettings
+  , pgSettings
+  , slackSettings
+  )
 import Data.Pool
 import qualified Database.PostgreSQL.Simple as PG
 import qualified Network.HTTP.Client as Http
@@ -16,6 +27,15 @@ data Env = Env
   , kubernetesSettings :: Config.KubernetesSettings
   , slackSettings :: Config.SlackSettings
   }
+
+class HasEnv m where
+  getEnv :: m Env
+
+instance (Monad m) => HasEnv (ReaderT Env m) where
+  getEnv = ask
+
+instance HasEnv (RIO Env) where
+  getEnv = ask
 
 acquirePool :: Int -> IO (Pool PG.Connection)
 acquirePool size = do

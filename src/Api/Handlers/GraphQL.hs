@@ -15,7 +15,6 @@ import GraphQL.API
 import GraphQL.Resolver ((:<>)(..), Handler, HasResolver(..))
 
 import qualified Common.Config as Config
-import Env
 import qualified GraphQL.Api.Types as Api
 import qualified GraphQL.Database as DB
 import qualified GraphQL.Database.Types as DB

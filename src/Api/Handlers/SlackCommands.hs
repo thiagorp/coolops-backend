@@ -13,11 +13,10 @@ import Network.HTTP.Types.URI (urlEncode)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
-import Slack.Api.Classes
-
 buildRequestDigest :: Handler Text
 buildRequestDigest = do
-  secret <- LBS.fromStrict <$> slackSigningSecret
+  settings <- slackSettings <$> getEnv
+  let secret = LBS.fromStrict (slackSigningSecret settings)
   timestamp <- foldr (<>) "" <$> lookupHeaders "X-Slack-Request-Timestamp"
   body <- rebuildBody <$> getPostParams
   return $ T.pack $ showDigest $ hmacSha256 secret (LBS.fromStrict ("v0:" <> timestamp <> ":" <> body))

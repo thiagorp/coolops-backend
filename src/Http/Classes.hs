@@ -7,12 +7,7 @@ import Network.HTTP.Client
 
 import Env
 
-class (MonadIO m) =>
-      HasHttp m
+makeRequest :: (HasEnv m, MonadIO m) => Request -> m (Response LBS.ByteString)
+makeRequest request = manager >>= liftIO . httpLbs request
   where
-  getHttpRequestManager :: m Manager
-  makeRequest :: Request -> m (Response LBS.ByteString)
-  makeRequest request = getHttpRequestManager >>= liftIO . httpLbs request
-
-instance HasHttp (RIO Env) where
-  getHttpRequestManager = asks requestManager
+    manager = requestManager <$> getEnv

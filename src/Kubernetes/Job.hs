@@ -1,6 +1,5 @@
 module Kubernetes.Job
-  ( CreateJobMonad
-  , JobDescription(..)
+  ( JobDescription(..)
   , Job(..)
   , createJob
   , deploymentContainerName
@@ -20,8 +19,6 @@ import Data.Yaml
 import Network.HTTP.Client
 import Network.HTTP.Types
 
-import Http.Classes
-import Kubernetes.Classes
 import Kubernetes.ClientBase
 
 data JobDescription = JobDescription
@@ -59,19 +56,14 @@ instance ToJSON JobDescription where
                   , "containers" .=
                     array
                       [ object
-                          [ "name" .= deploymentContainerName
-                          , "image" .= dockerImage
-                          , "env" .= array (buildEnv envVars)
-                          ]
+                          ["name" .= deploymentContainerName, "image" .= dockerImage, "env" .= array (buildEnv envVars)]
                       ]
                   ]
               ]
           ]
       ]
 
-type CreateJobMonad m = (HasHttp m, HasKubernetesSettings m)
-
-createJob :: (CreateJobMonad m) => JobDescription -> m Bool
+createJob :: (KubernetesMonad m) => JobDescription -> m Bool
 createJob jobDescription = do
   response <- kubernetesRequest (CreateJob $ encode jobDescription)
   case statusCode (responseStatus response) of
@@ -103,7 +95,7 @@ data GetJobError
 
 instance Exception GetJobError
 
-type GetJobMonad m = (HasHttp m, HasKubernetesSettings m, MonadThrow m)
+type GetJobMonad m = (KubernetesMonad m, MonadThrow m)
 
 getJob :: (GetJobMonad m) => ByteString -> m (Maybe Job)
 getJob jobName = do
