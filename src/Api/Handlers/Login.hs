@@ -4,11 +4,10 @@ module Api.Handlers.Login
 
 import Api.Import
 
-import Auth.Domain
 import qualified Auth.UseCases.Login as App
 
 data Request = Request
-  { reqEmail :: !UserEmail
+  { reqEmail :: !App.EmailAddress
   , reqPassword :: !Text
   }
 
@@ -20,7 +19,7 @@ instance FromJSON Request where
       return Request {..}
 
 newtype Response = Response
-  { resAccessToken :: Text
+  { resAccessToken :: App.AccessToken
   }
 
 instance ToJSON Response where
@@ -29,15 +28,13 @@ instance ToJSON Response where
 mapParams :: Request -> App.Params
 mapParams Request {..} = App.Params reqEmail reqPassword
 
-buildResponse :: User -> Handler Response
-buildResponse User {..} = do
-  resAccessToken <- accessTokenTextM userAccessToken
-  return Response {..}
+buildResponse :: App.User -> Response
+buildResponse App.User {..} = Response {resAccessToken = userAccessToken}
 
 postTokensR :: Handler Value
 postTokensR = do
   requestData <- mapParams <$> requireJsonBody
   result <- App.login requestData
   case result of
-    Just u -> toJSON <$> buildResponse u
+    Just u -> return $ toJSON $ buildResponse u
     Nothing -> sendResponseStatus unauthorized401 ()

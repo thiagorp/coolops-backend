@@ -4,7 +4,7 @@ module Api.Handlers.CreateProjectSlackIntegration
 
 import Api.Import
 
-import qualified Deployments.Database.Project as ProjectsDB
+import qualified Deployments.Database.Project as DB
 import qualified Slack.UseCases.CreateProjectIntegration as App
 
 data Request = Request
@@ -19,19 +19,18 @@ instance FromJSON Request where
       reqChannelId <- o .: "channel_id"
       return Request {..}
 
-buildParams :: App.ProjectID -> Request -> App.Params
-buildParams projectId Request {..} =
-  App.Params
-    {integrationChannelId = reqChannelId, integrationChannelName = reqChannelName, integrationProjectId = projectId}
+buildParams :: App.Entity App.Project -> Request -> App.Params
+buildParams (App.Entity projectId _) Request {..} =
+  App.Params {paramChannelId = reqChannelId, paramChannelName = reqChannelName, paramProjectId = projectId}
 
-call :: Text -> AuthenticatedUser -> Handler ()
-call pId (AuthenticatedUser user) = do
-  maybeProject <- ProjectsDB.getProject (userCompanyId user) pId
+call :: App.UUID -> App.Entity App.User -> Handler ()
+call pId (App.Entity _ App.User {..}) = do
+  maybeProject <- DB.runDb $ DB.getProject userCompanyId pId
   case maybeProject of
     Nothing -> sendResponseStatus notFound404 ()
-    Just Project {..} -> do
+    Just project -> do
       request <- requireJsonBody
-      void $ App.call (buildParams projectId request)
+      void $ App.call (buildParams project request)
 
-postCreateProjectSlackIntegrationR :: Text -> Handler ()
+postCreateProjectSlackIntegrationR :: App.UUID -> Handler ()
 postCreateProjectSlackIntegrationR projectId = userAuth (call projectId)

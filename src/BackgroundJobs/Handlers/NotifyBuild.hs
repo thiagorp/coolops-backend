@@ -8,15 +8,13 @@ import RIO
 
 import Data.Aeson
 
-import Auth.Domain (CompanyID)
 import BackgroundJobs.Runner
-import qualified Slack.UseCases.NotifyNewBuild as App
-
-type CallConstraint m = (App.CallConstraint m, DbMonad m)
+import Slack.UseCases.NotifyNewBuild hiding (call)
+import qualified Slack.UseCases.NotifyNewBuild as App (call)
 
 data Params =
-  Params CompanyID
-         Text
+  Params CompanyId
+         UUID
 
 instance FromJSON Params where
   parseJSON = withObject "" $ \o -> Params <$> o .: "company_id" <*> o .: "build_id"
@@ -24,12 +22,12 @@ instance FromJSON Params where
 instance ToJSON Params where
   toJSON (Params cId bId) = object ["company_id" .= cId, "build_id" .= bId]
 
-call :: App.CallConstraint m => Params -> m JobReturnType
+call :: (CallConstraint m) => Params -> m JobReturnType
 call (Params cId bId) = do
   r <- App.call cId bId
   case r of
-    Left App.MessageDataNotFound -> finishWithFailure "Message data not found"
-    Left App.BuildNotFound -> finishWithFailure "Build not found"
-    Left App.SlackConfigNotFound -> finishWithFailure "Slack config not found"
-    Left App.SlackAccessTokenNotFound -> finishWithFailure "Slack access token not found"
+    Left MessageDataNotFound -> finishWithFailure "Message data not found"
+    Left BuildNotFound -> finishWithFailure "Build not found"
+    Left SlackConfigNotFound -> finishWithFailure "Slack config not found"
+    Left SlackAccessTokenNotFound -> finishWithFailure "Slack access token not found"
     Right _ -> finishWithSuccess

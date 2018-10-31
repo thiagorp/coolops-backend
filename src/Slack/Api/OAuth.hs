@@ -17,24 +17,24 @@ import Network.HTTP.Types
 import Slack.Api.ClientBase
 
 data OAuthTokenResponse = OAuthTokenResponse
-  { tokenTeamName :: !Text
-  , tokenTeamId :: !Text
-  , tokenScopes :: !Text
-  , tokenUserAccessToken :: !Text
-  , tokenBotAccessToken :: !Text
-  , tokenBotUserId :: !Text
+  { slackAccessTokenTeamName :: !Text
+  , slackAccessTokenTeamId :: !Text
+  , slackAccessTokenScopes :: !Text
+  , slackAccessTokenUserAccessToken :: !Text
+  , slackAccessTokenBotAccessToken :: !Text
+  , slackAccessTokenBotUserId :: !Text
   }
 
 instance FromJSON OAuthTokenResponse where
   parseJSON =
     withObject "response" $ \o -> do
-      tokenUserAccessToken <- o .: "access_token"
-      tokenScopes <- o .: "scope"
-      tokenTeamName <- o .: "team_name"
-      tokenTeamId <- o .: "team_id"
+      slackAccessTokenUserAccessToken <- o .: "access_token"
+      slackAccessTokenScopes <- o .: "scope"
+      slackAccessTokenTeamName <- o .: "team_name"
+      slackAccessTokenTeamId <- o .: "team_id"
       botO <- o .: "bot"
-      tokenBotUserId <- botO .: "bot_user_id"
-      tokenBotAccessToken <- botO .: "bot_access_token"
+      slackAccessTokenBotUserId <- botO .: "bot_user_id"
+      slackAccessTokenBotAccessToken <- botO .: "bot_access_token"
       return OAuthTokenResponse {..}
 
 data SlackClientError

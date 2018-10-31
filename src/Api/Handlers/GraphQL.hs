@@ -5,9 +5,10 @@ module Api.Handlers.GraphQL
   ( postGraphQLR
   ) where
 
-import Api.Import hiding (Enum, Handler, Object, Project, User)
+import Api.Import hiding (Enum, Handler, Object)
 import qualified Api.Import as Api
 
+import qualified RIO.HashMap as HashMap
 import qualified RIO.Map as Map
 
 import GraphQL
@@ -17,8 +18,8 @@ import GraphQL.Resolver ((:<>)(..), Handler, HasResolver(..))
 import qualified Common.Config as Config
 import qualified GraphQL.Api.Types as Api
 import qualified GraphQL.Database as DB
-import qualified GraphQL.Database.Types as DB
-import Util.Key as Key
+import GraphQL.Instances
+import qualified Model as DB
 
 type App = DB.App
 
@@ -35,7 +36,7 @@ instance HasAnnotatedType ProjectBuild where
   getAnnotatedType = getAnnotatedType @Int
 
 type Project
-   = Object "Project" '[] '[ Field "id" Text, Field "name" Text, Field "slug" Text, Field "deploymentImage" Text, Field "accessToken" Text, Field "environments" (List Environment), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List ProjectBuild), Field "slackIntegration" (Maybe SlackProjectIntegration), Field "createdAt" Int32, Field "updatedAt" Int32]
+   = Object "Project" '[] '[ Field "id" DB.ProjectId, Field "name" DB.ProjectName, Field "slug" DB.Slug, Field "deploymentImage" DB.DockerImage, Field "accessToken" DB.AccessToken, Field "environments" (List Environment), Argument "page" (Maybe Int64) :> Argument "pageSize" (Maybe Int64) :> Field "builds" (List ProjectBuild), Field "slackIntegration" (Maybe SlackProjectIntegration), Field "createdAt" DB.UTCTime, Field "updatedAt" DB.UTCTime]
 
 newtype EnvironmentProjectD m =
   EnvironmentProjectD (Handler m Project)
@@ -50,13 +51,13 @@ instance HasAnnotatedType EnvironmentProject where
   getAnnotatedType = getAnnotatedType @Int
 
 type Environment
-   = Object "Environment" '[] '[ Field "id" Text, Field "name" Text, Field "slug" Text, Field "environmentVariables" (List Param), Field "lastDeployment" (Maybe Deployment), Field "project" EnvironmentProject, Field "createdAt" Int32, Field "updatedAt" Int32]
+   = Object "Environment" '[] '[ Field "id" DB.EnvironmentId, Field "name" DB.EnvironmentName, Field "slug" DB.Slug, Field "environmentVariables" (List Param), Field "lastDeployment" (Maybe Deployment), Field "project" EnvironmentProject, Field "createdAt" DB.UTCTime, Field "updatedAt" DB.UTCTime]
 
 type Build
-   = Object "Build" '[] '[ Field "id" Text, Field "name" Text, Field "project" Project, Field "params" (List Param), Field "metadata" (List Param), Field "createdAt" Int32, Field "updatedAt" Int32]
+   = Object "Build" '[] '[ Field "id" DB.BuildId, Field "name" DB.BuildName, Field "project" Project, Field "params" (List Param), Field "metadata" (List Param), Field "createdAt" DB.UTCTime, Field "updatedAt" DB.UTCTime]
 
 type Company
-   = Object "Company" '[] '[ Field "id" Text, Field "name" Text, Field "onboardingCompleted" Bool, Field "createdAt" Int32, Field "updatedAt" Int32]
+   = Object "Company" '[] '[ Field "id" DB.CompanyId, Field "name" DB.CompanyName, Field "createdAt" DB.UTCTime, Field "updatedAt" DB.UTCTime]
 
 newtype DeploymentBuildD m =
   DeploymentBuildD (Handler m Build)
@@ -71,7 +72,7 @@ instance HasAnnotatedType DeploymentBuild where
   getAnnotatedType = getAnnotatedType @Int
 
 type Deployment
-   = Object "Deployment" '[] '[ Field "id" Text, Field "startedAt" (Maybe Int32), Field "status" (Enum "DeploymentStatus" DB.DeploymentStatus), Field "build" DeploymentBuild, Field "createdAt" Int32, Field "updatedAt" Int32]
+   = Object "Deployment" '[] '[ Field "id" DB.DeploymentId, Field "startedAt" (Maybe DB.UTCTime), Field "status" (Enum "DeploymentStatus" DB.DeploymentStatus), Field "build" DeploymentBuild, Field "createdAt" DB.UTCTime, Field "updatedAt" DB.UTCTime]
 
 type Param = Object "Param" '[] '[ Field "key" Text, Field "value" Text]
 
@@ -84,15 +85,13 @@ type SlackAccessToken = Object "SlackAccessToken" '[] '[ Field "teamName" Text, 
 type SlackProjectIntegration = Object "SlackProjectIntegration" '[] '[ Field "channelName" Text, Field "channelId" Text]
 
 type User
-   = Object "User" '[] '[ Field "id" Text, Field "firstName" Text, Field "lastName" Text, Field "email" Text, Field "company" Company, Field "createdAt" Int32, Field "updatedAt" Int32]
-
-type Onboarding = Object "Onboarding" '[] '[ Field "company" Company, Field "project" (Maybe Project)]
+   = Object "User" '[] '[ Field "id" DB.UserId, Field "firstName" DB.UserName, Field "lastName" DB.UserName, Field "email" DB.EmailAddress, Field "company" Company, Field "createdAt" DB.UTCTime, Field "updatedAt" DB.UTCTime]
 
 type Query
-   = Object "Query" '[] '[ Argument "id" Text :> Field "environment" (Maybe Environment), Field "projects" (List Project), Argument "page" (Maybe Int32) :> Argument "pageSize" (Maybe Int32) :> Field "builds" (List Build), Argument "id" Text :> Field "project" (Maybe Project), Field "slackAccessToken" (Maybe SlackAccessToken), Field "slackConfiguration" SlackConfiguration, Field "me" User, Field "onboarding" Onboarding]
+   = Object "Query" '[] '[ Argument "id" UUID :> Field "environment" (Maybe Environment), Field "projects" (List Project), Argument "page" (Maybe Int64) :> Argument "pageSize" (Maybe Int64) :> Field "builds" (List Build), Argument "id" UUID :> Field "project" (Maybe Project), Field "slackAccessToken" (Maybe SlackAccessToken), Field "slackConfiguration" SlackConfiguration, Field "me" User]
 
 -- Datasource
-getBuild_ :: DB.BuildID -> Handler App Build
+getBuild_ :: DB.BuildId -> Handler App Build
 getBuild_ id_ = do
   maybeBuild <- DB.getBuild id_
   case maybeBuild of
@@ -106,31 +105,28 @@ getCompany_ = do
     Just c -> companyHandler c
     Nothing -> fail "Company not found"
 
-getEnvironment :: DB.EnvironmentID -> Handler App (Maybe Environment)
+getEnvironment :: DB.EnvironmentId -> Handler App (Maybe Environment)
 getEnvironment id_ = do
   maybe_ <- DB.getEnvironment id_
   case maybe_ of
     Just e -> pure $ Just (environmentHandler e)
     Nothing -> return Nothing
 
-getOnboarding :: Handler App Onboarding
-getOnboarding = DB.getOnboarding >>= onboardingHandler
-
-getProject_ :: DB.ProjectID -> Handler App Project
+getProject_ :: DB.ProjectId -> Handler App Project
 getProject_ pId = do
   maybeProject <- DB.getProject pId
   case maybeProject of
     Just p -> projectHandler p
     Nothing -> fail "Project not found"
 
-getProject :: DB.ProjectID -> Handler App (Maybe Project)
+getProject :: DB.ProjectId -> Handler App (Maybe Project)
 getProject pId = do
   maybeProject <- DB.getProject pId
   case maybeProject of
     Just p -> pure $ Just (projectHandler p)
     Nothing -> return Nothing
 
-getEnvLastDeployment :: DB.EnvironmentID -> Handler App (Maybe Deployment)
+getEnvLastDeployment :: DB.EnvironmentId -> Handler App (Maybe Deployment)
 getEnvLastDeployment eId = do
   maybeDeployment <- DB.getEnvLastDeployment eId
   case maybeDeployment of
@@ -147,25 +143,25 @@ getSlackAccessToken = do
 getSlackConfiguration :: Config.SlackSettings -> Handler App SlackConfiguration
 getSlackConfiguration Config.SlackSettings {..} = pure $ pure slackClientId
 
-getSlackProjectIntegration :: DB.ProjectID -> Handler App (Maybe SlackProjectIntegration)
+getSlackProjectIntegration :: DB.ProjectId -> Handler App (Maybe SlackProjectIntegration)
 getSlackProjectIntegration pId = do
   maybe_ <- DB.getSlackProjectIntegration pId
   case maybe_ of
     Just e -> pure $ Just (slackProjectIntegrationHandler e)
     Nothing -> return Nothing
 
-getUser_ :: DB.UserID -> Handler App User
+getUser_ :: DB.UserId -> Handler App User
 getUser_ pId = do
   maybe_ <- DB.getUser pId
   case maybe_ of
     Just e -> userHandler e
     Nothing -> fail "User not found"
 
-listBuilds :: Maybe DB.ProjectID -> Maybe Int32 -> Maybe Int32 -> Handler App (List Build)
+listBuilds :: Maybe DB.ProjectId -> Maybe Int64 -> Maybe Int64 -> Handler App (List Build)
 listBuilds projectId page pageSize =
   map buildHandler <$> DB.listBuilds (fromIntegral $ fromMaybe 1 page, fromIntegral $ fromMaybe 20 pageSize) projectId
 
-listEnvironments :: DB.ProjectID -> Handler App (List Environment)
+listEnvironments :: DB.ProjectId -> Handler App (List Environment)
 listEnvironments pId = map environmentHandler <$> DB.listEnvironments pId
 
 listProjects :: Handler App (List Project)
@@ -175,39 +171,32 @@ listSlackChannels :: Text -> Handler App (List SlackChannel)
 listSlackChannels token = map slackChannelHandler <$> DB.listSlackChannels token
 
 -- Handlers
-companyHandler :: DB.Company -> Handler App Company
-companyHandler DB.Company {..} =
-  pure $
-  pure (DB.idText companyId) :<> pure companyName :<> pure companyOnboardingCompleted :<> pure companyCreatedAt :<>
-  pure companyUpdatedAt
+companyHandler :: DB.Entity DB.Company -> Handler App Company
+companyHandler (DB.Entity companyId DB.Company {..}) =
+  pure $ pure companyId :<> pure companyName :<> pure companyCreatedAt :<> pure companyUpdatedAt
 
-deploymentHandler :: DB.Deployment -> Handler App Deployment
-deploymentHandler DB.Deployment {..} =
-  pure $
-  pure (DB.idText deploymentId) :<> pure (pure <$> deploymentStartedAt) :<> pure deploymentStatus :<>
+deploymentHandler :: DB.Entity DB.Deployment -> Handler App Deployment
+deploymentHandler (DB.Entity deploymentId DB.Deployment {..}) =
+  pure $ pure deploymentId :<> pure (pure <$> deploymentStartedAt) :<> pure deploymentStatus :<>
   (DeploymentBuildD $ getBuild_ deploymentBuildId) :<>
   pure deploymentCreatedAt :<>
   pure deploymentUpdatedAt
 
-environmentHandler :: DB.Environment -> Handler App Environment
-environmentHandler DB.Environment {..} =
-  pure $
-  pure (DB.idText envId) :<> pure envName :<> pure envSlug :<> pure (map paramHandler envEnvVars) :<>
-  getEnvLastDeployment envId :<>
-  (EnvironmentProjectD $ getProject_ envProjectId) :<>
-  pure envCreatedAt :<>
-  pure envUpdatedAt
-
-onboardingHandler :: DB.Onboarding -> Handler App Onboarding
-onboardingHandler DB.Onboarding {..} = pure $ getCompany_ :<> maybe (pure Nothing) getProject onboardingProjectId
+environmentHandler :: DB.Entity DB.Environment -> Handler App Environment
+environmentHandler (DB.Entity environmentId DB.Environment {..}) =
+  pure $ pure environmentId :<> pure environmentName :<> pure environmentSlug :<>
+  pure (map paramHandler (HashMap.toList environmentEnvVars)) :<>
+  getEnvLastDeployment environmentId :<>
+  (EnvironmentProjectD $ getProject_ environmentProjectId) :<>
+  pure environmentCreatedAt :<>
+  pure environmentUpdatedAt
 
 paramHandler :: (Text, Text) -> Handler App Param
 paramHandler (key, value) = pure $ pure key :<> pure value
 
-projectHandler :: DB.Project -> Handler App Project
-projectHandler DB.Project {..} =
-  pure $
-  pure (DB.idText projectId) :<> pure projectName :<> pure projectSlug :<> pure projectDeploymentImage :<>
+projectHandler :: DB.Entity DB.Project -> Handler App Project
+projectHandler (DB.Entity projectId DB.Project {..}) =
+  pure $ pure projectId :<> pure projectName :<> pure projectSlug :<> pure projectDeploymentImage :<>
   pure projectAccessToken :<>
   listEnvironments projectId :<>
   (\x y -> map ProjectBuildD <$> listBuilds (Just projectId) x y) :<>
@@ -215,37 +204,37 @@ projectHandler DB.Project {..} =
   pure projectCreatedAt :<>
   pure projectUpdatedAt
 
-buildHandler :: DB.Build -> Handler App Build
-buildHandler DB.Build {..} =
-  pure $
-  pure (DB.idText buildId) :<> pure buildName :<> getProject_ buildProjectId :<> pure (map paramHandler buildParams) :<>
-  pure (map paramHandler buildMetadata) :<>
+buildHandler :: DB.Entity DB.Build -> Handler App Build
+buildHandler (DB.Entity buildId DB.Build {..}) =
+  pure $ pure buildId :<> pure buildName :<> getProject_ buildProjectId :<>
+  pure (map paramHandler (HashMap.toList buildParams)) :<>
+  pure (map paramHandler (HashMap.toList buildMetadata)) :<>
   pure buildCreatedAt :<>
   pure buildUpdatedAt
 
-slackAccessTokenHandler :: DB.SlackAccessToken -> Handler App SlackAccessToken
-slackAccessTokenHandler DB.SlackAccessToken {..} = pure $ pure satTeamName :<> listSlackChannels satToken
+slackAccessTokenHandler :: DB.Entity DB.SlackAccessToken -> Handler App SlackAccessToken
+slackAccessTokenHandler (DB.Entity _ DB.SlackAccessToken {..}) =
+  pure $ pure slackAccessTokenTeamName :<> listSlackChannels slackAccessTokenBotAccessToken
 
 slackChannelHandler :: Api.SlackChannel -> Handler App SlackChannel
 slackChannelHandler Api.SlackChannel {..} = pure $ pure slackChannelId :<> pure slackChannelName
 
-slackProjectIntegrationHandler :: DB.SlackProjectIntegration -> Handler App SlackProjectIntegration
-slackProjectIntegrationHandler DB.SlackProjectIntegration {..} = pure $ pure spiChannelName :<> pure spiChannelId
+slackProjectIntegrationHandler :: DB.Entity DB.SlackProjectIntegration -> Handler App SlackProjectIntegration
+slackProjectIntegrationHandler (DB.Entity _ DB.SlackProjectIntegration {..}) =
+  pure $ pure slackProjectIntegrationChannelName :<> pure slackProjectIntegrationChannelId
 
-userHandler :: DB.User -> Handler App User
-userHandler DB.User {..} =
-  pure $
-  pure (DB.idText userId) :<> pure userFirstName :<> pure userLastName :<> pure userEmail :<> getCompany_ :<>
+userHandler :: DB.Entity DB.User -> Handler App User
+userHandler (DB.Entity userId DB.User {..}) =
+  pure $ pure userId :<> pure userFirstName :<> pure userLastName :<> pure userEmail :<> getCompany_ :<>
   pure userCreatedAt :<>
   pure userUpdatedAt
 
-handler :: Api.User -> Env -> Handler App Query
-handler Api.User {..} Env {..} =
-  pure $
-  (getEnvironment . DB.ID) :<> listProjects :<> listBuilds Nothing :<> (getProject . DB.ID) :<> getSlackAccessToken :<>
+handler :: DB.Entity DB.User -> Env -> Handler App Query
+handler user Env {..} =
+  pure $ getEnvironment . DB.EnvironmentKey :<> listProjects :<> listBuilds Nothing :<> getProject . DB.ProjectKey :<>
+  getSlackAccessToken :<>
   getSlackConfiguration slackSettings :<>
-  getUser_ (DB.ID (Key.keyText userId)) :<>
-  getOnboarding
+  getUser_ (DB.entityKey user)
 
 newtype Request = Request
   { reqQuery :: Text
@@ -257,12 +246,12 @@ instance FromJSON Request where
       reqQuery <- o .: "query"
       return Request {..}
 
-call :: Api.AuthenticatedUser -> Api.Handler Api.Value
-call (Api.AuthenticatedUser user) = do
+call :: DB.Entity DB.User -> Api.Handler Api.Value
+call user = do
   Request {..} <- requireJsonBody
   appEnv <- getYesod
   env <- DB.buildEnv user appEnv
-  toJSON <$> DB.run env (interpretQuery @Query (handler user appEnv) reqQuery Nothing Map.empty)
+  liftIO $ toJSON <$> DB.run env (interpretQuery @Query (handler user appEnv) reqQuery Nothing Map.empty)
 
 postGraphQLR :: Api.Handler Api.Value
 postGraphQLR = userAuth call

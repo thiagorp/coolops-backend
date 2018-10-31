@@ -6,6 +6,7 @@ import Network.Connection (TLSSettings(..))
 import Network.HTTP.Client.TLS
 
 import qualified BackgroundJobs.AppJobs as Jobs
+import Common.PersistDatabase
 import Env
 
 type AppT = RIO Env

@@ -1,42 +1,45 @@
 module Slack.UseCases.CreateProjectIntegration
-  ( Params(..)
-  , ProjectID
+  ( module Model
+  , Params(..)
   , call
   ) where
 
 import RIO
 
-import qualified Slack.Database.ProjectIntegration as DB
-import Slack.Domain.ProjectIntegration as PI
+import Model
+import Slack.Database.ProjectIntegration
 
 data Params = Params
-  { integrationChannelId :: !Text
-  , integrationChannelName :: !Text
-  , integrationProjectId :: !ProjectID
+  { paramChannelId :: !Text
+  , paramChannelName :: !Text
+  , paramProjectId :: !ProjectId
   }
 
-build :: (MonadIO m) => Params -> m ProjectIntegration
+build :: (MonadIO m) => Params -> m SlackProjectIntegration
 build Params {..} = do
-  integrationId <- genId
-  return ProjectIntegration {..}
+  now <- liftIO getCurrentTime
+  let slackProjectIntegrationChannelId = paramChannelId
+  let slackProjectIntegrationChannelName = paramChannelName
+  let slackProjectIntegrationProjectId = paramProjectId
+  let slackProjectIntegrationCreatedAt = now
+  let slackProjectIntegrationUpdatedAt = now
+  return SlackProjectIntegration {..}
 
-create :: (DB.HasPostgres m) => Params -> m ProjectIntegration
+create :: (MonadIO m) => Params -> Db m ()
 create params = do
   entity <- build params
-  DB.create entity
-  return entity
+  void $ insert entity
 
-update :: (DB.HasPostgres m) => Params -> ProjectIntegration -> m ProjectIntegration
-update Params {..} integation = do
-  DB.update newIntegration
-  return newIntegration
-  where
-    newIntegration =
-      integation {PI.integrationChannelId = integrationChannelId, PI.integrationChannelName = integrationChannelName}
+update_ :: (MonadIO m) => Params -> Entity SlackProjectIntegration -> Db m ()
+update_ Params {..} (Entity integrationId _) =
+  update
+    integrationId
+    [SlackProjectIntegrationChannelId =. paramChannelId, SlackProjectIntegrationChannelName =. paramChannelName]
 
-call :: (DB.HasPostgres m) => Params -> m ProjectIntegration
-call params@Params {..} = do
-  maybeIntegration <- DB.findByProjectId integrationProjectId
-  case maybeIntegration of
-    Nothing -> create params
-    Just integration -> update params integration
+call :: (HasDb m) => Params -> m ()
+call params@Params {..} =
+  runDb $ do
+    maybeIntegration <- findByProjectId paramProjectId
+    case maybeIntegration of
+      Nothing -> create params
+      Just integration -> update_ params integration

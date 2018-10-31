@@ -2,7 +2,6 @@ module BackgroundJobs.Runner
   ( JobConfig(..)
   , JobReturnType
   , RunMonad
-  , DbMonad
   , retry
   , retryIn
   , finishWithSuccess
@@ -27,7 +26,7 @@ data JobReturnType
   | RetryIn Text
             Seconds
 
-type RunMonad m = MonadIO m
+type RunMonad m = (HasDb m)
 
 data JobConfig m a = JobConfig
   { deserialize :: Text -> Value -> Maybe a
@@ -41,56 +40,57 @@ retry = return . RetryImmediately
 retryIn :: RunMonad m => Text -> Seconds -> m JobReturnType
 retryIn reason = return . RetryIn reason
 
-finishWithFailure :: RunMonad m => Text -> m JobReturnType
+finishWithFailure :: (RunMonad m) => Text -> m JobReturnType
 finishWithFailure = return . FinishedWithFailure
 
 finishWithSuccess :: RunMonad m => m JobReturnType
 finishWithSuccess = return FinishedWithSuccess
 
-queue :: (DbMonad m) => JobConfig m job -> job -> m ()
+queue :: (MonadIO m) => JobConfig m job -> job -> Db m BackgroundJobId
 queue JobConfig {..} job = do
-  jobId <- genId
-  let (jobName, jobParams) = serialize job
-  let jobRetryCount = 0
-  let jobNextRetry = Nothing
-  let jobFinishedAt = Nothing
-  let jobFailureReason = Nothing
-  create Job {..}
+  now <- liftIO getCurrentTime
+  let (backgroundJobName, backgroundJobParams) = serialize job
+  let backgroundJobRetryCount = 0
+  let backgroundJobNextRetry = Nothing
+  let backgroundJobFinishedAt = Nothing
+  let backgroundJobFailureReason = Nothing
+  let backgroundJobCreatedAt = now
+  let backgroundJobUpdatedAt = now
+  insert BackgroundJob {..}
 
-runNext :: (RunMonad m, DbMonad m) => JobConfig m job -> m ()
+runNext :: (RunMonad m) => JobConfig m job -> m ()
 runNext config = do
-  maybeJob <- getNextJob
+  maybeJob <- runDb getNextJob
   forM_ maybeJob (runNext' config)
 
-runNext' :: DbMonad m => JobConfig m job -> Job -> m ()
-runNext' config@JobConfig {..} job@Job {..} = do
-  let deserializedJob = deserialize jobName jobParams
+runNext' :: (RunMonad m) => JobConfig m job -> Entity BackgroundJob -> m ()
+runNext' config@JobConfig {..} job@(Entity _ BackgroundJob {..}) = do
+  let deserializedJob = deserialize backgroundJobName backgroundJobParams
   case deserializedJob of
-    Nothing ->
-      update'
-        job
-        (FinishedWithFailure "Serialization failure - Invalid payload")
+    Nothing -> update' job (FinishedWithFailure "Serialization failure - Invalid payload")
     Just j -> runDeserializedJob config j job
 
-runDeserializedJob ::
-     (RunMonad m, DbMonad m) => JobConfig m job -> job -> Job -> m ()
-runDeserializedJob JobConfig {..} deserializedJob job@Job {..} = do
-  r <- run jobRetryCount deserializedJob
+runDeserializedJob :: (RunMonad m) => JobConfig m job -> job -> Entity BackgroundJob -> m ()
+runDeserializedJob JobConfig {..} deserializedJob job@(Entity _ BackgroundJob {..}) = do
+  r <- run backgroundJobRetryCount deserializedJob
   update' job r
 
-update' :: (DbMonad m) => Job -> JobReturnType -> m ()
-update' job@Job {..} r = do
-  let newRetryCount = retryCountFromReturn jobRetryCount r
+update' :: (RunMonad m) => Entity BackgroundJob -> JobReturnType -> m ()
+update' (Entity jobId BackgroundJob {..}) r = do
+  now <- liftIO getCurrentTime
+  let newRetryCount = retryCountFromReturn backgroundJobRetryCount r
   newNextRetry <- nextRetryFromReturn r
   newFinishedAt <- finishedFromReturn r
   let newFailureReason = failureReasonFromReturn r
-  update
-    job
-      { jobRetryCount = newRetryCount
-      , jobNextRetry = newNextRetry
-      , jobFinishedAt = newFinishedAt
-      , jobFailureReason = newFailureReason
-      }
+  runDb $
+    update
+      jobId
+      [ BackgroundJobRetryCount =. newRetryCount
+      , BackgroundJobNextRetry =. newNextRetry
+      , BackgroundJobFinishedAt =. newFinishedAt
+      , BackgroundJobFailureReason =. newFailureReason
+      , BackgroundJobUpdatedAt =. now
+      ]
 
 failureReasonFromReturn :: JobReturnType -> Maybe Text
 failureReasonFromReturn job =

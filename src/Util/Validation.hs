@@ -15,15 +15,14 @@ import qualified RIO.Text as Text
 
 import Data.Aeson
 import Data.Aeson.Types (Parser)
-import Database.PostgreSQL.Simple.FromField (FromField(..))
-import Database.PostgreSQL.Simple.ToField
+import Database.Persist.Sql
 import GHC.TypeLits (KnownNat, Nat, natVal)
 
 import Util.Slug
 
 newtype Validated p x =
   Validated x
-  deriving (FromField, ToField, ToJSON, Show)
+  deriving (PersistField, PersistFieldSql, ToJSON, Show)
 
 parseJSON_ :: (Predicate p a) => a -> Parser (Validated p a)
 parseJSON_ t =

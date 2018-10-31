@@ -1,30 +1,32 @@
 module Slack.UseCases.CreateAccessToken
-  ( Params(..)
+  ( module Model
+  , Params(..)
   , Error(..)
   , call
   ) where
 
 import RIO
 
-import Auth.Domain (CompanyID)
+import Model
 import Slack.Api.OAuth
 import qualified Slack.Database.AccessToken as DB
-import Slack.Domain.AccessToken
 
 data Error =
   CouldNotExchangeCode
 
 data Params = Params
-  { companyId :: !CompanyID
+  { companyId :: !CompanyId
   , oAuthCode :: !Text
   }
 
-build :: (MonadIO m) => CompanyID -> OAuthTokenResponse -> m AccessToken
-build tokenCompanyId OAuthTokenResponse {..} = do
-  tokenId <- genId
-  return AccessToken {..}
+build :: (MonadIO m) => CompanyId -> OAuthTokenResponse -> m SlackAccessToken
+build slackAccessTokenCompanyId OAuthTokenResponse {..} = do
+  now <- liftIO getCurrentTime
+  let slackAccessTokenCreatedAt = now
+  let slackAccessTokenUpdatedAt = now
+  return SlackAccessToken {..}
 
-call :: (DB.HasPostgres m, SlackClientMonad m) => Params -> m (Either Error AccessToken)
+call :: (DB.HasDb m, SlackClientMonad m) => Params -> m (Either Error SlackAccessToken)
 call Params {..} = do
   eitherResponse <- getToken oAuthCode
   case eitherResponse of
@@ -32,5 +34,5 @@ call Params {..} = do
     Left (UnexpectedHttpStatusError _) -> return $ Left CouldNotExchangeCode
     Right response -> do
       accessToken <- build companyId response
-      DB.create accessToken
+      DB.runDb $ DB.create accessToken
       return $ Right accessToken

@@ -4,14 +4,13 @@ module Api.Handlers.UpdateProject
 
 import Api.Import
 
-import Deployments.Database.Project (getProject)
-import qualified Deployments.Domain.Project as Project
+import Deployments.Database.Project (getProject, runDb)
 import qualified Deployments.UseCases.UpdateProject as App
 
 data Request = Request
-  { reqProjectName :: !Project.Name
-  , reqProjectSlug :: !Project.Slug
-  , reqProjectDeploymentImage :: !Project.DeploymentImage
+  { reqProjectName :: !App.ProjectName
+  , reqProjectSlug :: !App.Slug
+  , reqProjectDeploymentImage :: !App.DockerImage
   }
 
 instance FromJSON Request where
@@ -25,18 +24,17 @@ instance FromJSON Request where
 mapRequest :: Request -> App.Params
 mapRequest Request {..} = App.Params reqProjectName reqProjectSlug reqProjectDeploymentImage
 
-update :: Project -> Handler ProjectResource
-update project = do
+update :: App.Entity App.Project -> Handler ()
+update (App.Entity projectId _) = do
   requestData <- mapRequest <$> requireJsonBody
-  updatedProject <- App.call project requestData
-  return $ projectResource updatedProject
+  App.call projectId requestData
 
-call :: Text -> AuthenticatedUser -> Handler Value
-call projectId (AuthenticatedUser user) = do
-  maybeProject <- getProject (userCompanyId user) projectId
+call :: App.UUID -> App.Entity App.User -> Handler ()
+call projectId (App.Entity _ user) = do
+  maybeProject <- runDb $ getProject (App.userCompanyId user) projectId
   case maybeProject of
-    Just project -> toJSON <$> update project
+    Just project -> update project
     Nothing -> notFound
 
-patchUpdateProjectR :: Text -> Handler Value
+patchUpdateProjectR :: App.UUID -> Handler ()
 patchUpdateProjectR = userAuth . call

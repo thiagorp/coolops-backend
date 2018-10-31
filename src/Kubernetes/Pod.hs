@@ -25,16 +25,17 @@ data ContainerState
   = Running
   | Terminated
   | Waiting Text
+  deriving (Show)
 
 data ContainerStatus = ContainerStatus
   { containerName :: !Text
   , containerState :: !ContainerState
-  }
+  } deriving (Show)
 
 data Pod = Pod
   { podContainerStatuses :: ![ContainerStatus]
   , podName :: !Text
-  }
+  } deriving (Show)
 
 newtype PodsList =
   PodsList [Pod]

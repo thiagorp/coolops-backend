@@ -4,15 +4,14 @@ module Api.Handlers.Signup
 
 import Api.Import
 
-import Auth.Domain
 import qualified Auth.UseCases.Signup as App
 
 data Request = Request
-  { reqFirstName :: !UserName
-  , reqLastName :: !UserName
-  , reqEmail :: !UserEmail
-  , reqPassword :: !RawPassword
-  , reqCompanyName :: !CompanyName
+  { reqFirstName :: !App.UserName
+  , reqLastName :: !App.UserName
+  , reqEmail :: !App.EmailAddress
+  , reqPassword :: !App.RawPassword
+  , reqCompanyName :: !App.CompanyName
   }
 
 instance FromJSON Request where
@@ -26,10 +25,10 @@ instance FromJSON Request where
       return Request {..}
 
 data Response = Response
-  { resUserToken :: !Text
-  , resCompanyToken :: !Text
-  , resUserId :: !Text
-  , resCompanyId :: !Text
+  { resUserToken :: !App.AccessToken
+  , resCompanyToken :: !App.AccessToken
+  , resUserId :: !App.UserId
+  , resCompanyId :: !App.CompanyId
   }
 
 instance ToJSON Response where
@@ -44,12 +43,12 @@ instance ToJSON Response where
 mapRequest :: Request -> App.Params
 mapRequest Request {..} = App.Params reqFirstName reqLastName reqEmail reqPassword reqCompanyName
 
-buildResponse :: (User, Company) -> Handler Response
-buildResponse (User {..}, Company {..}) = do
-  resUserToken <- accessTokenTextM userAccessToken
-  resCompanyToken <- accessTokenTextM companyToken
-  let resUserId = keyText userId
-  let resCompanyId = keyText companyId
+buildResponse :: (App.Entity App.User, App.Entity App.Company) -> Handler Response
+buildResponse (App.Entity userId App.User {..}, App.Entity companyId App.Company {..}) = do
+  let resUserToken = userAccessToken
+  let resCompanyToken = companyAccessToken
+  let resUserId = userId
+  let resCompanyId = companyId
   return Response {..}
 
 postSignupR :: Handler Value

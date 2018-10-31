@@ -1,31 +1,28 @@
 module Deployments.UseCases.UpdateProject
-  ( Params(..)
-  , Project.Project
+  ( module Model
+  , Params(..)
   , call
   ) where
 
 import RIO
 
-import Common.Database
-import Deployments.Database.Project (updateProject)
-import qualified Deployments.Domain.Project as Project
+import Deployments.Database.Project
+import Model
 
 data Params = Params
-  { paramProjectName :: !Project.Name
-  , paramProjectSlug :: !Project.Slug
-  , paramProjectDeploymentImage :: !Project.DeploymentImage
+  { paramProjectName :: !ProjectName
+  , paramProjectSlug :: !Slug
+  , paramProjectDeploymentImage :: !DockerImage
   }
 
-apply :: Project.Project -> Params -> Project.Project
-apply project Params {..} =
-  project
-    { Project.projectName = paramProjectName
-    , Project.projectSlug = paramProjectSlug
-    , Project.projectDeploymentImage = paramProjectDeploymentImage
-    }
-
-call :: (HasPostgres m) => Project.Project -> Params -> m Project.Project
-call project params = do
-  let updatedProject = apply project params
-  updateProject updatedProject
-  return updatedProject
+call :: (HasDb m) => ProjectId -> Params -> m ()
+call projectId Params {..} = do
+  now <- liftIO getCurrentTime
+  runDb $
+    update
+      projectId
+      [ ProjectName =. paramProjectName
+      , ProjectSlug =. paramProjectSlug
+      , ProjectDeploymentImage =. paramProjectDeploymentImage
+      , ProjectUpdatedAt =. now
+      ]

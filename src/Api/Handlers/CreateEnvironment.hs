@@ -4,13 +4,12 @@ module Api.Handlers.CreateEnvironment
 
 import Api.Import
 
-import qualified Deployments.Domain.Environment as Environment
 import qualified Deployments.UseCases.CreateEnvironment as App
 
 data Request = Request
-  { reqEnvironmentName :: !Environment.Name
+  { reqEnvironmentName :: !App.EnvironmentName
   , reqEnvironmentEnvVars :: !(HashMap Text Text)
-  , reqEnvironmentSlug :: !Environment.Slug
+  , reqEnvironmentSlug :: !App.Slug
   }
 
 instance FromJSON Request where
@@ -24,8 +23,8 @@ instance FromJSON Request where
 mapRequest :: Request -> App.Params
 mapRequest Request {..} = App.Params reqEnvironmentName reqEnvironmentEnvVars reqEnvironmentSlug
 
-call :: Text -> AuthenticatedUser -> Handler Value
-call projectId (AuthenticatedUser User {..}) = do
+call :: App.UUID -> App.Entity App.User -> Handler Value
+call projectId (App.Entity _ App.User {..}) = do
   requestData <- mapRequest <$> requireJsonBody
   maybeProject <- App.call projectId userCompanyId requestData
   case maybeProject of
@@ -33,5 +32,5 @@ call projectId (AuthenticatedUser User {..}) = do
     Left App.SlugAlreadyExists -> sendResponseStatus conflict409 ()
     Right project -> sendStatusJSON created201 $ toJSON (environmentResource project)
 
-postProjectsEnvironmentsR :: Text -> Handler Value
+postProjectsEnvironmentsR :: App.UUID -> Handler Value
 postProjectsEnvironmentsR projectId = userAuth (call projectId)

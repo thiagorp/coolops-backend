@@ -1,5 +1,6 @@
 module Deployments.UseCases.CreateDeployment
-  ( Params(..)
+  ( module Deployments.Database.Deployment
+  , Params(..)
   , CallMonad
   , Error(..)
   , call
@@ -7,39 +8,42 @@ module Deployments.UseCases.CreateDeployment
 
 import RIO
 
-import Common.Database
-import Deployments.Database.Deployment (createQueuedDeployment)
-import qualified Deployments.Domain.Build as Build
-import qualified Deployments.Domain.Deployment as Deployment
-import qualified Deployments.Domain.Environment as Environment
+import Deployments.Database.Deployment
 
 data Params = Params
-  { build :: !Build.Build
-  , environment :: !Environment.Environment
+  { build :: !(Entity Build)
+  , environment :: !(Entity Environment)
   }
 
 data Error =
   ProjectsDontMatch
 
-type CallMonad m = (MonadIO m, HasPostgres m)
+type CallMonad m = (MonadIO m, HasDb m)
 
-entity :: (MonadIO m) => Params -> m Deployment.QueuedDeployment
+entity :: (MonadIO m) => Params -> m Deployment
 entity Params {..} = do
-  let deploymentBuildId = Build.buildId build
-  let deploymentEnvironmentId = Environment.environmentId environment
-  deploymentId <- Deployment.genId
-  return Deployment.QueuedDeployment {..}
+  now <- liftIO getCurrentTime
+  let (Entity buildId _) = build
+  let (Entity environmentId _) = environment
+  let deploymentBuildId = buildId
+  let deploymentEnvironmentId = environmentId
+  let deploymentStatus = Queued
+  let deploymentStartedAt = Nothing
+  let deploymentFinishedAt = Nothing
+  let deploymentCreatedAt = now
+  let deploymentUpdatedAt = now
+  return Deployment {..}
 
-create :: CallMonad m => Params -> m Deployment.QueuedDeployment
+create :: (CallMonad m) => Params -> m (Entity Deployment)
 create params = do
   deployment <- entity params
-  createQueuedDeployment deployment
-  return deployment
+  deploymentId <- runDb $ insert deployment
+  return (Entity deploymentId deployment)
 
-call :: CallMonad m => Params -> m (Either Error Deployment.QueuedDeployment)
+call :: (CallMonad m) => Params -> m (Either Error (Entity Deployment))
 call params@Params {..} =
-  let buildProjectId = Build.buildProjectId build
-      environmentProjectId = Environment.environmentProjectId environment
+  let (Entity _ Build {..}) = build
+      (Entity _ Environment {..}) = environment
    in if buildProjectId == environmentProjectId
         then Right <$> create params
         else return (Left ProjectsDontMatch)

@@ -17,12 +17,12 @@ import Common.Config as Config
   , pgSettings
   , slackSettings
   )
-import Data.Pool
-import qualified Database.PostgreSQL.Simple as PG
+import Control.Monad.Logger
+import qualified Database.Persist.Postgresql as Persist
 import qualified Network.HTTP.Client as Http
 
 data Env = Env
-  { pgConnPool :: Pool PG.Connection
+  { persistentConnPool :: Persist.ConnectionPool
   , requestManager :: Http.Manager
   , kubernetesSettings :: Config.KubernetesSettings
   , slackSettings :: Config.SlackSettings
@@ -37,14 +37,12 @@ instance (Monad m) => HasEnv (ReaderT Env m) where
 instance HasEnv (RIO Env) where
   getEnv = ask
 
-acquirePool :: Int -> IO (Pool PG.Connection)
-acquirePool size = do
+acquirePersistPool :: Int -> IO Persist.ConnectionPool
+acquirePersistPool size = do
   s <- Config.pgSettings
-  createPool (connection s) PG.close 1 10 size
-  where
-    connection s = PG.connectPostgreSQL $ Config.pgUrl s
+  runNoLoggingT $ Persist.createPostgresqlPool (Config.pgUrl s) size
 
 buildEnv :: Int -> Http.Manager -> IO Env
 buildEnv poolSize requestManager = do
-  pool <- acquirePool poolSize
-  Env pool requestManager <$> Config.kubernetesSettings <*> Config.slackSettings
+  persistPool <- acquirePersistPool poolSize
+  Env persistPool requestManager <$> Config.kubernetesSettings <*> Config.slackSettings

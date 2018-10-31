@@ -4,18 +4,18 @@ module Api.Handlers.GetDeploymentLogs
 
 import Api.Import
 
-import Database.Queries.DeploymentForLogs
+import Deployments.Database.Deployment
 import Deployments.Gateway.Kubernetes
 
-getDeployment_ :: Text -> Handler Deployment
+getDeployment_ :: UUID -> Handler (Entity Deployment)
 getDeployment_ deploymentId = do
-  maybeDeployment <- getDeployment deploymentId
+  maybeDeployment <- runDb $ getDeployment deploymentId
   case maybeDeployment of
     Nothing -> sendResponseStatus notFound404 ()
     Just deployment -> return deployment
 
-getDeploymentLogs_ :: Deployment -> Handler Text
-getDeploymentLogs_ Deployment {..} = do
+getDeploymentLogs_ :: Entity Deployment -> Handler Text
+getDeploymentLogs_ (Entity deploymentId _) = do
   maybeLogs <- getDeploymentLogs Nothing deploymentId
   case maybeLogs of
     Nothing -> return ""
@@ -29,12 +29,12 @@ data Response = Response
 instance ToJSON Response where
   toJSON Response {..} = object ["finished" .= resDeploymentFinished, "logs" .= resLogs]
 
-buildResponse :: Deployment -> Text -> Response
-buildResponse Deployment {..} resLogs = Response {..}
+buildResponse :: Entity Deployment -> Text -> Response
+buildResponse (Entity _ Deployment {..}) resLogs = Response {..}
   where
     resDeploymentFinished = isFinished deploymentStatus
 
-getDeploymentLogsR :: Text -> Handler Value
+getDeploymentLogsR :: UUID -> Handler Value
 getDeploymentLogsR deploymentId = do
   deployment <- getDeployment_ deploymentId
   logs <- getDeploymentLogs_ deployment

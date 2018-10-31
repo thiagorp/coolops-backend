@@ -5,18 +5,24 @@ dependencies:
 - aeson
 - base >= 4.7 && < 5
 - base58-bytestring
+- bytestring
 - connection
 - email-validate
+- esqueleto
 - graphql-api >= 0.3 && < 0.4
 - hashable
 - haxl
 - http-client
 - http-client-tls
 - http-types
+- persistent
+- persistent-postgresql
+- persistent-template
 - postgresql-simple
 - postgresql-simple-migration
 - pwstore-fast >= 2.4 && < 3
 - megaparsec
+- monad-logger
 - mtl
 - random
 - resource-pool
@@ -95,6 +101,16 @@ executables:
     - api
     - data-default-class
 
+  background-job-runner:
+    main:                Main.hs
+    source-dirs:         app/BackgroundJobRunner
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - api
+
   deployment-runner:
     main:                Main.hs
     source-dirs:         app/DeploymentRunner
@@ -115,9 +131,9 @@ executables:
     dependencies:
     - api
 
-  background-job-runner:
+  print-migrations:
     main:                Main.hs
-    source-dirs:         app/BackgroundJobRunner
+    source-dirs:         app/PrintMigrations
     ghc-options:
     - -threaded
     - -rtsopts

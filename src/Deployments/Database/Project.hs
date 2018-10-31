@@ -1,100 +1,52 @@
 module Deployments.Database.Project
-  ( DBProjectID
-  , createProject
+  ( module Common.PersistDatabase
   , findProjectByAccessToken
   , getProject
   , getProjectBySlug
   , getProjectForBuild
   , listProjects
-  , updateProject
   ) where
 
-import RIO
+import RIO hiding ((^.), on)
 
-import Database.PostgreSQL.Simple
+import Database.Esqueleto hiding (selectFirst)
 
-import Common.Database
-import qualified Deployments.Domain.Build as B
-import Deployments.Domain.Project
-import Util.Key (keyText)
+import Common.PersistDatabase
+import Model
 
-class DBProjectID a where
-  toDbId :: a -> Text
+listProjects :: (MonadIO m) => CompanyId -> Db m [Entity Project]
+listProjects companyId =
+  select $
+  from $ \p -> do
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    return p
 
-instance DBProjectID Text where
-  toDbId = id
+getProject :: (MonadIO m) => CompanyId -> UUID -> Db m (Maybe (Entity Project))
+getProject companyId projectId =
+  selectFirst $
+  from $ \p -> do
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (p ^. ProjectId ==. val (ProjectKey projectId))
+    return p
 
-instance DBProjectID ID where
-  toDbId = keyText
+getProjectBySlug :: (MonadIO m) => CompanyId -> Slug -> Db m (Maybe (Entity Project))
+getProjectBySlug companyId slug =
+  selectFirst $
+  from $ \p -> do
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (p ^. ProjectSlug ==. val slug)
+    return p
 
-createProject :: (HasPostgres m) => Project -> m ()
-createProject Project {..} = runDb' q values
-  where
-    q =
-      "insert into projects (id, name, deployment_image, company_id, slug, access_token, created_at, updated_at) values\
-        \ (?, ?, ?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
-    values = (projectId, projectName, projectDeploymentImage, projectCompanyId, projectSlug, projectAccessToken)
+getProjectForBuild :: (MonadIO m) => Build -> Db m (Maybe (Entity Project))
+getProjectForBuild Build {..} =
+  selectFirst $
+  from $ \p -> do
+    where_ (p ^. ProjectId ==. val buildProjectId)
+    return p
 
-updateProject :: (HasPostgres m) => Project -> m ()
-updateProject Project {..} = runDb' q (projectName, projectSlug, projectDeploymentImage, projectId)
-  where
-    q =
-      "update projects set (name, slug, deployment_image, updated_at) =\
-        \ (?, ?, ?, now() at time zone 'utc') where id = ?"
-
-listProjects :: (HasPostgres m) => CompanyID -> m [Project]
-listProjects companyId = map buildProject <$> runQuery q (Only companyId)
-  where
-    q =
-      "select id, name, deployment_image, company_id, slug, access_token from projects\
-        \ where company_id = ?"
-
-getProject :: (HasPostgres m, DBProjectID a) => CompanyID -> a -> m (Maybe Project)
-getProject companyId projectId = do
-  result <- runQuery q (companyId, toDbId projectId)
-  case result of
-    [] -> return Nothing
-    row:_ -> return . Just $ buildProject row
-  where
-    q =
-      "select id, name, deployment_image, company_id, slug, access_token from projects\
-        \ where company_id = ? AND id = ?"
-
-getProjectBySlug :: (HasPostgres m) => CompanyID -> Slug -> m (Maybe Project)
-getProjectBySlug companyId slug = do
-  result <- runQuery q (companyId, slug)
-  case result of
-    [] -> return Nothing
-    row:_ -> return . Just $ buildProject row
-  where
-    q =
-      "select id, name, deployment_image, company_id, slug, access_token from projects\
-        \ where company_id = ? AND slug = ?"
-
-getProjectForBuild :: (HasPostgres m) => B.Build -> m (Maybe Project)
-getProjectForBuild build = do
-  result <- runQuery q (Only $ B.buildProjectId build)
-  case result of
-    [] -> return Nothing
-    row:_ -> return . Just $ buildProject row
-  where
-    q =
-      "select id, name, deployment_image, company_id, slug, access_token from projects\
-        \ where id = ?"
-
-findProjectByAccessToken :: (HasPostgres m) => Text -> m (Maybe Project)
-findProjectByAccessToken accessToken = do
-  result <- runQuery q (Only accessToken)
-  case result of
-    [] -> return Nothing
-    row:_ -> return . Just $ buildProject row
-  where
-    q =
-      "select id, name, deployment_image, company_id, slug, access_token from projects\
-        \ where access_token = ?"
-
-type ProjectRow = (ID, Name, DeploymentImage, CompanyID, Slug, AccessToken)
-
-buildProject :: ProjectRow -> Project
-buildProject (projectId, projectName, projectDeploymentImage, projectCompanyId, projectSlug, projectAccessToken) =
-  Project {..}
+findProjectByAccessToken :: (MonadIO m) => AccessToken -> Db m (Maybe (Entity Project))
+findProjectByAccessToken accessToken =
+  selectFirst $
+  from $ \p -> do
+    where_ (p ^. ProjectAccessToken ==. val accessToken)
+    return p

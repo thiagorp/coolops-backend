@@ -1,5 +1,6 @@
 module Slack.UseCases.NotifyNewBuild
-  ( CallConstraint
+  ( module Database.Queries.SlackBuildMessageData
+  , CallConstraint
   , Error(..)
   , call
   , message
@@ -14,19 +15,13 @@ import Data.Time
 import Data.UUID (toText)
 
 import Common.Config (frontendBaseUrl)
-import Common.Database (HasPostgres)
 import Database.Queries.SlackBuildMessageData
 import Deployments.Database.Build (getBuild)
-import qualified Deployments.Domain.Build as B
-import qualified Deployments.Domain.Project as P
 import Slack.Api.ChatMessages
 import Slack.Api.Message
 import qualified Slack.Database.AccessToken as AT
-import Slack.Database.BuildMessage (createSlackBuildMessage, getSlackBuildMessage)
+import Slack.Database.BuildMessage (getSlackBuildMessage)
 import qualified Slack.Database.ProjectIntegration as PI
-import Slack.Domain.AccessToken hiding (genId)
-import Slack.Domain.BuildMessage
-import Slack.Domain.ProjectIntegration hiding (genId)
 import Util.FrontendEndpoints (logsPage)
 
 data Error
@@ -35,60 +30,76 @@ data Error
   | SlackConfigNotFound
   | SlackAccessTokenNotFound
 
-saveSlackBuildMessage :: (HasPostgres m) => B.ID -> Text -> m ()
-saveSlackBuildMessage buildMessageBuildId buildMessageSlackMessageId = do
-  buildMessageId <- genId
-  createSlackBuildMessage BuildMessage {..}
+saveSlackBuildMessage :: (MonadIO m) => BuildId -> Text -> Db m ()
+saveSlackBuildMessage slackBuildMessageBuildId slackBuildMessageSlackMessageId = do
+  now <- liftIO getCurrentTime
+  let slackBuildMessageCreatedAt = now
+  let slackBuildMessageUpdatedAt = now
+  void $ insert SlackBuildMessage {..}
 
-createMessage :: (SlackClientMonad m, HasPostgres m) => ProjectIntegration -> AccessToken -> B.Build -> Message -> m ()
-createMessage ProjectIntegration {..} AccessToken {..} B.Build {..} m = do
-  maybeResponseTs <- postMessage tokenBotAccessToken integrationChannelId m
+createMessage ::
+     (SlackClientMonad m)
+  => Entity SlackProjectIntegration
+  -> Entity SlackAccessToken
+  -> Entity Build
+  -> Message
+  -> Db m ()
+createMessage (Entity _ SlackProjectIntegration {..}) (Entity _ SlackAccessToken {..}) (Entity buildId _) m = do
+  maybeResponseTs <- lift $ postMessage slackAccessTokenBotAccessToken slackProjectIntegrationChannelId m
   forM_ maybeResponseTs (saveSlackBuildMessage buildId)
 
-sendMessage :: (SlackClientMonad m, HasPostgres m) => ProjectIntegration -> AccessToken -> B.Build -> Message -> m ()
-sendMessage config@ProjectIntegration {..} at@AccessToken {..} build@B.Build {..} m = do
+sendMessage ::
+     (SlackClientMonad m)
+  => Entity SlackProjectIntegration
+  -> Entity SlackAccessToken
+  -> Entity Build
+  -> Message
+  -> Db m ()
+sendMessage config@(Entity _ SlackProjectIntegration {..}) at@(Entity _ SlackAccessToken {..}) build@(Entity buildId Build {..}) m = do
   maybeExistingMesage <- getSlackBuildMessage buildId
   case maybeExistingMesage of
     Nothing -> createMessage config at build m
-    Just BuildMessage {..} -> updateMessage tokenBotAccessToken integrationChannelId buildMessageSlackMessageId m
+    Just (Entity _ SlackBuildMessage {..}) ->
+      lift $
+      updateMessage slackAccessTokenBotAccessToken slackProjectIntegrationChannelId slackBuildMessageSlackMessageId m
 
-handleEntity :: Monad m => Error -> m (Maybe a) -> ExceptT Error m a
+handleEntity :: (Monad m) => Error -> m (Maybe a) -> ExceptT Error m a
 handleEntity e wrappedEntity = do
   entity <- lift wrappedEntity
   case entity of
     Nothing -> throwError e
     Just a -> return a
 
-getSlackConfig_ :: HasPostgres m => P.ID -> ExceptT Error m ProjectIntegration
+getSlackConfig_ :: (MonadIO m) => ProjectId -> ExceptT Error (Db m) (Entity SlackProjectIntegration)
 getSlackConfig_ projectId = handleEntity SlackConfigNotFound (PI.findByProjectId projectId)
 
-getSlackAccessToken_ :: HasPostgres m => P.ID -> ExceptT Error m AccessToken
+getSlackAccessToken_ :: (MonadIO m) => ProjectId -> ExceptT Error (Db m) (Entity SlackAccessToken)
 getSlackAccessToken_ projectId = handleEntity SlackConfigNotFound (AT.findByProjectId projectId)
 
-getBuild_ :: HasPostgres m => P.CompanyID -> Text -> ExceptT Error m B.Build
+getBuild_ :: (MonadIO m) => CompanyId -> UUID -> ExceptT Error (Db m) (Entity Build)
 getBuild_ cId bId = handleEntity BuildNotFound (getBuild cId bId)
 
-type CallConstraint m = (HasPostgres m, HasPostgres m, SlackClientMonad m)
+type CallConstraint m = (MonadUnliftIO m, SlackClientMonad m, HasDb m)
 
-colorOf :: DbStatus -> Maybe Text
+colorOf :: DeploymentStatus -> Maybe Text
 colorOf status =
   case status of
-    DbQueued -> Nothing
-    DbRunning -> Just "warning"
-    DbSucceeded -> Just "good"
-    DbFailed _ -> Just "danger"
+    Queued -> Nothing
+    Running -> Just "warning"
+    Succeeded -> Just "good"
+    Failed _ -> Just "danger"
 
 buildMessage :: Text -> MessageData -> Message
 buildMessage appBaseUrl MessageData {..} =
   slackMessage {messageText = Just messageText, messageAttachments = Just attachments}
   where
-    messageText = "*" <> dataProjectName <> "* has a new build: *" <> dataBuildName <> "*"
+    (Entity (BuildKey buildId) Build {..}, Entity _ Project {..}, _) = dataBuildInfo
+    messageText = "*" <> getValue projectName <> "* has a new build: *" <> getValue buildName <> "*"
     attachments =
-      [deploymentButtons] <> [buildMetadataRow (HashMap.toList dataBuildMetadata)] <>
-      map buildDeploymentRow dataSlackDeployments
+      [deploymentButtons] <> [buildMetadataRow (HashMap.toList buildMetadata)] <> map buildDeploymentRow dataDeployments
     deploymentButtons =
       slackAttachment
-        { attachmentCallbackId = Just $ "deploy_build|" <> toText dataBuildId
+        { attachmentCallbackId = Just $ "deploy_build|" <> toText buildId
         , attachmentType = Just "default"
         , attachmentActions = Just $ map buildAction dataEnvironments
         }
@@ -97,43 +108,44 @@ buildMessage appBaseUrl MessageData {..} =
         { attachmentMarkdown = Just ["fields"]
         , attachmentFields = Just $ map (\(t, v) -> slackField {fieldValue = v, fieldTitle = t}) fields
         }
-    buildDeploymentRow SlackDeployment {..} =
+    buildDeploymentRow (Entity _ SlackDeployment {..}, Entity _ Environment {..}, Entity (DeploymentKey deploymentId) Deployment {..}) =
       slackAttachment
-        { attachmentText = Just $ "<@" <> deploymentUserId <> "> deployed to *" <> deploymentEnvironmentName <> "*"
+        { attachmentText =
+            Just $ "<@" <> slackDeploymentSlackUserId <> "> deployed to *" <> getValue environmentName <> "*"
         , attachmentFooter =
             Just $
-            "<!date^" <> Text.pack (formatTime defaultTimeLocale "%s" deploymentTime) <>
+            "<!date^" <> Text.pack (formatTime defaultTimeLocale "%s" slackDeploymentDeployedAt) <>
             "^{date_pretty} - {time}|Deployment time conversion failed> | " <>
             "<" <>
             appBaseUrl <>
-            logsPage (tshow deploymentId) <>
+            logsPage (uuidToText deploymentId) <>
             "|See logs>"
         , attachmentColor = colorOf deploymentStatus
         }
-    buildAction Environment {..} =
+    buildAction (Entity (EnvironmentKey environmentId) Environment {..}) =
       slackAction
         { actionName = "environment"
-        , actionText = "Deploy to " <> environmentName
+        , actionText = "Deploy to " <> getValue environmentName
         , actionType = "button"
         , actionValue = toText environmentId
         }
 
-message_ :: (MonadIO m, HasPostgres m) => P.CompanyID -> Text -> ExceptT Error m Message
+message_ :: (MonadIO m) => CompanyId -> UUID -> ExceptT Error (Db m) Message
 message_ cId bId = do
   messageData <- handleEntity MessageDataNotFound (getSlackBuildMessageData cId bId)
   appBaseUrl <- frontendBaseUrl
   return $ buildMessage appBaseUrl messageData
 
-message :: HasPostgres m => P.CompanyID -> Text -> m (Either Error Message)
-message cId bId = runExceptT $ message_ cId bId
+message :: (CallConstraint m) => CompanyId -> UUID -> m (Either Error Message)
+message cId bId = runDb $ runExceptT $ message_ cId bId
 
-call_ :: CallConstraint m => P.CompanyID -> Text -> ExceptT Error m ()
+call_ :: (CallConstraint m) => CompanyId -> UUID -> ExceptT Error (Db m) ()
 call_ cId bId = do
-  build <- getBuild_ cId bId
-  slackConfig <- getSlackConfig_ (B.buildProjectId build)
-  slackAccessToken <- getSlackAccessToken_ (B.buildProjectId build)
+  build@(Entity _ Build {..}) <- getBuild_ cId bId
+  slackConfig <- getSlackConfig_ buildProjectId
+  slackAccessToken <- getSlackAccessToken_ buildProjectId
   m <- message_ cId bId
   lift $ sendMessage slackConfig slackAccessToken build m
 
-call :: CallConstraint m => P.CompanyID -> Text -> m (Either Error ())
-call cId bId = runExceptT $ call_ cId bId
+call :: (CallConstraint m) => CompanyId -> UUID -> m (Either Error ())
+call cId bId = runDb $ runExceptT $ call_ cId bId

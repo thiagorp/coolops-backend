@@ -1,149 +1,79 @@
 module Deployments.Database.Deployment
-  ( createQueuedDeployment
-  , getNextQueuedDeployment
-  , saveRunningDeployment
-  , saveFinishedDeployment
-  , listAllRunningDeployments
+  ( module Common.PersistDatabase
+  , module Model
+  , getDeployment
   , getDeploymentResources
-  , notFinishedStatuses
-  , DbStatus(..)
-  , isFinished
+  , getDeploymentsResources
+  , getNextQueuedDeployment
+  , listAllRunningDeployments
   ) where
 
-import RIO
+import RIO hiding ((^.), on)
 
-import Data.Time
-import Database.PostgreSQL.Simple
-import Database.PostgreSQL.Simple.FromField
-import Database.PostgreSQL.Simple.ToField
+import Database.Esqueleto hiding (selectFirst)
 
-import Common.Database
+import Common.PersistDatabase
 import Deployments.Database.Build
 import Deployments.Database.Environment
-import Deployments.Database.Project
 import Deployments.Domain.Deployment
+import Model
 
-import Deployments.Domain.Build (buildProjectId)
-import Deployments.Domain.Project (CompanyID)
-import Util.Key
+getNextQueuedDeployment :: (MonadIO m) => CompanyId -> Db m (Maybe (Entity Deployment))
+getNextQueuedDeployment companyId =
+  selectFirst $
+  from $ \(d `InnerJoin` e `InnerJoin` p) -> do
+    on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
+    on ((e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (d ^. DeploymentStatus ==. val Queued)
+    orderBy [asc (d ^. DeploymentCreatedAt)]
+    locking ForUpdateSkipLocked
+    return d
 
-data DbStatus
-  = DbQueued
-  | DbRunning
-  | DbSucceeded
-  | DbFailed Text
-  deriving (Eq)
+getDeploymentsResources :: (MonadIO m) => Entity Deployment -> Db m (Maybe DeploymentResources)
+getDeploymentsResources (Entity _ Deployment {..}) = do
+  maybeEnvironment <- get deploymentEnvironmentId
+  maybeBuild <- get deploymentBuildId
+  case (,) <$> maybeEnvironment <*> maybeBuild of
+    Nothing -> return Nothing
+    Just (environment, build@Build {..}) -> do
+      maybeProject <- get buildProjectId
+      case maybeProject of
+        Nothing -> return Nothing
+        Just project ->
+          return $
+          Just $
+          DeploymentResources
+            (Entity buildProjectId project)
+            (Entity deploymentEnvironmentId environment)
+            (Entity deploymentBuildId build)
 
-instance FromField DbStatus where
-  fromField f bs = textToStatus <$> fromField f bs
-
-instance ToField DbStatus where
-  toField = toField . statusText
-
-isFinished :: DbStatus -> Bool
-isFinished s = s `notElem` notFinishedStatuses
-
-notFinishedStatuses :: [DbStatus]
-notFinishedStatuses = [DbQueued, DbRunning]
-
-textToStatus :: Text -> DbStatus
-textToStatus text =
-  case text of
-    "queued" -> DbQueued
-    "running" -> DbRunning
-    "finished_with_success" -> DbSucceeded
-    "failed_with_invalid_docker_image" -> DbFailed "invalid_docker_image"
-    "failed_with_job_failed" -> DbFailed "job_failed"
-    "failed_with_job_not_found" -> DbFailed "job_not_found"
-    _ -> DbFailed "unknown_reason"
-
-statusText :: DbStatus -> Text
-statusText status =
-  case status of
-    DbQueued -> "queued"
-    DbRunning -> "running"
-    DbSucceeded -> "finished_with_success"
-    DbFailed reason -> "failed_with_" <> reason
-
-convertFinishedtDeploymentStatus :: Status -> DbStatus
-convertFinishedtDeploymentStatus status =
-  case status of
-    Succeeded -> DbSucceeded
-    Failed InvalidDockerImage -> DbFailed "invalid_docker_image"
-    Failed JobFailed -> DbFailed "job_failed"
-    Failed JobNotFound -> DbFailed "job_not_found"
-
-getNextQueuedDeployment :: (HasPostgres m) => CompanyID -> m (Maybe QueuedDeployment)
-getNextQueuedDeployment companyId = do
-  result <- runQuery q (companyId, statusText DbQueued)
-  case result of
-    [] -> return Nothing
-    row:_ -> return . Just $ buildQueuedDeployment row
-  where
-    q =
-      "select d.id, d.build_id, d.environment_id from deployments d\
-        \ left join environments e on e.id = d.environment_id\
-        \ left join projects p on p.id = e.project_id\
-        \ where p.company_id = ? and d.status = ? \
-        \ order by d.created_at asc limit 1\
-        \ for update skip locked"
-
-getDeploymentResources :: (HasPostgres m) => CompanyID -> Text -> Text -> m (Maybe DeploymentResources)
+getDeploymentResources :: (MonadIO m) => CompanyId -> UUID -> UUID -> Db m (Maybe DeploymentResources)
 getDeploymentResources cId eId bId = do
   maybeEnvironment <- getEnvironment cId eId
   maybeBuild <- getBuild cId bId
   case (,) <$> maybeEnvironment <*> maybeBuild of
     Nothing -> return Nothing
-    Just (environment, build) -> do
-      maybeProject <- getProject cId $ keyText $ buildProjectId build
+    Just (environment, build@(Entity _ Build {..})) -> do
+      maybeProject <- get buildProjectId
       case maybeProject of
         Nothing -> return Nothing
-        Just project -> return $ Just $ DeploymentResources project environment build
+        Just project -> return $ Just $ DeploymentResources (Entity buildProjectId project) environment build
 
-listAllRunningDeployments :: (HasPostgres m) => m [(CompanyID, RunningDeployment)]
+listAllRunningDeployments :: (MonadIO m) => Db m [(CompanyId, Entity Deployment)]
 listAllRunningDeployments = do
-  results <- runQuery q (Only (statusText DbRunning))
-  return $ map buildRunningDeployment results
-  where
-    q =
-      "select d.id, d.deployment_started_at, d.build_id, p.company_id from deployments d\
-        \ join environments e on e.id = d.environment_id\
-        \ join projects p on p.id = e.project_id\
-        \ where status = ?"
+  values <-
+    select $
+    from $ \(d `InnerJoin` e `InnerJoin` p) -> do
+      on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
+      on ((e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId))
+      where_ (d ^. DeploymentStatus ==. val Running)
+      return (p ^. ProjectCompanyId, d)
+  return $ map (\(v, d) -> (unValue v, d)) values
 
-saveFinishedDeployment :: (HasPostgres m) => FinishedDeployment -> m ()
-saveFinishedDeployment FinishedDeployment {..} = runDb' q values
-  where
-    q =
-      "update deployments set (deployment_finished_at, status, updated_at) =\
-        \ (?, ?, now() at time zone 'utc') where id = ?"
-    values =
-      (deploymentFinishedAt, statusText $ convertFinishedtDeploymentStatus deploymentStatus, finishedDeploymentId)
-
-saveRunningDeployment :: (HasPostgres m) => RunningDeployment -> m ()
-saveRunningDeployment RunningDeployment {..} = runDb' q values
-  where
-    q =
-      "update deployments set (deployment_started_at, status, updated_at) =\
-        \ (?, ?, now() at time zone 'utc') where id = ?"
-    values = (deploymentStartedAt, statusText DbRunning, runningDeploymentId)
-
-createQueuedDeployment :: (HasPostgres m) => QueuedDeployment -> m ()
-createQueuedDeployment QueuedDeployment {..} = runDb' q values
-  where
-    q =
-      "insert into deployments (id, build_id, environment_id, status, created_at, updated_at) values\
-        \ (?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
-    values = (deploymentId, deploymentBuildId, deploymentEnvironmentId, statusText DbQueued)
-
-type QueuedDeploymentRow = (ID, BuildID, EnvironmentID)
-
-buildQueuedDeployment :: QueuedDeploymentRow -> QueuedDeployment
-buildQueuedDeployment (deploymentId, deploymentBuildId, deploymentEnvironmentId) = QueuedDeployment {..}
-
-type RunningDeploymentRow = (ID, LocalTime, BuildID, CompanyID)
-
-buildRunningDeployment :: RunningDeploymentRow -> (CompanyID, RunningDeployment)
-buildRunningDeployment (runningDeploymentId, deploymentStartedAtLocaltime, runningDeploymentBuildId, companyId) =
-  let deploymentStartedAt = localTimeToUTC utc deploymentStartedAtLocaltime
-   in (companyId, RunningDeployment {..})
+getDeployment :: (MonadIO m) => UUID -> Db m (Maybe (Entity Deployment))
+getDeployment dId =
+  selectFirst $
+  from $ \d -> do
+    where_ (d ^. DeploymentId ==. val (DeploymentKey dId))
+    return d

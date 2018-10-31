@@ -1,101 +1,63 @@
 module Database.Queries.SlackBuildMessageData
-  ( MessageData(..)
-  , Environment(..)
-  , SlackDeployment(..)
-  , DbStatus(..)
+  ( module Model
+  , module Common.PersistDatabase
+  , MessageData(..)
   , getSlackBuildMessageData
   ) where
 
-import RIO
-import qualified RIO.HashMap as HashMap
+import RIO hiding ((^.), on)
 
-import Data.Aeson (Result(..), Value, fromJSON)
-import Database.PostgreSQL.Simple
+import Database.Esqueleto hiding (selectFirst)
 
-import Common.Database
-import Data.Time
-import Data.UUID
-import Deployments.Database.Deployment (DbStatus(..))
-import Deployments.Domain.Project (CompanyID)
+import Common.PersistDatabase
+import Model
 
-data Environment = Environment
-  { environmentId :: !UUID
-  , environmentName :: !Text
-  }
+type MessageBuildInfo = (Entity Build, Entity Project, Maybe (Entity SlackBuildMessage))
 
-data SlackDeployment = SlackDeployment
-  { deploymentId :: !UUID
-  , deploymentUserId :: !Text
-  , deploymentTime :: !UTCTime
-  , deploymentStatus :: !DbStatus
-  , deploymentEnvironmentName :: !Text
-  }
+type MessageDeployment = (Entity SlackDeployment, Entity Environment, Entity Deployment)
 
 data MessageData = MessageData
-  { dataBuildId :: !UUID
-  , dataBuildName :: !Text
-  , dataBuildMetadata :: !(HashMap Text Text)
-  , dataProjectName :: !Text
-  , dataSlackDeployments :: ![SlackDeployment]
-  , dataEnvironments :: ![Environment]
+  { dataBuildInfo :: !MessageBuildInfo
+  , dataDeployments :: ![MessageDeployment]
+  , dataEnvironments :: ![Entity Environment]
   }
 
-getSlackBuildMessageData ::
-     HasPostgres m => CompanyID -> Text -> m (Maybe MessageData)
+getSlackBuildMessageData :: (MonadIO m) => CompanyId -> UUID -> Db m (Maybe MessageData)
 getSlackBuildMessageData cId bId = do
-  dataRows <- runQuery q (cId, bId)
-  case dataRows of
-    [] -> return Nothing
-    row:_ -> Just <$> buildData row
-  where
-    q =
-      "select b.id, b.name, b.metadata, p.id, p.name, sbm.id\
-        \ from builds b\
-        \ join projects p on p.id = b.project_id\
-        \ left join slack_build_messages sbm on sbm.build_id = b.id\
-        \ where p.company_id = ? and b.id = ?"
+  maybeInfo <- getBuildInfo cId bId
+  case maybeInfo of
+    Nothing -> return Nothing
+    Just info -> do
+      deployments <- getDeployments info
+      environments <- getEnvironments info
+      return $ Just $ MessageData {dataBuildInfo = info, dataDeployments = deployments, dataEnvironments = environments}
 
-type DataRow = (UUID, Text, Value, UUID, Text, Maybe UUID)
+getBuildInfo :: (MonadIO m) => CompanyId -> UUID -> Db m (Maybe MessageBuildInfo)
+getBuildInfo cId bId =
+  selectFirst $
+  from $ \(b `InnerJoin` p `LeftOuterJoin` sbm) -> do
+    on (just (b ^. BuildId) ==. (sbm ?. SlackBuildMessageBuildId)) -- Add the maybe because is a LeftOuterJoin
+    on ((p ^. ProjectId) ==. (b ^. BuildProjectId))
+    where_ (p ^. ProjectCompanyId ==. val cId)
+    where_ (b ^. BuildId ==. val (BuildKey bId))
+    return (b, p, sbm)
 
-buildData :: HasPostgres m => DataRow -> m MessageData
-buildData (dataBuildId, dataBuildName, metadata, projectId, dataProjectName, maybeSlackBuildMessageId) = do
-  dataEnvironments <- getEnvironments (toText projectId)
-  dataSlackDeployments <-
-    maybe (return []) getSlackDeployments maybeSlackBuildMessageId
-  let dataBuildMetadata =
-        case fromJSON metadata of
-          Error _ -> HashMap.empty
-          Success p -> p
-  return MessageData {..}
+getDeployments :: (MonadIO m) => MessageBuildInfo -> Db m [MessageDeployment]
+getDeployments (_, _, maybeSlackBuildMessage) =
+  case maybeSlackBuildMessage of
+    Nothing -> return []
+    Just (Entity sbmId _) ->
+      select $
+      from $ \(sd `InnerJoin` d `InnerJoin` e) -> do
+        on ((e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId))
+        on ((d ^. DeploymentId) ==. (sd ^. SlackDeploymentDeploymentId))
+        where_ (sd ^. SlackDeploymentBuildMessageId ==. val sbmId)
+        orderBy [asc (d ^. DeploymentCreatedAt)]
+        return (sd, e, d)
 
-getEnvironments :: HasPostgres m => Text -> m [Environment]
-getEnvironments projectId = do
-  rows <- runQuery q (Only projectId)
-  return $ map buildEnvironment rows
-  where
-    q = "select id, name from environments where project_id = ?"
-
-type EnvironmentRow = (UUID, Text)
-
-buildEnvironment :: EnvironmentRow -> Environment
-buildEnvironment (environmentId, environmentName) = Environment {..}
-
-getSlackDeployments :: HasPostgres m => UUID -> m [SlackDeployment]
-getSlackDeployments buildMessageId = do
-  rows <- runQuery q (Only buildMessageId)
-  return $ map buildSlackDeployment rows
-  where
-    q =
-      "select d.id, sd.slack_user_id, sd.deployed_at, d.status, e.name\
-        \ from slack_deployments sd\
-        \ join deployments d on d.id = sd.deployment_id\
-        \ join environments e on e.id = d.environment_id\
-        \ where sd.build_message_id = ?\
-        \ order by d.created_at asc"
-
-type SlackDeploymentRow = (UUID, Text, LocalTime, DbStatus, Text)
-
-buildSlackDeployment :: SlackDeploymentRow -> SlackDeployment
-buildSlackDeployment (deploymentId, deploymentUserId, localTime, deploymentStatus, deploymentEnvironmentName) =
-  let deploymentTime = localTimeToUTC utc localTime
-   in SlackDeployment {..}
+getEnvironments :: (MonadIO m) => MessageBuildInfo -> Db m [Entity Environment]
+getEnvironments (_, Entity pId _, _) =
+  select $
+  from $ \e -> do
+    where_ (e ^. EnvironmentProjectId ==. val pId)
+    return e

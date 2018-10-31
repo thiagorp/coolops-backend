@@ -1,45 +1,50 @@
 module Deployments.UseCases.CreateEnvironment
-  ( Params(..)
+  ( module Model
+  , Params(..)
   , Error(..)
   , call
   ) where
 
 import RIO
 
-import Common.Database (HasPostgres)
-import Deployments.Database.Environment (createEnvironment, getEnvironmentBySlug)
+import Deployments.Database.Environment
 import Deployments.Database.Project (getProject)
-import qualified Deployments.Domain.Environment as Environment
-import qualified Deployments.Domain.Project as Project
+import Model
 
 data Params = Params
-  { environmentName :: !Environment.Name
-  , environmentEnvVars :: !(HashMap Text Text)
-  , environmentSlug :: !Environment.Slug
+  { paramName :: !EnvironmentName
+  , paramEnvVars :: !(HashMap Text Text)
+  , paramSlug :: !Slug
   }
 
 data Error
   = ProjectNotFound
   | SlugAlreadyExists
 
-build :: (MonadIO m) => Environment.ProjectID -> Params -> m Environment.Environment
+build :: (MonadIO m) => ProjectId -> Params -> m Environment
 build environmentProjectId Params {..} = do
-  environmentId <- Environment.genId
-  return Environment.Environment {..}
+  now <- liftIO getCurrentTime
+  let environmentName = paramName
+  let environmentEnvVars = paramEnvVars
+  let environmentSlug = paramSlug
+  let environmentCreatedAt = now
+  let environmentUpdatedAt = now
+  return Environment {..}
 
-call_ :: (MonadIO m, HasPostgres m) => Project.Project -> Params -> m (Either Error Environment.Environment)
-call_ Project.Project {..} params = do
-  maybeEnvironment <- getEnvironmentBySlug projectCompanyId projectId (environmentSlug params)
+call_ :: (MonadIO m, HasDb m) => Entity Project -> Params -> Db m (Either Error (Entity Environment))
+call_ (Entity pId Project {..}) params@Params {..} = do
+  maybeEnvironment <- getEnvironmentBySlug projectCompanyId pId paramSlug
   case maybeEnvironment of
     Just _ -> return (Left SlugAlreadyExists)
     Nothing -> do
-      environment <- build projectId params
-      createEnvironment environment
-      return (Right environment)
+      environment <- build pId params
+      envId <- insert environment
+      return $ Right (Entity envId environment)
 
-call :: (MonadIO m, HasPostgres m) => Text -> Project.CompanyID -> Params -> m (Either Error Environment.Environment)
-call pId cId params = do
-  maybeProject <- getProject cId pId
-  case maybeProject of
-    Nothing -> return (Left ProjectNotFound)
-    Just project -> call_ project params
+call :: (MonadIO m, HasDb m) => UUID -> CompanyId -> Params -> m (Either Error (Entity Environment))
+call pId cId params =
+  runDb $ do
+    maybeProject <- getProject cId pId
+    case maybeProject of
+      Nothing -> return (Left ProjectNotFound)
+      Just project -> call_ project params

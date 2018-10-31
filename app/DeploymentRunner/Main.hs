@@ -6,16 +6,16 @@ import qualified RIO.ByteString as BS
 import Network.Connection (TLSSettings(..))
 import Network.HTTP.Client.TLS
 
-import Auth.Database (listCompanies)
-import Auth.Domain (CompanyID, companyId)
+import Auth.Database
 import Deployments.UseCases.RunNextDeployment as App
 import Env
+import Model
 
 type AppT = RIO Env
 
-runNextForCompany :: CompanyID -> AppT ()
+runNextForCompany :: CompanyId -> Db AppT ()
 runNextForCompany companyId = do
-  result <- App.call companyId
+  result <- lift $ App.call companyId
   case result of
     Right _ -> BS.putStr "Ran successfully\n"
     Left App.NoDeploymentToRun -> return ()
@@ -24,8 +24,8 @@ runNextForCompany companyId = do
 
 app :: AppT ()
 app = do
-  companies <- listCompanies
-  mapM_ (runNextForCompany . companyId) companies
+  companies <- runDb listCompanies
+  traverse_ (runDb . runNextForCompany . entityKey) companies
 
 loopWith :: Env -> IO ()
 loopWith env = do

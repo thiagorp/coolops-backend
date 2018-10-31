@@ -1,93 +1,61 @@
 module Deployments.Database.Environment
-  ( createEnvironment
+  ( module Common.PersistDatabase
   , getEnvironment
   , getEnvironmentBySlug
   , listEnvironments
   , listProjectEnvironments
   , listEnvironmentsForProjects
-  , updateEnvironment
   ) where
 
-import RIO
-import qualified RIO.HashMap as HashMap
+import RIO hiding ((^.), on)
 
-import Data.Aeson (Result(..), Value, fromJSON, toJSON)
-import Database.PostgreSQL.Simple
+import Database.Esqueleto hiding (selectFirst)
 
-import Common.Database
-import Deployments.Domain.Environment
-import Deployments.Domain.Project (CompanyID)
+import Common.PersistDatabase
+import Model
 
-getEnvironment :: (HasPostgres m) => CompanyID -> Text -> m (Maybe Environment)
-getEnvironment companyId environmentId = do
-  result <- runQuery q (companyId, environmentId)
-  case result of
-    [] -> return Nothing
-    row:_ -> return . Just $ buildEnvironment row
-  where
-    q =
-      "select e.id, e.name, e.env_vars, e.project_id, e.slug from environments e\
-        \ left join projects p on p.id = e.project_id\
-        \ where p.company_id = ? and e.id = ?"
+getEnvironment :: (MonadIO m) => CompanyId -> UUID -> Db m (Maybe (Entity Environment))
+getEnvironment companyId environmentId =
+  selectFirst $
+  from $ \(e `InnerJoin` p) -> do
+    on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (e ^. EnvironmentId ==. val (EnvironmentKey environmentId))
+    return e
 
-getEnvironmentBySlug :: (HasPostgres m) => CompanyID -> ProjectID -> Slug -> m (Maybe Environment)
-getEnvironmentBySlug companyId pId slug = do
-  result <- runQuery q (companyId, pId, slug)
-  case result of
-    [] -> return Nothing
-    row:_ -> return . Just $ buildEnvironment row
-  where
-    q =
-      "select e.id, e.name, e.env_vars, e.project_id, e.slug from environments e\
-        \ left join projects p on p.id = e.project_id\
-        \ where p.company_id = ? and e.project_id = ? and e.slug = ?"
+getEnvironmentBySlug :: (MonadIO m) => CompanyId -> ProjectId -> Slug -> Db m (Maybe (Entity Environment))
+getEnvironmentBySlug companyId pId slug =
+  selectFirst $
+  from $ \(e `InnerJoin` p) -> do
+    on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (e ^. EnvironmentProjectId ==. val pId)
+    where_ (e ^. EnvironmentSlug ==. val slug)
+    return e
 
-listEnvironments :: (HasPostgres m) => CompanyID -> m [Environment]
-listEnvironments companyId = map buildEnvironment <$> runQuery q (Only companyId)
-  where
-    q =
-      "select e.id, e.name, e.env_vars, e.project_id, e.slug from environments e\
-        \ left join projects p on p.id = e.project_id\
-        \ where p.company_id = ?"
+listEnvironments :: (MonadIO m) => CompanyId -> Db m [Entity Environment]
+listEnvironments companyId =
+  select $
+  from $ \(e `InnerJoin` p) -> do
+    on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    return e
 
-listProjectEnvironments :: (HasPostgres m) => CompanyID -> Text -> m [Environment]
-listProjectEnvironments companyId projectId = map buildEnvironment <$> runQuery q (companyId, projectId)
-  where
-    q =
-      "select e.id, e.name, e.env_vars, e.project_id, e.slug from environments e\
-        \ left join projects p on p.id = e.project_id\
-        \ where p.company_id = ? and p.id = ?"
+listProjectEnvironments :: (MonadIO m) => CompanyId -> UUID -> Db m [Entity Environment]
+listProjectEnvironments companyId projectId =
+  select $
+  from $ \(e `InnerJoin` p) -> do
+    on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (p ^. ProjectId ==. val (ProjectKey projectId))
+    return e
 
-listEnvironmentsForProjects :: (HasPostgres m) => CompanyID -> [ProjectID] -> m [Environment]
-listEnvironmentsForProjects companyId projectIds = map buildEnvironment <$> runQuery q (companyId, In projectIds)
-  where
-    q =
-      "select e.id, e.name, e.env_vars, e.project_id, e.slug from environments e\
-        \ left join projects p on p.id = e.project_id\
-        \ where p.company_id = ? and p.id in ?"
-
-createEnvironment :: (HasPostgres m) => Environment -> m ()
-createEnvironment Environment {..} = runDb' q values
-  where
-    q =
-      "insert into environments (id, name, project_id, env_vars, slug, created_at, updated_at) values\
-        \ (?, ?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
-    values = (environmentId, environmentName, environmentProjectId, toJSON environmentEnvVars, environmentSlug)
-
-updateEnvironment :: (HasPostgres m) => Environment -> m ()
-updateEnvironment Environment {..} = runDb' q values
-  where
-    q =
-      "update environments set (name, env_vars, slug, updated_at) =\
-        \ (?, ?, ?, now() at time zone 'utc') where id = ?"
-    values = (environmentName, toJSON environmentEnvVars, environmentSlug, environmentId)
-
-type EnvironmentRow = (ID, Name, Value, ProjectID, Slug)
-
-buildEnvironment :: EnvironmentRow -> Environment
-buildEnvironment (environmentId, environmentName, envVars, environmentProjectId, environmentSlug) =
-  let environmentEnvVars =
-        case fromJSON envVars of
-          Error _ -> HashMap.empty
-          Success p -> p
-   in Environment {..}
+listEnvironmentsForProjects :: (MonadIO m) => CompanyId -> [ProjectId] -> Db m [Entity Environment]
+listEnvironmentsForProjects _ [] = return []
+listEnvironmentsForProjects companyId projectIds =
+  select $
+  from $ \(e `InnerJoin` p) -> do
+    on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (p ^. ProjectId `in_` valList projectIds)
+    return e
