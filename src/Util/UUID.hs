@@ -4,12 +4,10 @@ module Util.UUID
   ( module UUID
   , genUUID
   , textToUUID
-  , uuidToByteString
   , uuidToText
   ) where
 
 import RIO
-import qualified RIO.ByteString.Lazy as LazyByteString
 import qualified RIO.Text as Text
 
 import Data.ByteString.Char8 as B8
@@ -23,9 +21,6 @@ genUUID = liftIO UUID.nextRandom
 
 textToUUID :: Text -> Maybe UUID
 textToUUID = UUID.fromString . Text.unpack
-
-uuidToByteString :: UUID -> ByteString
-uuidToByteString = LazyByteString.toStrict . UUID.toByteString
 
 uuidToText :: UUID -> Text
 uuidToText = UUID.toText

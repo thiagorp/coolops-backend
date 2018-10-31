@@ -32,7 +32,7 @@ deploymentPodStatus Job.Job {..} = do
 
 deploymentJobStatus :: Entity Deployment -> Db AppT DeploymentJobStatus
 deploymentJobStatus (Entity (DeploymentKey deploymentKey) Deployment {..}) = do
-  maybeJob <- lift $ Job.getJob $ uuidToByteString deploymentKey
+  maybeJob <- lift $ Job.getJob $ uuidToText deploymentKey
   case maybeJob of
     Nothing -> return $ Finished (Failed "job_not_found")
     Just job ->

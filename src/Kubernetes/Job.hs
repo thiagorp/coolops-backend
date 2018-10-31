@@ -103,9 +103,9 @@ instance Exception GetJobError
 
 type GetJobMonad m = (KubernetesMonad m, MonadThrow m)
 
-getJob :: (GetJobMonad m) => ByteString -> m (Maybe Job)
+getJob :: (GetJobMonad m) => Text -> m (Maybe Job)
 getJob jobName = do
-  response <- kubernetesRequest (GetJob jobName)
+  response <- kubernetesRequest (GetJob (encodeUtf8 jobName))
   case statusCode (responseStatus response) of
     404 -> return Nothing
     200 ->

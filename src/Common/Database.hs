@@ -14,4 +14,4 @@ migrateDb = do
   void $ withTransaction conn (runMigration (ctx conn))
   where
     ctx = MigrationContext cmd False
-    cmd = MigrationDirectory "migrations"
+    cmd = MigrationCommands [MigrationInitialization, MigrationDirectory "migrations"]
