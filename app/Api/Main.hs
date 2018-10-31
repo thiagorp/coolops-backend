@@ -5,7 +5,6 @@ import qualified RIO.ByteString as BS
 import qualified RIO.Text as T
 
 import Data.Default.Class (def)
-import Data.Pool
 import Network.Connection (TLSSettings(..))
 import Network.HTTP.Client.TLS
 import Network.Wai (Middleware, Request)
@@ -18,7 +17,7 @@ import Network.Wai.Middleware.RequestLogger.JSON
 import Api.Handler
 
 import Common.Config (appPort)
-import Common.Database (migrateDb)
+import Common.Database
 import Env
 
 exceptionHandler :: Maybe Request -> SomeException -> IO ()
@@ -46,9 +45,9 @@ mkApp env = do
 
 main :: IO ()
 main = do
+  migrateDb
   requestManager <- newTlsManagerWith (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
-  env <- buildEnv 10 requestManager
-  withResource (pgConnPool env) migrateDb
+  env <- buildEnv 100 requestManager
   port <- appPort
   app <- mkApp env
   Warp.runSettings (settings port) app

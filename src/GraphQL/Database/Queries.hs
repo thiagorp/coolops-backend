@@ -1,8 +1,7 @@
 module GraphQL.Database.Queries
-  ( module GraphQL.Database.Types
-  , CompanyID
+  ( module Model
+  , module Common.PersistDatabase
   , getCompany
-  , getOnboarding
   , getSlackAccessToken
   , listBuilds
   , listBuildsById
@@ -15,118 +14,110 @@ module GraphQL.Database.Queries
   , listUsersById
   ) where
 
-import RIO
+import RIO hiding ((^.), on)
 
-import Database.PostgreSQL.Simple
+import Database.Esqueleto hiding (selectFirst)
 
-import Auth.Domain (CompanyID)
-import Common.Database
-import GraphQL.Database.Types
-import qualified Util.Key as Key
+import Common.PersistDatabase
+import Model
 
-getCompany :: (HasPostgres m) => CompanyID -> m (Maybe Company)
-getCompany companyId = do
-  results <- runQuery q (Only companyId)
-  case results of
-    [] -> return Nothing
-    row:_ -> return $ Just row
-  where
-    q =
-      "select id, name, onboarding_completed, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from companies where id = ?"
+getCompany :: (MonadIO m) => CompanyId -> Db m (Maybe (Entity Company))
+getCompany companyId =
+  selectFirst $
+  from $ \c -> do
+    where_ (c ^. CompanyId ==. val companyId)
+    return c
 
-getSlackAccessToken :: (HasPostgres m) => CompanyID -> m (Maybe SlackAccessToken)
-getSlackAccessToken companyId = do
-  results <- runQuery q (Only companyId)
-  case results of
-    [] -> return Nothing
-    row:_ -> return $ Just row
-  where
-    q = "select company_id, team_name, bot_access_token from slack_access_tokens where company_id = ?"
+getSlackAccessToken :: (MonadIO m) => CompanyId -> Db m (Maybe (Entity SlackAccessToken))
+getSlackAccessToken companyId =
+  selectFirst $
+  from $ \a -> do
+    where_ (a ^. SlackAccessTokenCompanyId ==. val companyId)
+    return a
 
-getOnboarding :: (HasPostgres m) => CompanyID -> m Onboarding
-getOnboarding companyId = do
-  results <- runQuery q (Only companyId)
-  case results of
-    [] -> return $ Onboarding dbCompanyId Nothing
-    row:_ -> return row
-  where
-    dbCompanyId = ID $ Key.keyText companyId
-    q = "select company_id, project_id from onboardings where company_id = ?"
+listBuilds :: (MonadIO m) => (Int64, Int64) -> Maybe ProjectId -> CompanyId -> Db m [Entity Build]
+listBuilds (l, o) maybeProjectId companyId =
+  select $
+  from $ \(b `InnerJoin` p) -> do
+    on ((p ^. ProjectId) ==. (b ^. BuildProjectId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    case maybeProjectId of
+      Nothing -> pure ()
+      Just pId -> where_ (b ^. BuildProjectId ==. val pId)
+    orderBy [desc (b ^. BuildCreatedAt)]
+    limit l
+    offset o
+    return b
 
-listBuilds :: (HasPostgres m) => (Int, Int) -> Maybe ProjectID -> CompanyID -> m [Build]
-listBuilds (limit, offset) maybeProjectId companyId =
-  case maybeProjectId of
-    Just projectId -> runQuery q (companyId, projectId, limit, offset)
-    Nothing -> runQuery q (companyId, limit, offset)
-  where
-    q =
-      "select b.id, b.name, b.params, b.metadata, b.project_id, cast(extract(epoch from b.created_at) as integer), cast(extract(epoch from b.updated_at) as integer) from builds b \
-      \join projects p on p.id = b.project_id \
-      \where p.company_id = ? " <>
-      maybe "" (const "and b.project_id = ? ") maybeProjectId <>
-      "order by b.created_at desc limit ? offset ?"
+listBuildsById :: (MonadIO m) => CompanyId -> [BuildId] -> Db m [Entity Build]
+listBuildsById _ [] = return []
+listBuildsById companyId ids =
+  select $
+  from $ \(b `InnerJoin` p) -> do
+    on ((p ^. ProjectId) ==. (b ^. BuildProjectId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (b ^. BuildId `in_` valList ids)
+    return b
 
-listBuildsById :: (HasPostgres m) => CompanyID -> [BuildID] -> m [Build]
-listBuildsById companyId ids = runQuery q (companyId, In ids)
-  where
-    q =
-      "select b.id, b.name, b.params, b.metadata, b.project_id, cast(extract(epoch from b.created_at) as integer), cast(extract(epoch from b.updated_at) as integer) from builds b \
-      \join projects p on p.id = b.project_id \
-      \where p.company_id = ? and b.id in ?"
+listProjects :: (MonadIO m) => CompanyId -> Db m [Entity Project]
+listProjects companyId =
+  select $
+  from $ \p -> do
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    orderBy [asc (p ^. ProjectName)]
+    return p
 
-listProjects :: (HasPostgres m) => CompanyID -> m [Project]
-listProjects companyId = runQuery q (Only companyId)
-  where
-    q =
-      "select id, name, slug, deployment_image, access_token, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from projects \
-      \where company_id = ? \
-      \order by name asc"
+listProjectsById :: (MonadIO m) => CompanyId -> [ProjectId] -> Db m [Entity Project]
+listProjectsById companyId ids =
+  select $
+  from $ \p -> do
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (p ^. ProjectId `in_` valList ids)
+    return p
 
-listProjectsById :: (HasPostgres m) => CompanyID -> [ProjectID] -> m [Project]
-listProjectsById companyId ids = runQuery q (companyId, In ids)
-  where
-    q =
-      "select id, name, slug, deployment_image, access_token, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from projects \
-      \where company_id = ? and id in ?"
+listEnvironments :: (MonadIO m) => CompanyId -> [ProjectId] -> Db m [Entity Environment]
+listEnvironments companyId projectIds =
+  select $
+  from $ \(e `InnerJoin` p) -> do
+    on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (p ^. ProjectId `in_` valList projectIds)
+    orderBy [asc (e ^. EnvironmentName)]
+    return e
 
-listEnvironments :: (HasPostgres m) => CompanyID -> [ProjectID] -> m [Environment]
-listEnvironments companyId projectIds = runQuery q (companyId, In projectIds)
-  where
-    q =
-      "select e.id, e.name, e.slug, e.env_vars, e.project_id, cast(extract(epoch from e.created_at) as integer), cast(extract(epoch from e.updated_at) as integer) from environments e \
-      \join projects p on p.id = e.project_id \
-      \where p.company_id = ? and p.id in ? \
-      \order by e.name asc"
+listEnvironmentsById :: (MonadIO m) => CompanyId -> [EnvironmentId] -> Db m [Entity Environment]
+listEnvironmentsById companyId ids =
+  select $
+  from $ \(e `InnerJoin` p) -> do
+    on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (e ^. EnvironmentId `in_` valList ids)
+    return e
 
-listEnvironmentsById :: (HasPostgres m) => CompanyID -> [EnvironmentID] -> m [Environment]
-listEnvironmentsById companyId ids = runQuery q (companyId, In ids)
-  where
-    q =
-      "select e.id, e.name, e.slug, e.env_vars, e.project_id, cast(extract(epoch from e.created_at) as integer), cast(extract(epoch from e.updated_at) as integer) from environments e \
-      \join projects p on p.id = e.project_id \
-      \where p.company_id = ? and e.id in ?"
+listEnvsLastDeployments :: (MonadIO m) => CompanyId -> [EnvironmentId] -> Db m [Entity Deployment]
+listEnvsLastDeployments companyId envIds =
+  select $
+  from $ \(d `InnerJoin` e `InnerJoin` p) -> do
+    on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
+    on ((e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (e ^. EnvironmentId `in_` valList envIds)
+    orderBy [desc (p ^. ProjectId), desc (e ^. EnvironmentId), desc (d ^. DeploymentCreatedAt)]
+    return d
 
-listEnvsLastDeployments :: (HasPostgres m) => CompanyID -> [EnvironmentID] -> m [Deployment]
-listEnvsLastDeployments companyId envIds = runQuery q (companyId, In envIds)
-  where
-    q =
-      "select d.id, cast(extract(epoch from d.deployment_started_at) as integer), d.environment_id, d.build_id, d.status, cast(extract(epoch from e.created_at) as integer), cast(extract(epoch from e.updated_at) as integer) from deployments d \
-      \join environments e on d.environment_id = e.id \
-      \join projects p on e.project_id = p.id \
-      \where p.company_id = ? and e.id in ? \
-      \order by p.id, e.id, d.created_at desc"
+listSlackProjectIntegrations :: (MonadIO m) => CompanyId -> [ProjectId] -> Db m [Entity SlackProjectIntegration]
+listSlackProjectIntegrations companyId projectIds =
+  select $
+  from $ \(spi `InnerJoin` p) -> do
+    on ((p ^. ProjectId) ==. (spi ^. SlackProjectIntegrationProjectId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (p ^. ProjectId `in_` valList projectIds)
+    return spi
 
-listSlackProjectIntegrations :: (HasPostgres m) => CompanyID -> [ProjectID] -> m [SlackProjectIntegration]
-listSlackProjectIntegrations companyId projectIds = runQuery q (companyId, In projectIds)
-  where
-    q =
-      "select spi.project_id, spi.channel_id, spi.channel_name from slack_project_integrations spi \
-      \join projects p on p.id = spi.project_id \
-      \where p.company_id = ? and p.id in ?"
-
-listUsersById :: (HasPostgres m) => CompanyID -> [UserID] -> m [User]
-listUsersById companyId ids = runQuery q (companyId, In ids)
-  where
-    q =
-      "select id, first_name, last_name, email, company_id, cast(extract(epoch from created_at) as integer), cast(extract(epoch from updated_at) as integer) from users \
-      \where company_id = ? and id in ?"
+listUsersById :: (MonadIO m) => CompanyId -> [UserId] -> Db m [Entity User]
+listUsersById companyId ids =
+  select $
+  from $ \u -> do
+    where_ (u ^. UserCompanyId ==. val companyId)
+    where_ (u ^. UserId `in_` valList ids)
+    return u

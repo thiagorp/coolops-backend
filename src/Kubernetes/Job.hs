@@ -16,15 +16,16 @@ import qualified RIO.HashMap as HashMap
 import qualified Data.Aeson as JSON
 import Data.Time
 import Data.Yaml
+import Model hiding (DeploymentStatus(..))
 import Network.HTTP.Client
 import Network.HTTP.Types
 
 import Kubernetes.ClientBase
 
 data JobDescription = JobDescription
-  { dockerImage :: !Text
+  { dockerImage :: !DockerImage
   , envVars :: !(HashMap Text Text)
-  , name :: !Text
+  , name :: !DeploymentId
   }
 
 jobRetryCount :: Int
@@ -43,7 +44,7 @@ instance ToJSON JobDescription where
     object
       [ "apiVersion" .= ("batch/v1" :: Text)
       , "kind" .= ("Job" :: Text)
-      , "metadata" .= object ["name" .= name]
+      , "metadata" .= object ["name" .= uuidToText deploymentId]
       , "spec" .=
         object
           [ "backoffLimit" .= jobRetryCount
@@ -56,12 +57,17 @@ instance ToJSON JobDescription where
                   , "containers" .=
                     array
                       [ object
-                          ["name" .= deploymentContainerName, "image" .= dockerImage, "env" .= array (buildEnv envVars)]
+                          [ "name" .= deploymentContainerName
+                          , "image" .= getValue dockerImage
+                          , "env" .= array (buildEnv envVars)
+                          ]
                       ]
                   ]
               ]
           ]
       ]
+    where
+      (DeploymentKey deploymentId) = name
 
 createJob :: (KubernetesMonad m) => JobDescription -> m Bool
 createJob jobDescription = do

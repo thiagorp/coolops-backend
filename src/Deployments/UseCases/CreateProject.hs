@@ -1,45 +1,44 @@
 module Deployments.UseCases.CreateProject
-  ( Params(..)
-  , ProjectName
-  , ProjectSlug
-  , Project.Project
+  ( module Model
+  , module Deployments.Database.Project
+  , Params(..)
   , Error(..)
   , call
   ) where
 
 import RIO
 
-import Common.Database (HasPostgres)
-import Deployments.Database.Project (createProject, getProjectBySlug)
-import qualified Deployments.Domain.Project as Project
+import Deployments.Database.Project
+import Model
 
 data Error =
   SlugAlreadyExists
 
-type ProjectName = Project.Name
-
-type ProjectSlug = Project.Slug
-
 data Params = Params
-  { projectName :: !ProjectName
-  , projectSlug :: !Project.Slug
-  , projectDeploymentImage :: !Project.DeploymentImage
-  , companyId :: !Project.CompanyID
+  { paramName :: !ProjectName
+  , paramSlug :: !Slug
+  , paramDeploymentImage :: !DockerImage
+  , paramCompanyId :: !CompanyId
   }
 
-build :: (MonadIO m) => Params -> m Project.Project
+build :: (MonadIO m) => Params -> Db m Project
 build Params {..} = do
-  projectId <- Project.genId
-  projectAccessToken <- Project.genAccessToken
-  let projectCompanyId = companyId
-  return Project.Project {..}
+  projectAccessToken <- genAccessToken
+  now <- liftIO getCurrentTime
+  let projectName = paramName
+  let projectCompanyId = paramCompanyId
+  let projectSlug = paramSlug
+  let projectDeploymentImage = paramDeploymentImage
+  let projectCreatedAt = now
+  let projectUpdatedAt = now
+  return Project {..}
 
-call :: (MonadIO m, HasPostgres m) => Params -> m (Either Error Project.Project)
-call params = do
-  maybeProject <- getProjectBySlug (companyId params) (projectSlug params)
+call :: (MonadIO m, HasDb m) => Params -> Db m (Either Error (Entity Project))
+call params@Params {..} = do
+  maybeProject <- getProjectBySlug paramCompanyId paramSlug
   case maybeProject of
     Just _ -> return (Left SlugAlreadyExists)
     Nothing -> do
       project <- build params
-      createProject project
-      return (Right project)
+      projectId <- insert project
+      return (Right (Entity projectId project))

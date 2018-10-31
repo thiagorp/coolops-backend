@@ -1,35 +1,40 @@
 module Util.EmailAddress
   ( EmailAddress(..)
-  , emailAddress
+  , emailAddressToText
   ) where
 
 import RIO
+import qualified RIO.Text as Text
 
 import Data.Aeson
-import Database.PostgreSQL.Simple.FromField (FromField(..), ResultError(ConversionFailed), returnError)
-import Database.PostgreSQL.Simple.ToField
-import qualified Text.Email.Validate as TEV (EmailAddress, emailAddress, toByteString)
+import Database.Persist.Sql
+import qualified Text.Email.Validate as TEV (EmailAddress, emailAddress, toByteString, validate)
+
+emailAddressToText :: EmailAddress -> Text
+emailAddressToText (EmailAddress email) = decodeUtf8Lenient $ TEV.toByteString email
 
 newtype EmailAddress =
   EmailAddress TEV.EmailAddress
+  deriving (Show)
 
-instance ToField EmailAddress where
-  toField (EmailAddress email) = toField (TEV.toByteString email)
+instance PersistField EmailAddress where
+  toPersistValue (EmailAddress email) = PersistText $ decodeUtf8Lenient $ TEV.toByteString email
+  fromPersistValue (PersistText v) =
+    case TEV.validate (encodeUtf8 v) of
+      Left err -> Left $ Text.pack err
+      Right email -> Right (EmailAddress email)
+  fromPersistValue (PersistByteString v) =
+    case TEV.validate v of
+      Left err -> Left $ Text.pack err
+      Right email -> Right (EmailAddress email)
+  fromPersistValue _ = Left "Email address needs to be either a text or a bytestring"
 
-instance FromField EmailAddress where
-  fromField f bs = fromField f bs >>= buildEmail
-    where
-      buildEmail email =
-        case emailAddress email of
-          Nothing -> returnError ConversionFailed f "invlaid email address"
-          Just e -> return e
+instance PersistFieldSql EmailAddress where
+  sqlType _ = SqlString
 
 instance FromJSON EmailAddress where
   parseJSON =
     withText "EmailAddress" $ \t ->
-      case emailAddress $ encodeUtf8 t of
+      case TEV.emailAddress $ encodeUtf8 t of
         Nothing -> fail "Failed to parse email address"
-        Just email -> return email
-
-emailAddress :: ByteString -> Maybe EmailAddress
-emailAddress e = EmailAddress <$> TEV.emailAddress e
+        Just email -> return (EmailAddress email)

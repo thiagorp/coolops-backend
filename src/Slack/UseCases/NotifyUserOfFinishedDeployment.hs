@@ -1,5 +1,6 @@
 module Slack.UseCases.NotifyUserOfFinishedDeployment
-  ( CallConstraint
+  ( module Database.Queries.SlackDeploymentMessageData
+  , CallConstraint
   , Error(..)
   , call
   ) where
@@ -8,68 +9,64 @@ import RIO
 
 import Control.Monad.Except
 
-import Common.Database (HasPostgres)
 import Database.Queries.SlackDeploymentMessageData
-import Deployments.Domain.Project (CompanyID)
 import Slack.Api.ChatMessages
 import Slack.Api.Message
 
 data Error =
   DataNotFound
 
-type CallConstraint m = (HasPostgres m, SlackClientMonad m)
+type CallConstraint m = (HasDb m, SlackClientMonad m, HasEnv m)
 
-handleEntity :: Monad m => Error -> m (Maybe a) -> ExceptT Error m a
+handleEntity :: (MonadIO m) => Error -> Db m (Maybe a) -> ExceptT Error (Db m) a
 handleEntity e wrappedEntity = do
   entity <- lift wrappedEntity
   case entity of
     Nothing -> throwError e
     Just a -> return a
 
-getMessageData_ ::
-     HasPostgres m => CompanyID -> Text -> ExceptT Error m MessageData
+getMessageData_ :: HasDb m => CompanyId -> UUID -> ExceptT Error (Db m) MessageData
 getMessageData_ companyId deploymentId =
-  handleEntity
-    DataNotFound
-    (getSlackDeploymentMessageData companyId deploymentId)
+  handleEntity DataNotFound (getSlackDeploymentMessageData companyId deploymentId)
 
-sendMessage ::
-     SlackClientMonad m => (Text, Text) -> Message -> ExceptT Error m ()
-sendMessage (userId, accessToken) message =
-  void . lift $ postMessage accessToken userId message
+sendMessage :: (SlackClientMonad m) => (Text, Text) -> Message -> ExceptT Error (Db m) ()
+sendMessage (userId, accessToken) message = void $ lift $ lift $ postMessage accessToken userId message
 
-colorOf :: DbStatus -> Maybe Text
+colorOf :: DeploymentStatus -> Maybe Text
 colorOf status =
   case status of
-    DbQueued -> Nothing
-    DbRunning -> Just "warning"
-    DbSucceeded -> Just "good"
-    DbFailed _ -> Just "danger"
+    Queued -> Nothing
+    Running -> Just "warning"
+    Succeeded -> Just "good"
+    Failed _ -> Just "danger"
 
 buildMessage :: MessageData -> Message
-buildMessage MessageData {..} =
-  slackMessage
-    {messageText = Just messageText, messageAttachments = Just attachments}
+buildMessage MessageData {..} = slackMessage {messageText = Just messageText, messageAttachments = Just attachments}
   where
+    Entity _ Build {..} = dataBuild
+    Entity _ Deployment {..} = dataDeployment
+    Entity _ Environment {..} = dataEnvironment
+    Entity _ Project {..} = dataProject
     messageText = "_Deployment status update_"
     attachments = [notificationMessage]
     notificationMessage =
       slackAttachment
         { attachmentText = Just attachmentText
         , attachmentMarkdown = Just ["text"]
-        , attachmentColor = colorOf dataDbStatus
+        , attachmentColor = colorOf deploymentStatus
         }
     attachmentText =
-      "Your *" <> dataBuildName <> "* deployment to *" <> dataProjectName <>
-      "* - *" <>
-      dataEnvironmentName <>
+      "Your *" <> getValue buildName <> "* deployment to *" <> getValue projectName <> "* - *" <>
+      getValue environmentName <>
       "* has finished"
 
-call_ :: CallConstraint m => CompanyID -> Text -> ExceptT Error m ()
+call_ :: (CallConstraint m) => CompanyId -> UUID -> ExceptT Error (Db m) ()
 call_ companyId deploymentId = do
   messageData <- getMessageData_ companyId deploymentId
   let message = buildMessage messageData
-  sendMessage (dataSendingParams messageData) message
+      Entity _ SlackDeployment {..} = dataSlackDeployment messageData
+      Entity _ SlackAccessToken {..} = dataSlackAccessToken messageData
+  sendMessage (slackDeploymentSlackUserId, slackAccessTokenBotAccessToken) message
 
-call :: CallConstraint m => CompanyID -> Text -> m (Either Error ())
-call companyId deploymentId = runExceptT $ call_ companyId deploymentId
+call :: (CallConstraint m) => CompanyId -> UUID -> m (Either Error ())
+call companyId deploymentId = runDb $ runExceptT $ call_ companyId deploymentId

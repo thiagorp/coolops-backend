@@ -6,11 +6,11 @@ import Api.Import
 
 import qualified RIO.HashMap as HashMap
 
-import Deployments.Domain.Build (Name)
-import qualified Deployments.UseCases.CreateBuild as App
+import Deployments.UseCases.CreateBuild hiding (call)
+import qualified Deployments.UseCases.CreateBuild as App (call)
 
 data Request = Request
-  { reqBuildName :: !Name
+  { reqBuildName :: !BuildName
   , reqBuildParams :: !(HashMap Text Text)
   , reqBuildMetadata :: !(Maybe (HashMap Text Text))
   }
@@ -23,14 +23,13 @@ instance FromJSON Request where
       reqBuildMetadata <- o .:? "metadata"
       return Request {..}
 
-mapRequest :: Project -> Request -> App.Params
-mapRequest project Request {..} =
-  App.Params reqBuildName reqBuildParams (fromMaybe HashMap.empty reqBuildMetadata) project
+mapRequest :: Entity Project -> Request -> Params
+mapRequest project Request {..} = Params reqBuildName reqBuildParams (fromMaybe HashMap.empty reqBuildMetadata) project
 
-call :: AuthenticatedProject -> Handler ()
-call (AuthenticatedProject project) = do
+call :: Entity Project -> Handler ()
+call project = do
   requestData <- mapRequest project <$> requireJsonBody
-  _ <- App.call requestData
+  _ <- runDb $ App.call requestData
   sendResponseStatus created201 ()
 
 postBuildsR :: Handler ()

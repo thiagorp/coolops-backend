@@ -1,5 +1,6 @@
 module Auth.UseCases.Signup
-  ( Params(..)
+  ( module Model
+  , Params(..)
   , SignupError(..)
   , SignupMonad
   , signup
@@ -8,13 +9,12 @@ module Auth.UseCases.Signup
 import RIO
 
 import Auth.Database
-import Auth.Domain
-import Common.Database
+import Model
 
 data Params = Params
   { signupUserFirstName :: !UserName
   , signupUserLastName :: !UserName
-  , signupUserEmail :: !UserEmail
+  , signupUserEmail :: !EmailAddress
   , signupUserPassword :: !RawPassword
   , signupCompanyName :: !CompanyName
   }
@@ -22,32 +22,38 @@ data Params = Params
 data SignupError =
   UserAlreadyExists
 
-signupToUser :: (MonadIO m) => CompanyID -> Params -> m User
+signupToUser :: (MonadIO m) => CompanyId -> Params -> m User
 signupToUser userCompanyId p = do
+  userPassword <- protectPassword $ signupUserPassword p
+  userAccessToken <- genAccessToken
+  now <- liftIO getCurrentTime
   let userFirstName = signupUserFirstName p
   let userLastName = signupUserLastName p
   let userEmail = signupUserEmail p
-  userPassword <- protectPassword $ signupUserPassword p
-  userAccessToken <- genAccessToken
-  userId <- genID
+  let userCreatedAt = now
+  let userUpdatedAt = now
   return User {..}
 
 signupToCompany :: (MonadIO m) => Params -> m Company
 signupToCompany p = do
+  companyAccessToken <- genAccessToken
+  now <- liftIO getCurrentTime
   let companyName = signupCompanyName p
-  companyToken <- genAccessToken
-  companyId <- genID
+  let companyCreatedAt = now
+  let companyUpdatedAt = now
   return Company {..}
 
-type SignupMonad m = (MonadIO m, HasPostgres m, HasDBTransaction m)
+type SignupMonad m = (MonadIO m, HasDb m)
 
-signup :: SignupMonad m => Params -> m (Either SignupError (User, Company))
-signup params = do
-  existingUser <- findUserByEmail (signupUserEmail params)
-  case existingUser of
-    Just _ -> return $ Left UserAlreadyExists
-    Nothing -> do
-      c <- signupToCompany params
-      u <- signupToUser (companyId c) params
-      runTransaction (createCompany c >> createUser u)
-      return $ Right (u, c)
+signup :: SignupMonad m => Params -> m (Either SignupError (Entity User, Entity Company))
+signup params =
+  runDb $ do
+    existingUser <- findUserByEmail (signupUserEmail params)
+    case existingUser of
+      Just _ -> return $ Left UserAlreadyExists
+      Nothing -> do
+        c <- signupToCompany params
+        cId <- insert c
+        u <- signupToUser cId params
+        uId <- insert u
+        return $ Right (Entity uId u, Entity cId c)

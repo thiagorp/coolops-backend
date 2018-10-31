@@ -17,8 +17,7 @@ instance FromJSON MessageButtonAction where
         Right m -> return m
         Left _ -> fail "Wrong message type"
 
-parseAction ::
-     Text -> Either (P.ParseError (P.Token Text) Void) MessageButtonAction
+parseAction :: Text -> Either (P.ParseError (P.Token Text) Void) MessageButtonAction
 parseAction = P.parse actionParser ""
 
 actionParser :: P.Parsec Void Text MessageButtonAction

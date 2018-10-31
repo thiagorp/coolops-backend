@@ -16,11 +16,11 @@ instance FromJSON Request where
       reqCode <- o .: "code"
       return Request {..}
 
-mapRequest :: User -> Request -> App.Params
-mapRequest User {..} Request {..} = App.Params userCompanyId reqCode
+mapRequest :: App.User -> Request -> App.Params
+mapRequest App.User {..} Request {..} = App.Params userCompanyId reqCode
 
-call :: AuthenticatedUser -> Handler ()
-call (AuthenticatedUser user) = do
+call :: App.Entity App.User -> Handler ()
+call (App.Entity _ user) = do
   appParams <- mapRequest user <$> requireJsonBody
   result <- App.call appParams
   case result of

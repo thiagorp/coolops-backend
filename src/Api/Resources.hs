@@ -4,15 +4,13 @@ import RIO
 
 import Data.Aeson hiding (json)
 
-import qualified Deployments.Domain.Environment as Environment
-import qualified Deployments.Domain.Project as Project
-import Util.Key (keyText)
+import Model
 
 data ProjectResource = ProjectResource
-  { resProjectId :: !Text
-  , resProjectName :: !Text
-  , resProjectDeploymentImage :: !Text
-  , resProjectAccessToken :: !Text
+  { resProjectId :: !ProjectId
+  , resProjectName :: !ProjectName
+  , resProjectDeploymentImage :: !DockerImage
+  , resProjectAccessToken :: !AccessToken
   }
 
 instance ToJSON ProjectResource where
@@ -24,18 +22,18 @@ instance ToJSON ProjectResource where
       , "access_token" .= resProjectAccessToken
       ]
 
-projectResource :: Project.Project -> ProjectResource
-projectResource Project.Project {..} =
-  let resProjectId = keyText projectId
-      resProjectName = Project.nameText projectName
-      resProjectAccessToken = Project.accessTokenText projectAccessToken
-      resProjectDeploymentImage = Project.deploymentImageText projectDeploymentImage
+projectResource :: Entity Project -> ProjectResource
+projectResource (Entity projectId Project {..}) =
+  let resProjectId = projectId
+      resProjectName = projectName
+      resProjectAccessToken = projectAccessToken
+      resProjectDeploymentImage = projectDeploymentImage
    in ProjectResource {..}
 
 data EnvironmentResource = EnvironmentResource
-  { resEnvironmentId :: !Text
-  , resEnvironmentName :: !Text
-  , resEnvironmentProjectId :: !Text
+  { resEnvironmentId :: !EnvironmentId
+  , resEnvironmentName :: !EnvironmentName
+  , resEnvironmentProjectId :: !ProjectId
   , resEnvironmentEnvVars :: !(HashMap Text Text)
   }
 
@@ -48,10 +46,10 @@ instance ToJSON EnvironmentResource where
       , "env_vars" .= resEnvironmentEnvVars
       ]
 
-environmentResource :: Environment.Environment -> EnvironmentResource
-environmentResource Environment.Environment {..} =
-  let resEnvironmentId = keyText environmentId
-      resEnvironmentName = Environment.nameText environmentName
-      resEnvironmentProjectId = keyText environmentProjectId
+environmentResource :: Entity Environment -> EnvironmentResource
+environmentResource (Entity environmentId Environment {..}) =
+  let resEnvironmentId = environmentId
+      resEnvironmentName = environmentName
+      resEnvironmentProjectId = environmentProjectId
       resEnvironmentEnvVars = environmentEnvVars
    in EnvironmentResource {..}

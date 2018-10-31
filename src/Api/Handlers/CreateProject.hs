@@ -4,13 +4,12 @@ module Api.Handlers.CreateProject
 
 import Api.Import
 
-import qualified Deployments.Domain.Project as Project
 import qualified Deployments.UseCases.CreateProject as App
 
 data Request = Request
-  { reqProjectName :: !Project.Name
-  , reqProjectDeploymentImage :: !Project.DeploymentImage
-  , reqProjectSlug :: !Project.Slug
+  { reqProjectName :: !App.ProjectName
+  , reqProjectDeploymentImage :: !App.DockerImage
+  , reqProjectSlug :: !App.Slug
   }
 
 instance FromJSON Request where
@@ -21,13 +20,13 @@ instance FromJSON Request where
       reqProjectSlug <- o .: "slug"
       return Request {..}
 
-mapRequest :: User -> Request -> App.Params
-mapRequest User {..} Request {..} = App.Params reqProjectName reqProjectSlug reqProjectDeploymentImage userCompanyId
+mapRequest :: App.User -> Request -> App.Params
+mapRequest App.User {..} Request {..} = App.Params reqProjectName reqProjectSlug reqProjectDeploymentImage userCompanyId
 
-call :: AuthenticatedUser -> Handler Value
-call (AuthenticatedUser user) = do
+call :: App.Entity App.User -> Handler Value
+call (App.Entity _ user) = do
   requestData <- mapRequest user <$> requireJsonBody
-  result <- App.call requestData
+  result <- App.runDb $ App.call requestData
   case result of
     Left App.SlugAlreadyExists -> sendResponseStatus conflict409 ()
     Right project -> sendStatusJSON created201 $ toJSON (projectResource project)

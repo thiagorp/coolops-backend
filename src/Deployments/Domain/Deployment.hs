@@ -1,86 +1,22 @@
 module Deployments.Domain.Deployment
-  ( QueuedDeployment(..)
-  , RunningDeployment(..)
-  , FinishedDeployment(..)
+  ( module Model
   , DeploymentResources(..)
-  , ID
-  , BuildID
-  , Project.CompanyID
-  , EnvironmentID
-  , Status(..)
-  , FailedReason(..)
-  , genId
-  , run
   , finish
   ) where
 
 import RIO
 
-import Data.Time (UTCTime, getCurrentTime)
+import Data.Time (getCurrentTime)
 
-import qualified Deployments.Domain.Build as Build
-import qualified Deployments.Domain.Environment as Environment
-import qualified Deployments.Domain.Project as Project
-import Util.Key
-
-type ID = Key QueuedDeployment
-
-type BuildID = Build.ID
-
-type EnvironmentID = Environment.ID
-
-data FailedReason
-  = InvalidDockerImage
-  | JobFailed
-  | JobNotFound
-
-data Status
-  = Succeeded
-  | Failed FailedReason
+import Model
 
 data DeploymentResources = DeploymentResources
-  { deploymentProject :: !Project.Project
-  , deploymentEnvironment :: !Environment.Environment
-  , deploymentBuild :: !Build.Build
+  { deploymentProject :: !(Entity Project)
+  , deploymentEnvironment :: !(Entity Environment)
+  , deploymentBuild :: !(Entity Build)
   }
 
-data QueuedDeployment = QueuedDeployment
-  { deploymentId :: !ID
-  , deploymentBuildId :: !BuildID
-  , deploymentEnvironmentId :: !EnvironmentID
-  }
-
-data RunningDeployment = RunningDeployment
-  { runningDeploymentId :: !ID
-  , deploymentStartedAt :: !UTCTime
-  , runningDeploymentBuildId :: !BuildID
-  }
-
-data FinishedDeployment = FinishedDeployment
-  { finishedDeploymentId :: !ID
-  , deploymentFinishedAt :: !UTCTime
-  , deploymentStatus :: !Status
-  }
-
-run :: (MonadIO m) => QueuedDeployment -> m RunningDeployment
-run QueuedDeployment {..} = do
+finish :: (MonadIO m) => DeploymentStatus -> Deployment -> m Deployment
+finish status deployment = do
   currentTime <- liftIO getCurrentTime
-  return
-    RunningDeployment
-      { runningDeploymentId = deploymentId
-      , deploymentStartedAt = currentTime
-      , runningDeploymentBuildId = deploymentBuildId
-      }
-
-finish :: (MonadIO m) => Status -> RunningDeployment -> m FinishedDeployment
-finish status RunningDeployment {..} = do
-  currentTime <- liftIO getCurrentTime
-  return
-    FinishedDeployment
-      { finishedDeploymentId = runningDeploymentId
-      , deploymentFinishedAt = currentTime
-      , deploymentStatus = status
-      }
-
-genId :: MonadIO m => m ID
-genId = genID
+  return deployment {deploymentFinishedAt = Just currentTime, deploymentStatus = status}

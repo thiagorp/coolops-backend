@@ -9,12 +9,10 @@ import RIO
 import Control.Monad.Except
 
 import qualified BackgroundJobs.AppJobs as Background
-import Common.Database
-import Deployments.Database.Deployment (getDeploymentResources, getNextQueuedDeployment, saveRunningDeployment)
+import Common.PersistDatabase
+import Deployments.Database.Deployment
 import Deployments.Domain.Deployment
-import Deployments.Domain.Project (CompanyID)
 import Deployments.Gateway.Kubernetes
-import Util.Key
 
 data Error
   = NoDeploymentToRun
@@ -22,40 +20,46 @@ data Error
   | FailedToRunJob
   deriving (Show)
 
-type CallMonad m = (HasDBTransaction m, HasPostgres m, RunDeploymentMonad m, Background.NotifyBuildConstraint m)
+type CallMonad m = (MonadIO m, RunDeploymentMonad m, Background.NotifyBuildConstraint m)
 
-type RunMonad m a = ExceptT Error m a
+type RunMonad m a = ExceptT Error (Db m) a
 
-runNext ::
-     (HasPostgres m, RunDeploymentMonad m) => QueuedDeployment -> DeploymentResources -> RunMonad m RunningDeployment
-runNext queued resources = do
-  running <- run queued
-  result <- lift $ runDeployment queued resources
-  lift $ saveRunningDeployment running
+runNext :: (MonadIO m, RunDeploymentMonad m) => Entity Deployment -> DeploymentResources -> RunMonad m ()
+runNext deployment resources = do
+  result <- lift $ lift $ runDeployment deployment resources
+  now <- liftIO getCurrentTime
+  lift $
+    update
+      (entityKey deployment)
+      [DeploymentStartedAt =. Just now, DeploymentStatus =. Running, DeploymentUpdatedAt =. now]
   if result
-    then return running
-    else throwError FailedToRunJob
+    then return ()
+    else lift transactionUndo >> throwError FailedToRunJob
 
-getDeploymentResources_ :: HasPostgres m => CompanyID -> QueuedDeployment -> RunMonad m DeploymentResources
-getDeploymentResources_ cId QueuedDeployment {..} =
-  handleEntity MissingEntities $
-  getDeploymentResources cId (keyText deploymentEnvironmentId) (keyText deploymentBuildId)
+getDeploymentResources_ :: (MonadIO m) => Entity Deployment -> RunMonad m DeploymentResources
+getDeploymentResources_ deployment = handleEntity MissingEntities $ getDeploymentsResources deployment
 
-getNextQueuedDeployment_ :: HasPostgres m => CompanyID -> RunMonad m QueuedDeployment
+getNextQueuedDeployment_ :: (MonadIO m) => CompanyId -> RunMonad m (Entity Deployment)
 getNextQueuedDeployment_ cId = handleEntity NoDeploymentToRun $ getNextQueuedDeployment cId
 
-call_ :: CallMonad m => CompanyID -> RunMonad m RunningDeployment
+notify :: (CallMonad m) => DeploymentResources -> RunMonad m ()
+notify DeploymentResources {..} = void $ lift $ Background.notifyBuild projectCompanyId buildKey
+  where
+    Project {..} = entityVal deploymentProject
+    BuildKey buildKey = entityKey deploymentBuild
+
+call_ :: CallMonad m => CompanyId -> RunMonad m ()
 call_ companyId = do
   deployment <- getNextQueuedDeployment_ companyId
-  resources <- getDeploymentResources_ companyId deployment
+  resources <- getDeploymentResources_ deployment
   running <- runNext deployment resources
-  lift $ Background.notifyBuild companyId (keyText $ deploymentBuildId deployment)
+  notify resources
   return running
 
-call :: CallMonad m => CompanyID -> m (Either Error RunningDeployment)
-call = runTransaction . runExceptT . call_
+call :: CallMonad m => CompanyId -> m (Either Error ())
+call = runDb . runExceptT . call_
 
-handleEntity :: (Monad m) => Error -> m (Maybe a) -> RunMonad m a
+handleEntity :: (Monad m) => Error -> Db m (Maybe a) -> RunMonad m a
 handleEntity e wrappedEntity = do
   entity <- lift wrappedEntity
   case entity of

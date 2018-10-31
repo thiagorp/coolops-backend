@@ -1,46 +1,41 @@
 module Database.Queries.SlackDeploymentMessageData
-  ( MessageData(..)
-  , DbStatus(..)
+  ( module Common.PersistDatabase
+  , module Model
+  , MessageData(..)
   , getSlackDeploymentMessageData
   ) where
 
-import RIO
+import RIO hiding ((^.), on)
 
-import Database.PostgreSQL.Simple
+import Database.Esqueleto hiding (selectFirst)
 
-import Common.Database
-import Deployments.Database.Deployment (DbStatus(..), notFinishedStatuses)
-import Deployments.Domain.Project (CompanyID)
+import Common.PersistDatabase
+import Model
 
 data MessageData = MessageData
-  { dataBuildName :: !Text
-  , dataEnvironmentName :: !Text
-  , dataProjectName :: !Text
-  , dataSendingParams :: !(Text, Text)
-  , dataDbStatus :: !DbStatus
+  { dataBuild :: !(Entity Build)
+  , dataEnvironment :: !(Entity Environment)
+  , dataProject :: !(Entity Project)
+  , dataDeployment :: !(Entity Deployment)
+  , dataSlackDeployment :: !(Entity SlackDeployment)
+  , dataSlackAccessToken :: !(Entity SlackAccessToken)
   }
 
-getSlackDeploymentMessageData :: HasPostgres m => CompanyID -> Text -> m (Maybe MessageData)
+getSlackDeploymentMessageData :: (MonadIO m) => CompanyId -> UUID -> Db m (Maybe MessageData)
 getSlackDeploymentMessageData cId dId = do
-  results <- runQuery q (cId, dId, In notFinishedStatuses)
-  case results of
-    [] -> return Nothing
-    row:_ -> return $ Just (build row)
-  where
-    q =
-      "select b.name, e.name, p.name, sd.slack_user_id, sa.bot_access_token, d.status\
-        \ from deployments d\
-        \ join builds b on d.build_id = b.id\
-        \ join environments e on d.environment_id = e.id\
-        \ join projects p on e.project_id = p.id\ 
-        \ join slack_deployments sd on d.id = sd.deployment_id\
-        \ join slack_access_tokens sa on p.company_id = sa.company_id\
-        \ where p.company_id = ? and d.id = ? and d.status not in ?\
-        \ limit 1"
-
-type Row = (Text, Text, Text, Text, Text, DbStatus)
-
-build :: Row -> MessageData
-build (dataBuildName, dataEnvironmentName, dataProjectName, userId, accessToken, dataDbStatus) =
-  let dataSendingParams = (userId, accessToken)
-   in MessageData {..}
+  maybeData <-
+    selectFirst $
+    from $ \(d `InnerJoin` b `InnerJoin` e `InnerJoin` p `InnerJoin` sd `InnerJoin` sa) -> do
+      on ((p ^. ProjectCompanyId) ==. (sa ^. SlackAccessTokenCompanyId))
+      on ((d ^. DeploymentId) ==. (sd ^. SlackDeploymentDeploymentId))
+      on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
+      on ((e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId))
+      on ((b ^. BuildId) ==. (d ^. DeploymentBuildId))
+      where_ (p ^. ProjectCompanyId ==. val cId)
+      where_ (d ^. DeploymentId ==. val (DeploymentKey dId))
+      where_ (d ^. DeploymentStatus `notIn` valList [Running, Queued])
+      return (b, e, p, d, sd, sa)
+  case maybeData of
+    Nothing -> return Nothing
+    Just (dataBuild, dataEnvironment, dataProject, dataDeployment, dataSlackDeployment, dataSlackAccessToken) ->
+      return $ Just MessageData {..}

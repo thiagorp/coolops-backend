@@ -1,57 +1,30 @@
 module Deployments.Database.Build
-  ( createBuild
-  , getBuild
+  ( getBuild
   , listBuilds
   ) where
 
-import RIO
-import qualified RIO.HashMap as HashMap
+import RIO hiding ((^.), on)
 
-import Data.Aeson (Result(..), Value, fromJSON, toJSON)
+import Database.Esqueleto hiding (selectFirst)
 
-import Common.Database
-import Deployments.Domain.Build
-import Deployments.Domain.Project (CompanyID)
+import Common.PersistDatabase
+import Model
 
-listBuilds :: (HasPostgres m) => (Int, Int) -> CompanyID -> m [Build]
-listBuilds (limit, offset) companyId = map build <$> runQuery q (companyId, limit, offset)
-  where
-    q =
-      "select b.id, b.name, b.params, b.metadata, b.project_id from builds b\
-      \ join projects p on p.id = b.project_id\
-      \ where p.company_id = ?\
-      \ limit ? offset ?"
+listBuilds :: (MonadIO m) => (Int64, Int64) -> CompanyId -> Db m [Entity Build]
+listBuilds (l, o) companyId =
+  select $
+  from $ \(b `InnerJoin` p) -> do
+    on ((b ^. BuildProjectId) ==. (p ^. ProjectId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    limit l
+    offset o
+    return b
 
-getBuild :: (HasPostgres m) => CompanyID -> Text -> m (Maybe Build)
-getBuild companyId buildId = do
-  result <- runQuery q (companyId, buildId)
-  case result of
-    [] -> return Nothing
-    row:_ -> return . Just $ build row
-  where
-    q =
-      "select b.id, b.name, b.params, b.metadata, b.project_id from builds b\
-        \ join projects p on p.id = b.project_id\
-        \ where p.company_id = ? and b.id = ?"
-
-createBuild :: (HasPostgres m) => Build -> m ()
-createBuild Build {..} = runDb' q values
-  where
-    q =
-      "insert into builds (id, name, params, metadata, project_id, created_at, updated_at) values\
-        \ (?, ?, ?, ?, ?, now() at time zone 'utc', now() at time zone 'utc')"
-    values = (buildId, buildName, toJSON buildParams, toJSON buildMetadata, buildProjectId)
-
-type BuildRow = (ID, Name, Value, Value, ProjectID)
-
-build :: BuildRow -> Build
-build (buildId, buildName, params, metadata, buildProjectId) =
-  let buildParams =
-        case fromJSON params of
-          Error _ -> HashMap.empty
-          Success p -> p
-      buildMetadata =
-        case fromJSON metadata of
-          Error _ -> HashMap.empty
-          Success m -> m
-   in Build {..}
+getBuild :: (MonadIO m) => CompanyId -> UUID -> Db m (Maybe (Entity Build))
+getBuild companyId buildId =
+  selectFirst $
+  from $ \(b `InnerJoin` p) -> do
+    on ((b ^. BuildProjectId) ==. (p ^. ProjectId))
+    where_ (p ^. ProjectCompanyId ==. val companyId)
+    where_ (b ^. BuildId ==. val (BuildKey buildId))
+    return b

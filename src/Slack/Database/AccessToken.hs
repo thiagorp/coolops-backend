@@ -1,41 +1,31 @@
 module Slack.Database.AccessToken
-  ( HasPostgres
+  ( module Common.PersistDatabase
   , create
   , findByProjectId
   , findByTeamId
   ) where
 
-import RIO
+import RIO hiding ((^.), on)
 
-import Database.PostgreSQL.Simple
+import Database.Esqueleto hiding (selectFirst)
 
-import Common.Database
-import qualified Deployments.Domain.Project as Project
-import Slack.Domain.AccessToken
+import Common.PersistDatabase
+import Model
 
-create :: (HasPostgres m) => AccessToken -> m ()
-create = runDb' q
-  where
-    q =
-      "insert into slack_access_tokens\
-        \ (id, company_id, team_name, team_id, scopes, user_access_token, bot_access_token, bot_user_id)\
-        \ values (?, ?, ?, ?, ?, ?, ?, ?)"
+create :: (MonadIO m) => SlackAccessToken -> Db m ()
+create = void . insertEntity
 
-findByTeamId :: (HasPostgres m) => Text -> m [AccessToken]
-findByTeamId tId = runQuery q (Only tId)
-  where
-    q =
-      "select id, company_id, team_name, team_id, scopes, user_access_token, bot_access_token, bot_user_id from slack_access_tokens\
-        \ where team_id = ?"
+findByTeamId :: (MonadUnliftIO m) => Text -> Db m [Entity SlackAccessToken]
+findByTeamId tId =
+  select $
+  from $ \a -> do
+    where_ (a ^. SlackAccessTokenTeamId ==. val tId)
+    return a
 
-findByProjectId :: (HasPostgres m) => Project.ID -> m (Maybe AccessToken)
-findByProjectId pId = do
-  result <- runQuery q (Only pId)
-  case result of
-    [] -> return Nothing
-    row:_ -> return $ Just row
-  where
-    q =
-      "select sat.id, sat.company_id, sat.team_name, sat.team_id, sat.scopes, sat.user_access_token, sat.bot_access_token, sat.bot_user_id from slack_access_tokens sat\
-        \ inner join projects p on p.company_id = sat.company_id\
-        \ where p.id = ?"
+findByProjectId :: (MonadIO m) => ProjectId -> Db m (Maybe (Entity SlackAccessToken))
+findByProjectId pId =
+  selectFirst $
+  from $ \(a `InnerJoin` p) -> do
+    on ((a ^. SlackAccessTokenCompanyId) ==. (p ^. ProjectCompanyId))
+    where_ (p ^. ProjectId ==. val pId)
+    return a
