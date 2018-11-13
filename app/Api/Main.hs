@@ -47,7 +47,7 @@ main :: IO ()
 main = do
   migrateDb
   requestManager <- newTlsManagerWith (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
-  env <- buildEnv 100 requestManager
+  env <- buildEnv 1 requestManager
   port <- appPort
   app <- mkApp env
   Warp.runSettings (settings port) app
