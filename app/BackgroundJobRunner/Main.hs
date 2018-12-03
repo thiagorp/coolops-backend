@@ -17,7 +17,7 @@ app = Jobs.runNext
 loopWith :: Env -> IO ()
 loopWith env = do
   runRIO env app
-  threadDelay 100
+  threadDelay 1000000
   loopWith env
 
 main :: IO ()
