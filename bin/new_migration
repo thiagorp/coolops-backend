@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+  echo "The migration name is missing"
+  exit 1
+fi
+
+touch "migrations/$(date "+%y%m%d%H%M")_$1.sql"

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+stack build --fast
+
+MIGRATIONS="$(stack exec print-migrations)"
+
+if [ -z "$MIGRATIONS" ]; then
+  echo "Nothing to sync"
+  exit 1
+fi
+
+MIGRATION_FILE="migrations/$(date "+%y%m%d%H%M")_persistent_sync.sql"
+
+echo "$MIGRATIONS" > "$MIGRATION_FILE"
+
+echo "Migration file created: $MIGRATION_FILE"

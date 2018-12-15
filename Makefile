@@ -23,7 +23,7 @@ notify_coolops:
 
 
 dev:
-	ghcid --command "stack ghci api:lib api:exe:api-exe"
+	ghcid --command "stack ghci api:lib" --test "Executables.Api.run"
 
 
 run-tests:
