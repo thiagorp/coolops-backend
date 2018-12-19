@@ -26,6 +26,10 @@ dev:
 	ghcid --command "stack ghci api:lib" --test "Executables.Api.run"
 
 
+deployment-runner:
+	ghcid --command "stack ghci api:lib" --test "Executables.DeploymentRunner.run"
+
+
 run-tests:
 	ghcid --command "stack ghci api:lib api:test:api-test" --test "main"
 
