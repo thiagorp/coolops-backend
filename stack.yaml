@@ -22,8 +22,8 @@ extra-deps:
 - base58-bytestring-0.1.0
 - pwstore-fast-2.4.4
 - graphql-api-0.3.0
-- git: https://github.com/bitemyapp/esqueleto.git
-  commit: 5f98e7b25334ec120125ca84ef647d5c4575a010
+- git: https://github.com/thiagorp/esqueleto.git
+  commit: f7dc7cef13c0ca586293745786a6b631ddc5edb5
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
