@@ -9,10 +9,6 @@ lint:
   stage: test
   script: hlint .
 
-test:
-  stage: test
-  script: stack test
-
 build:
   stage: build
   script:
