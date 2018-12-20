@@ -60,7 +60,7 @@ slackField = Field {fieldValue = "", fieldTitle = ""}
 
 instance ToJSON Message where
   toJSON Message {..} =
-    object ["text" .= messageText, "attachments" .= messageAttachments]
+    object ["text" .= messageText, "attachments" .= messageAttachments, "as_user" .= True]
 
 instance ToJSON Attachment where
   toJSON Attachment {..} =
