@@ -11,7 +11,7 @@ auth_container_registry:
 	docker login -u _json_key --password-stdin https://gcr.io < ${HOME}/gcloud-service-key.json
 
 build:
-	stack install --local-bin-path application
+	stack install -v --local-bin-path application
 	docker build -t ${RELEASE_DOCKER_IMG} -f Dockerfile.release .
 
 push: auth_container_registry
@@ -23,15 +23,15 @@ notify_coolops:
 
 
 dev:
-	ghcid --command "stack ghci api:lib" --test "Executables.Api.run"
+	ghcid --command "stack ghci coolops-api:lib" --test "Executables.Api.run"
 
 
 deployment-runner:
-	ghcid --command "stack ghci api:lib" --test "Executables.DeploymentRunner.run"
+	ghcid --command "stack ghci coolops-api:lib" --test "Executables.DeploymentRunner.run"
 
 
 run-tests:
-	ghcid --command "stack ghci api:lib api:test:api-test" --test "main"
+	ghcid --command "stack ghci coolops-api:lib coolops-api:test:api-test" --test "main"
 
 
 live-backend:
