@@ -1,4 +1,4 @@
-name:                api
+name:                coolops-api
 version:             0.1.0.0
 
 dependencies:
@@ -100,7 +100,7 @@ executables:
     - -with-rtsopts=-N
     - -main-is Api
     dependencies:
-    - api
+    - coolops-api
 
   background-job-runner:
     main:                BackgroundJobRunner.hs
@@ -111,7 +111,7 @@ executables:
     - -with-rtsopts=-N
     - -main-is BackgroundJobRunner
     dependencies:
-    - api
+    - coolops-api
 
   deployment-runner:
     main:                DeploymentRunner.hs
@@ -122,7 +122,7 @@ executables:
     - -with-rtsopts=-N
     - -main-is DeploymentRunner
     dependencies:
-    - api
+    - coolops-api
 
   job-status-checker:
     main:                JobStatusChecker.hs
@@ -133,7 +133,7 @@ executables:
     - -with-rtsopts=-N
     - -main-is JobStatusChecker
     dependencies:
-    - api
+    - coolops-api
 
   print-migrations:
     main:                PrintMigrations.hs
@@ -144,7 +144,7 @@ executables:
     - -with-rtsopts=-N
     - -main-is PrintMigrations
     dependencies:
-    - api
+    - coolops-api
 
 tests:
   api-test:
@@ -155,5 +155,5 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - api
+    - coolops-api
     - hspec
