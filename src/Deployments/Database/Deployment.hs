@@ -19,19 +19,19 @@ import Deployments.Domain.Deployment
 import Model
 
 getNextQueuedDeployment :: (MonadIO m) => CompanyId -> Db m (Maybe (Entity Deployment))
-getNextQueuedDeployment companyId = do
-  let lockedEnvironmentIds = fromDeployments companyId $ \d e -> do
+getNextQueuedDeployment companyId =
+  selectFirst $ fromDeployments companyId $ \d e -> do
+    where_ (d ^. DeploymentStatus ==. val Queued)
+    where_ (e ^. EnvironmentId `notIn` subList_select (distinct lockedEnvironmentIds))
+    orderBy [asc (d ^. DeploymentCreatedAt)]
+    locking ForUpdateSkipLocked
+    return d
+
+  where
+    lockedEnvironmentIds = fromDeployments companyId $ \d e -> do
       where_ (d ^. DeploymentStatus ==. val Running)
       return (e ^. EnvironmentId)
 
-  selectFirst $ fromDeployments companyId $ \d e -> do
-      where_ (d ^. DeploymentStatus ==. val Queued)
-      where_ (e ^. EnvironmentId `notIn` subList_select (distinct lockedEnvironmentIds))
-      orderBy [asc (d ^. DeploymentCreatedAt)]
-      locking ForUpdateSkipLocked
-      return d
-
-  where
     fromDeployments cid query =
       from $ \(d `InnerJoin` e `InnerJoin` p) -> do
         on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
