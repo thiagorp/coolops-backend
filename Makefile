@@ -11,6 +11,7 @@ auth_container_registry:
 	docker login -u _json_key --password-stdin https://gcr.io < ${HOME}/gcloud-service-key.json
 
 build:
+	stack build
 	cat coolops-api.cabal
 	stack install --local-bin-path application
 	docker build -t ${RELEASE_DOCKER_IMG} -f Dockerfile.release .
