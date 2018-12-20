@@ -111,7 +111,12 @@ buildMessage appBaseUrl MessageData {..} =
     buildDeploymentRow (Entity _ SlackDeployment {..}, Entity _ Environment {..}, Entity (DeploymentKey deploymentId) Deployment {..}) =
       slackAttachment
         { attachmentText =
-            Just $ "<@" <> slackDeploymentSlackUserId <> "> deployed to *" <> getValue environmentName <> "*"
+            Just $
+              case deploymentStatus of
+                Succeeded -> "<@" <> slackDeploymentSlackUserId <> "> deployed to *" <> getValue environmentName <> "*"
+                Failed _ -> "<@" <> slackDeploymentSlackUserId <> "> deployed to *" <> getValue environmentName <> "*"
+                Queued -> "<@" <> slackDeploymentSlackUserId <> "> has a queued deployment to *" <> getValue environmentName <> "*"
+                Running -> "<@" <> slackDeploymentSlackUserId <> "> has a running deployment to *" <> getValue environmentName <> "*"
         , attachmentFooter =
             Just $
             "<!date^" <> Text.pack (formatTime defaultTimeLocale "%s" slackDeploymentDeployedAt) <>
