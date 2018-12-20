@@ -29,7 +29,7 @@ data ChatPostMessageAsBot =
 
 instance ToJSON ChatPostMessageAsBot where
   toJSON (ChatPostMessageAsBot _ channel Message {..}) =
-    object ["channel" .= channel, "text" .= messageText, "attachments" .= messageAttachments]
+    object ["channel" .= channel, "text" .= messageText, "attachments" .= messageAttachments, "as_user" .= True]
 
 data ChatUpdateMessage =
   ChatUpdateMessage Text
