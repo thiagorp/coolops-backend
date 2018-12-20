@@ -5,7 +5,7 @@ variables:
   JOB_URL: ${CI_JOB_URL}
   VERSION: ${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
 
-cache: -
+cache:
 
 lint:
   stage: test
