@@ -1,6 +1,5 @@
 .stack-work/
 *.cabal
-executables/
 application/
 *~
 client_session_key.aes
