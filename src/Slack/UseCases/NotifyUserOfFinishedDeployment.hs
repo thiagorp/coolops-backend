@@ -8,10 +8,13 @@ module Slack.UseCases.NotifyUserOfFinishedDeployment
 import RIO
 
 import Control.Monad.Except
+import Data.Time
 
+import Common.Config (frontendBaseUrl)
 import Database.Queries.SlackDeploymentMessageData
 import Slack.Api.ChatMessages
 import Slack.Api.Message
+import Util.FrontendEndpoints (logsPage)
 
 data Error =
   DataNotFound
@@ -40,11 +43,15 @@ colorOf status =
     Succeeded -> Just "good"
     Failed _ -> Just "danger"
 
-buildMessage :: MessageData -> Message
-buildMessage MessageData {..} = slackMessage {messageText = Just messageText, messageAttachments = Just attachments}
+buildMessage :: Text -> MessageData -> Message
+buildMessage appBaseUrl MessageData {..} =
+  slackMessage
+    { messageText = Just messageText
+    , messageAttachments = Just attachments
+    }
   where
     Entity _ Build {..} = dataBuild
-    Entity _ Deployment {..} = dataDeployment
+    Entity (DeploymentKey deploymentId) Deployment {..} = dataDeployment
     Entity _ Environment {..} = dataEnvironment
     Entity _ Project {..} = dataProject
     messageText = "_Deployment status update_"
@@ -54,6 +61,8 @@ buildMessage MessageData {..} = slackMessage {messageText = Just messageText, me
         { attachmentText = Just attachmentText
         , attachmentMarkdown = Just ["text"]
         , attachmentColor = colorOf deploymentStatus
+        , attachmentFooter =
+            Just $ "<" <> appBaseUrl <> logsPage (uuidToText deploymentId) <> "|See logs>"
         }
     attachmentText =
       "Your *" <> getValue buildName <> "* deployment to *" <> getValue projectName <> "* - *" <>
@@ -62,8 +71,9 @@ buildMessage MessageData {..} = slackMessage {messageText = Just messageText, me
 
 call_ :: (CallConstraint m) => CompanyId -> UUID -> ExceptT Error (Db m) ()
 call_ companyId deploymentId = do
+  appBaseUrl <- frontendBaseUrl
   messageData <- getMessageData_ companyId deploymentId
-  let message = buildMessage messageData
+  let message = buildMessage appBaseUrl messageData
       Entity _ SlackDeployment {..} = dataSlackDeployment messageData
       Entity _ SlackAccessToken {..} = dataSlackAccessToken messageData
   sendMessage (slackDeploymentSlackUserId, slackAccessTokenBotAccessToken) message

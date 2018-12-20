@@ -91,12 +91,18 @@ colorOf status =
 
 buildMessage :: Text -> MessageData -> Message
 buildMessage appBaseUrl MessageData {..} =
-  slackMessage {messageText = Just messageText, messageAttachments = Just attachments}
+  slackMessage
+    { messageText = Just messageText
+    , messageAttachments = Just attachments
+    }
   where
     (Entity (BuildKey buildId) Build {..}, Entity _ Project {..}, _) = dataBuildInfo
     messageText = "*" <> getValue projectName <> "* has a new build: *" <> getValue buildName <> "*"
     attachments =
-      [deploymentButtons] <> [buildMetadataRow (HashMap.toList buildMetadata)] <> map buildDeploymentRow dataDeployments
+      [ deploymentButtons
+      , buildMetadataRow (HashMap.toList buildMetadata)
+      ]
+        <> map buildDeploymentRow dataDeployments
     deploymentButtons =
       slackAttachment
         { attachmentCallbackId = Just $ "deploy_build|" <> toText buildId
