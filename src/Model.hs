@@ -73,6 +73,7 @@ Environment sql=environments
   Id UUID default=uuid_generate_v4()
   name EnvironmentName sqltype=varchar(255)
   envVars (HashMap Text Text) default='{}'::jsonb
+  locked Bool default=false
   projectId ProjectId
   createdAt UTCTime
   updatedAt UTCTime

@@ -30,6 +30,7 @@ getNextQueuedDeployment companyId =
   where
     lockedEnvironmentIds = fromDeployments companyId $ \d e -> do
       where_ (d ^. DeploymentStatus ==. val Running)
+      where_ (e ^. EnvironmentLocked ==. val False)
       return (e ^. EnvironmentId)
 
     fromDeployments cid query =
