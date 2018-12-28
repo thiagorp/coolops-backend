@@ -22,22 +22,32 @@ getNextQueuedDeployment :: (MonadIO m) => CompanyId -> Db m (Maybe (Entity Deplo
 getNextQueuedDeployment companyId =
   selectFirst $ fromDeployments companyId $ \d e -> do
     where_ (d ^. DeploymentStatus ==. val Queued)
+    where_ (e ^. EnvironmentId `notIn` subList_select (distinct runningEnvironmentIds))
     where_ (e ^. EnvironmentId `notIn` subList_select (distinct lockedEnvironmentIds))
     orderBy [asc (d ^. DeploymentCreatedAt)]
     locking ForUpdateSkipLocked
     return d
 
   where
-    lockedEnvironmentIds = fromDeployments companyId $ \d e -> do
-      where_ (d ^. DeploymentStatus ==. val Running)
-      where_ (e ^. EnvironmentLocked ==. val False)
-      return (e ^. EnvironmentId)
+    lockedEnvironmentIds =
+      from $ \(e `InnerJoin` p) -> do
+        on $ (p ^. ProjectId) ==. (e ^. EnvironmentProjectId)
+        where_ $ p ^. ProjectCompanyId ==. val companyId
+        where_ $ notExists $
+          from $ \l -> do
+            where_ $ (l ^. EnvironmentLockEnvironmentId) ==. (e ^. EnvironmentId)
+            where_ $ l ^. EnvironmentLockReleasedAt ==. val Nothing
+        return $ e ^. EnvironmentId
 
-    fromDeployments cid query =
+    runningEnvironmentIds = fromDeployments companyId $ \d e -> do
+      where_ $ d ^. DeploymentStatus ==. val Running
+      return $ e ^. EnvironmentId
+
+    fromDeployments cId query =
       from $ \(d `InnerJoin` e `InnerJoin` p) -> do
         on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
         on ((e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId))
-        where_ (p ^. ProjectCompanyId ==. val cid)
+        where_ (p ^. ProjectCompanyId ==. val cId)
         query d e
 
 getDeploymentsResources :: (MonadIO m) => Entity Deployment -> Db m (Maybe DeploymentResources)

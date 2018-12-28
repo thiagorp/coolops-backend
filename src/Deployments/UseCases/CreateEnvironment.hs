@@ -26,7 +26,7 @@ build environmentProjectId Params {..} = do
   now <- liftIO getCurrentTime
   let environmentName = paramName
   let environmentEnvVars = paramEnvVars
-  let environmentLocked = False
+  let environmentLockOnDeployment = False
   let environmentSlug = paramSlug
   let environmentCreatedAt = now
   let environmentUpdatedAt = now

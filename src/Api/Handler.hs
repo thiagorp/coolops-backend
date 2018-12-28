@@ -23,7 +23,7 @@ import Api.Handlers.GraphQL
 import Api.Handlers.HealthCheck
 import Api.Handlers.Login
 import Api.Handlers.Signup
-import Api.Handlers.SlackCommands
+import Api.Handlers.Slack.Commands
 import Api.Handlers.SlackMessages
 import Api.Handlers.UpdateEnvironment
 import Api.Handlers.UpdateProject

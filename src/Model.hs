@@ -73,12 +73,20 @@ Environment sql=environments
   Id UUID default=uuid_generate_v4()
   name EnvironmentName sqltype=varchar(255)
   envVars (HashMap Text Text) default='{}'::jsonb
-  locked Bool default=false
+  lockOnDeployment Bool default=false
   projectId ProjectId
   createdAt UTCTime
   updatedAt UTCTime
   slug Slug sqltype=varchar(255)
   deriving (Show)
+
+EnvironmentLock sql=environment_locks
+  Id UUID default=uuid_generate_v4()
+  environmentId EnvironmentId
+  createdBy Text
+  releasedAt Bool Maybe
+  createdAt UTCTime
+  updatedAt UTCTime
 
 Project sql=projects
   Id UUID default=uuid_generate_v4()

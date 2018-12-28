@@ -1,4 +1,4 @@
-module Api.Handlers.SlackCommands
+module Api.Handlers.Slack.Commands
   ( postSlackCommandsR
   ) where
 
