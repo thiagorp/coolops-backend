@@ -47,8 +47,9 @@ getNextQueuedDeployment companyId =
 
 getDeploymentsResources :: (MonadIO m) => Entity Deployment -> Db m (Maybe DeploymentResources)
 getDeploymentsResources (Entity _ Deployment {..}) =
-  deploymentResourcesQuery $ \e _ _ ->
+  deploymentResourcesQuery $ \e b _ -> do
     where_ $ e ^. EnvironmentId ==. val deploymentEnvironmentId
+    where_ $ b ^. BuildId ==. val deploymentBuildId
 
 getDeploymentResources :: (MonadIO m) => CompanyId -> UUID -> UUID -> Db m (Maybe DeploymentResources)
 getDeploymentResources cId eId bId =
