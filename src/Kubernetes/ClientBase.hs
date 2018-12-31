@@ -1,17 +1,15 @@
 module Kubernetes.ClientBase
   ( Action(..)
-  , KubernetesMonad
   , kubernetesRequest
   ) where
 
-import RIO
+import Import
 import qualified RIO.ByteString.Lazy as LBS
 import qualified RIO.Text as Text
 
 import Network.HTTP.Client
 import Network.HTTP.Types
 
-import Env
 import Http.Classes
 
 data Action
@@ -21,9 +19,7 @@ data Action
   | GetPodLogs (Maybe Int)
                ByteString
 
-type KubernetesMonad m = (HasEnv m, MonadIO m)
-
-kubernetesRequest :: (KubernetesMonad m) => Action -> m (Response LBS.ByteString)
+kubernetesRequest :: Action -> App (Response LBS.ByteString)
 kubernetesRequest action = do
   settings <- kubernetesSettings <$> getEnv
   let namespace = k8sNamespace settings
@@ -48,7 +44,7 @@ buildRequest request action namespace =
             maybe "" (\n -> "?tailLines=" <> encodeUtf8 (tshow n)) tailSize
         }
 
-baseRequest :: (HasEnv m, Monad m) => m Request
+baseRequest :: App Request
 baseRequest = do
   settings <- kubernetesSettings <$> getEnv
   let token = k8sToken settings

@@ -1,7 +1,6 @@
 module BackgroundJobs.Runner
   ( JobConfig(..)
   , JobReturnType
-  , RunMonad
   , retry
   , retryIn
   , finishWithSuccess
@@ -14,6 +13,7 @@ import RIO
 
 import Data.Aeson
 import Data.Time
+import Database.Persist
 
 import BackgroundJobs.Database
 
@@ -26,27 +26,25 @@ data JobReturnType
   | RetryIn Text
             Seconds
 
-type RunMonad m = (HasDb m)
-
-data JobConfig m a = JobConfig
+data JobConfig a = JobConfig
   { deserialize :: Text -> Value -> Maybe a
   , serialize :: a -> (Text, Value)
-  , run :: Int -> a -> m JobReturnType
+  , run :: Int -> a -> App JobReturnType
   }
 
-retry :: RunMonad m => Text -> m JobReturnType
+retry :: Text -> App JobReturnType
 retry = return . RetryImmediately
 
-retryIn :: RunMonad m => Text -> Seconds -> m JobReturnType
+retryIn :: Text -> Seconds -> App JobReturnType
 retryIn reason = return . RetryIn reason
 
-finishWithFailure :: (RunMonad m) => Text -> m JobReturnType
+finishWithFailure :: Text -> App JobReturnType
 finishWithFailure = return . FinishedWithFailure
 
-finishWithSuccess :: RunMonad m => m JobReturnType
+finishWithSuccess :: App JobReturnType
 finishWithSuccess = return FinishedWithSuccess
 
-queue :: (MonadIO m) => JobConfig m job -> job -> Db m BackgroundJobId
+queue :: JobConfig job -> job -> App BackgroundJobId
 queue JobConfig {..} job = do
   now <- liftIO getCurrentTime
   let (backgroundJobName, backgroundJobParams) = serialize job
@@ -58,24 +56,24 @@ queue JobConfig {..} job = do
   let backgroundJobUpdatedAt = now
   insert BackgroundJob {..}
 
-runNext :: (RunMonad m) => JobConfig m job -> m ()
+runNext :: JobConfig job -> App ()
 runNext config = do
   maybeJob <- runDb getNextJob
   forM_ maybeJob (runNext' config)
 
-runNext' :: (RunMonad m) => JobConfig m job -> Entity BackgroundJob -> m ()
+runNext' :: JobConfig job -> Entity BackgroundJob -> App ()
 runNext' config@JobConfig {..} job@(Entity _ BackgroundJob {..}) = do
   let deserializedJob = deserialize backgroundJobName backgroundJobParams
   case deserializedJob of
     Nothing -> update' job (FinishedWithFailure "Serialization failure - Invalid payload")
     Just j -> runDeserializedJob config j job
 
-runDeserializedJob :: (RunMonad m) => JobConfig m job -> job -> Entity BackgroundJob -> m ()
+runDeserializedJob :: JobConfig job -> job -> Entity BackgroundJob -> App ()
 runDeserializedJob JobConfig {..} deserializedJob job@(Entity _ BackgroundJob {..}) = do
   r <- run backgroundJobRetryCount deserializedJob
   update' job r
 
-update' :: (RunMonad m) => Entity BackgroundJob -> JobReturnType -> m ()
+update' :: Entity BackgroundJob -> JobReturnType -> App ()
 update' (Entity jobId BackgroundJob {..}) r = do
   now <- liftIO getCurrentTime
   let newRetryCount = retryCountFromReturn backgroundJobRetryCount r
@@ -100,7 +98,7 @@ failureReasonFromReturn job =
     RetryImmediately t -> Just t
     RetryIn t _ -> Just t
 
-finishedFromReturn :: MonadIO m => JobReturnType -> m (Maybe UTCTime)
+finishedFromReturn :: JobReturnType -> App (Maybe UTCTime)
 finishedFromReturn r =
   case r of
     FinishedWithSuccess -> Just <$> liftIO getCurrentTime
@@ -115,7 +113,7 @@ retryCountFromReturn oldRetryCount r =
     RetryImmediately _ -> oldRetryCount + 1
     RetryIn _ _ -> oldRetryCount + 1
 
-nextRetryFromReturn :: MonadIO m => JobReturnType -> m (Maybe UTCTime)
+nextRetryFromReturn :: JobReturnType -> App (Maybe UTCTime)
 nextRetryFromReturn r =
   case r of
     FinishedWithSuccess -> return Nothing
@@ -123,5 +121,5 @@ nextRetryFromReturn r =
     RetryImmediately _ -> Just <$> liftIO getCurrentTime
     RetryIn _ seconds -> Just <$> (liftIO getCurrentTime >>= addSeconds seconds)
 
-addSeconds :: MonadIO m => Seconds -> UTCTime -> m UTCTime
+addSeconds :: Seconds -> UTCTime -> App UTCTime
 addSeconds seconds time = return $ addUTCTime seconds time

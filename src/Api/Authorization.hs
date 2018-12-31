@@ -3,10 +3,9 @@ module Api.Authorization
   , projectAuth
   ) where
 
-import RIO hiding (Handler)
-import RIO.Text (pack)
+import Import hiding (Handler)
 
-import Api.Instances
+import RIO.Text (pack)
 
 import Network.HTTP.Types.Status
 import Network.Wai (requestHeaders)
@@ -16,7 +15,13 @@ import Yesod.Core
 
 import Auth.Database
 import Deployments.Database.Project (findProjectByAccessToken)
-import Model
+
+type Handler = HandlerFor Env
+
+runAppInHandler :: App a -> Handler a
+runAppInHandler m = do
+  env <- getYesod
+  runRIO env $ runDb m
 
 unauthorized :: Handler a
 unauthorized = sendResponseStatus unauthorized401 ()
@@ -24,7 +29,7 @@ unauthorized = sendResponseStatus unauthorized401 ()
 userAuth :: (Entity User -> Handler a) -> Handler a
 userAuth handler = do
   authToken <- readToken
-  maybeUser <- runDb $ findUserByAccessToken authToken
+  maybeUser <- runAppInHandler $ findUserByAccessToken authToken
   case maybeUser of
     Just user -> handler user
     Nothing -> unauthorized
@@ -32,7 +37,7 @@ userAuth handler = do
 projectAuth :: (Entity Project -> Handler a) -> Handler a
 projectAuth handler = do
   authToken <- readToken
-  maybeProject <- runDb $ findProjectByAccessToken authToken
+  maybeProject <- runAppInHandler $ findProjectByAccessToken authToken
   case maybeProject of
     Just project -> handler project
     Nothing -> unauthorized

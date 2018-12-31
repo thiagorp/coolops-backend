@@ -1,12 +1,10 @@
 module Slack.UseCases.NotifyNewBuild
-  ( module Database.Queries.SlackBuildMessageData
-  , CallConstraint
-  , Error(..)
+  ( Error(..)
   , call
   , message
   ) where
 
-import RIO
+import Import
 import qualified RIO.HashMap as HashMap
 import qualified RIO.Text as Text
 
@@ -30,7 +28,7 @@ data Error
   | SlackConfigNotFound
   | SlackAccessTokenNotFound
 
-saveSlackBuildMessage :: (MonadIO m) => BuildId -> Text -> Db m ()
+saveSlackBuildMessage :: BuildId -> Text -> App ()
 saveSlackBuildMessage slackBuildMessageBuildId slackBuildMessageSlackMessageId = do
   now <- liftIO getCurrentTime
   let slackBuildMessageCreatedAt = now
@@ -38,29 +36,26 @@ saveSlackBuildMessage slackBuildMessageBuildId slackBuildMessageSlackMessageId =
   void $ insert SlackBuildMessage {..}
 
 createMessage ::
-     (SlackClientMonad m)
-  => Entity SlackProjectIntegration
+  Entity SlackProjectIntegration
   -> Entity SlackAccessToken
   -> Entity Build
   -> Message
-  -> Db m ()
+  -> App ()
 createMessage (Entity _ SlackProjectIntegration {..}) (Entity _ SlackAccessToken {..}) (Entity buildId _) m = do
-  maybeResponseTs <- lift $ postMessage slackAccessTokenBotAccessToken slackProjectIntegrationChannelId m
+  maybeResponseTs <- postMessage slackAccessTokenBotAccessToken slackProjectIntegrationChannelId m
   forM_ maybeResponseTs (saveSlackBuildMessage buildId)
 
 sendMessage ::
-     (SlackClientMonad m)
-  => Entity SlackProjectIntegration
+  Entity SlackProjectIntegration
   -> Entity SlackAccessToken
   -> Entity Build
   -> Message
-  -> Db m ()
+  -> App ()
 sendMessage config@(Entity _ SlackProjectIntegration {..}) at@(Entity _ SlackAccessToken {..}) build@(Entity buildId Build {..}) m = do
   maybeExistingMesage <- getSlackBuildMessage buildId
   case maybeExistingMesage of
     Nothing -> createMessage config at build m
     Just (Entity _ SlackBuildMessage {..}) ->
-      lift $
       updateMessage slackAccessTokenBotAccessToken slackProjectIntegrationChannelId slackBuildMessageSlackMessageId m
 
 handleEntity :: (Monad m) => Error -> m (Maybe a) -> ExceptT Error m a
@@ -70,16 +65,14 @@ handleEntity e wrappedEntity = do
     Nothing -> throwError e
     Just a -> return a
 
-getSlackConfig_ :: (MonadIO m) => ProjectId -> ExceptT Error (Db m) (Entity SlackProjectIntegration)
+getSlackConfig_ :: ProjectId -> ExceptT Error App (Entity SlackProjectIntegration)
 getSlackConfig_ projectId = handleEntity SlackConfigNotFound (PI.findByProjectId projectId)
 
-getSlackAccessToken_ :: (MonadIO m) => ProjectId -> ExceptT Error (Db m) (Entity SlackAccessToken)
+getSlackAccessToken_ :: ProjectId -> ExceptT Error App (Entity SlackAccessToken)
 getSlackAccessToken_ projectId = handleEntity SlackConfigNotFound (AT.findByProjectId projectId)
 
-getBuild_ :: (MonadIO m) => CompanyId -> UUID -> ExceptT Error (Db m) (Entity Build)
+getBuild_ :: CompanyId -> UUID -> ExceptT Error App (Entity Build)
 getBuild_ cId bId = handleEntity BuildNotFound (getBuild cId bId)
-
-type CallConstraint m = (MonadUnliftIO m, SlackClientMonad m, HasDb m)
 
 colorOf :: DeploymentStatus -> Maybe Text
 colorOf status =
@@ -141,16 +134,16 @@ buildMessage appBaseUrl MessageData {..} =
         , actionValue = toText environmentId
         }
 
-message_ :: (MonadIO m) => CompanyId -> UUID -> ExceptT Error (Db m) Message
+message_ :: CompanyId -> UUID -> ExceptT Error App Message
 message_ cId bId = do
   messageData <- handleEntity MessageDataNotFound (getSlackBuildMessageData cId bId)
   appBaseUrl <- frontendBaseUrl
   return $ buildMessage appBaseUrl messageData
 
-message :: (CallConstraint m) => CompanyId -> UUID -> m (Either Error Message)
-message cId bId = runDb $ runExceptT $ message_ cId bId
+message :: CompanyId -> UUID -> App (Either Error Message)
+message cId bId = runExceptT $ message_ cId bId
 
-call_ :: (CallConstraint m) => CompanyId -> UUID -> ExceptT Error (Db m) ()
+call_ :: CompanyId -> UUID -> ExceptT Error App ()
 call_ cId bId = do
   build@(Entity _ Build {..}) <- getBuild_ cId bId
   slackConfig <- getSlackConfig_ buildProjectId
@@ -158,5 +151,5 @@ call_ cId bId = do
   m <- message_ cId bId
   lift $ sendMessage slackConfig slackAccessToken build m
 
-call :: (CallConstraint m) => CompanyId -> UUID -> m (Either Error ())
-call cId bId = runDb $ runExceptT $ call_ cId bId
+call :: CompanyId -> UUID -> App (Either Error ())
+call cId bId = runExceptT $ call_ cId bId

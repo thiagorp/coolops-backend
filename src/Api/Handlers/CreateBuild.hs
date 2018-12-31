@@ -29,7 +29,7 @@ mapRequest project Request {..} = Params reqBuildName reqBuildParams (fromMaybe 
 call :: Entity Project -> Handler ()
 call project = do
   requestData <- mapRequest project <$> requireJsonBody
-  _ <- runDb $ App.call requestData
+  _ <- runAppInHandler $ App.call requestData
   sendResponseStatus created201 ()
 
 postBuildsR :: Handler ()

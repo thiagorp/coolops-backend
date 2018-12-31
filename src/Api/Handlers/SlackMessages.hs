@@ -37,7 +37,7 @@ instance FromJSON Request where
 
 verifyToken :: Text -> Handler ()
 verifyToken token = do
-  settings <- slackSettings <$> getEnv
+  settings <- slackSettings <$> getYesod
   let configToken = slackVerificationToken settings
   unless (token == configToken) notAuthenticated
 

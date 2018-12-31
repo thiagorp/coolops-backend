@@ -7,11 +7,11 @@ import Api.Import
 import qualified Auth.UseCases.Signup as App
 
 data Request = Request
-  { reqFirstName :: !App.UserName
-  , reqLastName :: !App.UserName
-  , reqEmail :: !App.EmailAddress
-  , reqPassword :: !App.RawPassword
-  , reqCompanyName :: !App.CompanyName
+  { reqFirstName :: !UserName
+  , reqLastName :: !UserName
+  , reqEmail :: !EmailAddress
+  , reqPassword :: !RawPassword
+  , reqCompanyName :: !CompanyName
   }
 
 instance FromJSON Request where
@@ -25,10 +25,10 @@ instance FromJSON Request where
       return Request {..}
 
 data Response = Response
-  { resUserToken :: !App.AccessToken
-  , resCompanyToken :: !App.AccessToken
-  , resUserId :: !App.UserId
-  , resCompanyId :: !App.CompanyId
+  { resUserToken :: !AccessToken
+  , resCompanyToken :: !AccessToken
+  , resUserId :: !UserId
+  , resCompanyId :: !CompanyId
   }
 
 instance ToJSON Response where
@@ -43,8 +43,8 @@ instance ToJSON Response where
 mapRequest :: Request -> App.Params
 mapRequest Request {..} = App.Params reqFirstName reqLastName reqEmail reqPassword reqCompanyName
 
-buildResponse :: (App.Entity App.User, App.Entity App.Company) -> Handler Response
-buildResponse (App.Entity userId App.User {..}, App.Entity companyId App.Company {..}) = do
+buildResponse :: (Entity User, Entity Company) -> Handler Response
+buildResponse (Entity userId User {..}, Entity companyId Company {..}) = do
   let resUserToken = userAccessToken
   let resCompanyToken = companyAccessToken
   let resUserId = userId
@@ -54,7 +54,7 @@ buildResponse (App.Entity userId App.User {..}, App.Entity companyId App.Company
 postSignupR :: Handler Value
 postSignupR = do
   requestData <- mapRequest <$> requireJsonBody
-  result <- App.signup requestData
+  result <- runAppInHandler $ App.signup requestData
   case result of
     Left App.UserAlreadyExists -> sendResponseStatus status409 ("User already exists" :: Text)
     Right value -> toJSON <$> buildResponse value

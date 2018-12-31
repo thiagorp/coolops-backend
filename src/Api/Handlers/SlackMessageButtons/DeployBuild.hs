@@ -22,9 +22,9 @@ projectsDontMatch =
 integrationMissing :: TL.Text
 integrationMissing = "Something wrong happened and we can't find your Slack integration"
 
-runApp :: DeploymentResources -> (Text, Text) -> Db Handler ()
-runApp DeploymentResources {..} (slackUserId, slackUserName) = do
-  result <- App.call appParams
+run :: DeploymentResources -> (Text, Text) -> Handler ()
+run DeploymentResources {..} (slackUserId, slackUserName) = do
+  result <- runAppInHandler $ App.call appParams
   case result of
     Right _ -> return ()
     Left ProjectsDontMatch -> sendResponse projectsDontMatch
@@ -32,19 +32,19 @@ runApp DeploymentResources {..} (slackUserId, slackUserName) = do
     Entity _ project = deploymentProject
     appParams = Params deploymentBuild deploymentEnvironment (projectCompanyId project) slackUserId slackUserName
 
-getDeploymentResources_ :: UUID -> UUID -> CompanyId -> Db Handler (Maybe DeploymentResources)
-getDeploymentResources_ eId bId cId = getDeploymentResources cId eId bId
+getDeploymentResources_ :: UUID -> UUID -> CompanyId -> Handler (Maybe DeploymentResources)
+getDeploymentResources_ eId bId cId = runAppInHandler $ getDeploymentResources cId eId bId
 
-getResources_ :: [CompanyId] -> UUID -> UUID -> Db Handler DeploymentResources
+getResources_ :: [CompanyId] -> UUID -> UUID -> Handler DeploymentResources
 getResources_ cId eId bId = do
   maybeResources <- traverse (getDeploymentResources_ eId bId) cId
   case catMaybes maybeResources of
     [] -> sendResponse resourcesMissing
     (resources:_) -> return resources
 
-getCompanyId_ :: Text -> Db Handler [CompanyId]
+getCompanyId_ :: Text -> Handler [CompanyId]
 getCompanyId_ teamId = do
-  accessTokens <- AT.findByTeamId teamId
+  accessTokens <- runAppInHandler $ AT.findByTeamId teamId
   case accessTokens of
     [] -> sendResponse integrationMissing
     _ -> return (map (slackAccessTokenCompanyId . entityVal) accessTokens)
@@ -59,7 +59,6 @@ call :: Text -> Text -> Text -> (Text, Text) -> Handler ()
 call environmentTextId buildTextId teamId slackUser = do
   environmentId <- readUUID_ environmentTextId
   buildId <- readUUID_ buildTextId
-  runDb $ do
-    companyId <- getCompanyId_ teamId
-    resources <- getResources_ companyId environmentId buildId
-    runApp resources slackUser
+  companyId <- getCompanyId_ teamId
+  resources <- getResources_ companyId environmentId buildId
+  run resources slackUser

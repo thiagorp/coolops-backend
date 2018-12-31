@@ -1,21 +1,17 @@
 module Slack.UseCases.CreateDeployment
   ( module Model
-  , module Deployments.UseCases.CreateDeployment
-  , CallMonad
   , Error(..)
   , Params(..)
   , call
   ) where
 
-import RIO
-
-import Data.Time
+import Import
 
 import qualified BackgroundJobs.AppJobs as Background
-import qualified Deployments.UseCases.CreateDeployment as App (CallMonad, Error(..), Params(..), call)
-import Deployments.UseCases.CreateDeployment hiding (CallMonad, Error(..), Params(..), call)
+import qualified Deployments.UseCases.CreateDeployment as App
 import Model
 import Slack.Database.BuildMessage (getSlackBuildMessage)
+
 
 data Params = Params
   { build :: !(Entity Build)
@@ -25,12 +21,12 @@ data Params = Params
   , slackUserName :: !Text
   }
 
+
 data Error =
   ProjectsDontMatch
 
-type CallMonad m = (MonadIO m, Background.NotifyBuildConstraint m)
 
-createSlackDeployment_ :: (CallMonad m) => Params -> Entity Deployment -> Db m ()
+createSlackDeployment_ :: Params -> Entity Deployment -> App ()
 createSlackDeployment_ Params {..} deployment = do
   let (Entity buildId@(BuildKey buildKey) Build {..}) = build
       (Entity deploymentId Deployment {..}) = deployment
@@ -49,9 +45,10 @@ createSlackDeployment_ Params {..} deployment = do
       _ <- insert SlackDeployment {..}
       void $ Background.notifyBuild companyId buildKey
 
-call :: (App.CallMonad m, CallMonad m) => Params -> Db m (Either Error (Entity Deployment))
+
+call :: Params -> App (Either Error (Entity Deployment))
 call params@Params {..} = do
-  result <- lift $ App.call $ App.Params build environment
+  result <- App.call $ App.Params build environment slackUserId
   case result of
     Left App.ProjectsDontMatch -> return $ Left ProjectsDontMatch
     Right d -> createSlackDeployment_ params d >> return (Right d)

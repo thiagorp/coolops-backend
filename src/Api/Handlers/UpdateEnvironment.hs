@@ -4,12 +4,12 @@ module Api.Handlers.UpdateEnvironment
 
 import Api.Import
 
-import Deployments.Database.Environment (getEnvironment, runDb)
+import Deployments.Database.Environment (getEnvironment)
 import qualified Deployments.UseCases.UpdateEnvironment as App
 
 data Request = Request
-  { reqEnvironmentName :: !App.EnvironmentName
-  , reqEnvironmentSlug :: !App.Slug
+  { reqEnvironmentName :: !EnvironmentName
+  , reqEnvironmentSlug :: !Slug
   , reqEnvironmentEnvVars :: !(HashMap Text Text)
   }
 
@@ -24,17 +24,17 @@ instance FromJSON Request where
 mapRequest :: Request -> App.Params
 mapRequest Request {..} = App.Params reqEnvironmentName reqEnvironmentSlug reqEnvironmentEnvVars
 
-update :: App.Entity App.Environment -> Handler ()
-update (App.Entity environmentId _) = do
+call_ :: Entity Environment -> Handler ()
+call_ (Entity environmentId _) = do
   requestData <- mapRequest <$> requireJsonBody
-  App.call environmentId requestData
+  runAppInHandler $ App.call environmentId requestData
 
-call :: App.UUID -> App.Entity App.User -> Handler ()
-call environmentId (App.Entity _ App.User {..}) = do
-  maybeEnvironment <- runDb $ getEnvironment userCompanyId environmentId
+call :: UUID -> Entity User -> Handler ()
+call environmentId (Entity _ User {..}) = do
+  maybeEnvironment <- runAppInHandler $ getEnvironment userCompanyId environmentId
   case maybeEnvironment of
-    Just environment -> update environment
+    Just environment -> call_ environment
     Nothing -> notFound
 
-patchUpdateEnvironmentR :: App.UUID -> Handler ()
+patchUpdateEnvironmentR :: UUID -> Handler ()
 patchUpdateEnvironmentR = userAuth . call

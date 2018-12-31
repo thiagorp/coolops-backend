@@ -1,11 +1,10 @@
 module Slack.Api.Conversations
   ( Conversation(..)
   , Response(..)
-  , SlackClientMonad
   , list
   ) where
 
-import RIO
+import Import
 
 import Data.Aeson
 import Network.HTTP.Client hiding (Response)
@@ -45,7 +44,7 @@ newtype Response = Response
 emptyIntermediateResponse :: IntermediateResponse
 emptyIntermediateResponse = IntermediateResponse {conversations_ = [], nextCursor = ""}
 
-fetchRecursive :: (SlackClientMonad m) => Text -> [Conversation] -> Maybe Text -> m [Conversation]
+fetchRecursive :: Text -> [Conversation] -> Maybe Text -> App [Conversation]
 fetchRecursive token conversations cursor = do
   response <- slackRequest (ListConversations token cursor)
   case statusCode (responseStatus response) of
@@ -57,7 +56,7 @@ fetchRecursive token conversations cursor = do
         newCursor -> fetchRecursive token newConversations (Just newCursor)
     _ -> return conversations
 
-list :: (SlackClientMonad m) => Text -> m Response
+list :: Text -> App Response
 list token = do
   conversations <- fetchRecursive token [] Nothing
   return Response {..}

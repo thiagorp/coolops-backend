@@ -15,7 +15,7 @@ import Text.Megaparsec.Char
 
 buildRequestDigest :: Handler Text
 buildRequestDigest = do
-  settings <- slackSettings <$> getEnv
+  settings <- slackSettings <$> getYesod
   let secret = LBS.fromStrict (slackSigningSecret settings)
   timestamp <- foldr (<>) "" <$> lookupHeaders "X-Slack-Request-Timestamp"
   body <- rebuildBody <$> getPostParams

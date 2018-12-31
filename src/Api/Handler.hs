@@ -7,13 +7,12 @@ module Api.Handler
   , module Yesod.Core
   ) where
 
-import Env
+import App
 import Yesod.Core
 
 import Api.Routes
 
 import Api.Handlers.CreateBuild
-import Api.Handlers.CreateDeployment
 import Api.Handlers.CreateEnvironment
 import Api.Handlers.CreateProject
 import Api.Handlers.CreateProjectSlackIntegration

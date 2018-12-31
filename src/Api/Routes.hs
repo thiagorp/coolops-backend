@@ -6,8 +6,7 @@ module Api.Routes where
 
 import Yesod.Core
 
-import Env
-import Util.UUID
+import Import
 
 mkYesodData
   "Env"
@@ -22,7 +21,6 @@ mkYesodData
 /projects/#UUID/environments ProjectsEnvironmentsR POST
 /environments/#UUID UpdateEnvironmentR PATCH
 /builds BuildsR POST
-/deployments DeploymentsR POST
 /deployments/#UUID/logs DeploymentLogsR GET
 /slack/access_tokens CreateSlackAccessTokenR POST
 /slack/messages SlackMessagesR POST

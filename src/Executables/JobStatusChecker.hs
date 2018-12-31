@@ -2,26 +2,23 @@
 
 module Executables.JobStatusChecker (run) where
 
-import RIO
+import Import
 
 import Network.Connection (TLSSettings(..))
 import Network.HTTP.Client.TLS
 
 import Deployments.Database.Deployment as DB
 import qualified Deployments.UseCases.FinishDeployment as App
-import Env
 import qualified Kubernetes.Job as Job
 import qualified Kubernetes.Pod as Pod
-
-type AppT = RIO Env
 
 data DeploymentJobStatus
   = StillRunning
   | Finished DeploymentStatus
 
-deploymentPodStatus :: Job.Job -> Db AppT DeploymentJobStatus
+deploymentPodStatus :: Job.Job -> App DeploymentJobStatus
 deploymentPodStatus Job.Job {..} = do
-  maybePod <- lift $ Pod.getPodForJob jobName
+  maybePod <- Pod.getPodForJob jobName
   case maybePod of
     Nothing -> return StillRunning
     Just pod ->
@@ -32,9 +29,9 @@ deploymentPodStatus Job.Job {..} = do
         Just (Pod.Waiting "ImagePullBackOff") -> return $ Finished (Failed "invalid_docker_image")
         Just (Pod.Waiting _) -> return StillRunning
 
-deploymentJobStatus :: Entity Deployment -> Db AppT DeploymentJobStatus
+deploymentJobStatus :: Entity Deployment -> App DeploymentJobStatus
 deploymentJobStatus (Entity (DeploymentKey deploymentKey) Deployment {..}) = do
-  maybeJob <- lift $ Job.getJob $ uuidToText deploymentKey
+  maybeJob <- Job.getJob $ uuidToText deploymentKey
   case maybeJob of
     Nothing -> return $ Finished (Failed "job_not_found")
     Just job ->
@@ -43,21 +40,21 @@ deploymentJobStatus (Entity (DeploymentKey deploymentKey) Deployment {..}) = do
         Job.Failed -> return $ Finished (Failed "job_failed")
         Job.Succeeded -> return $ Finished Succeeded
 
-syncJobStatus :: (CompanyId, Entity Deployment) -> Db AppT ()
+syncJobStatus :: (CompanyId, Entity Deployment) -> App ()
 syncJobStatus (companyId, deployment) = do
   maybeStatus <- deploymentJobStatus deployment
   case maybeStatus of
     StillRunning -> return ()
     Finished status -> void $ App.call status companyId deployment
 
-app :: AppT ()
+app :: App ()
 app = do
-  deployments <- runDb DB.listAllRunningDeployments
-  mapM_ (runDb . syncJobStatus) deployments
+  deployments <- DB.listAllRunningDeployments
+  mapM_ syncJobStatus deployments
 
 loopWith :: Env -> IO ()
 loopWith env = do
-  runRIO env app
+  runApp env app
   threadDelay 1000000
   loopWith env
 

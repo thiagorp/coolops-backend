@@ -1,7 +1,5 @@
 module Deployments.Database.Deployment
-  ( module Common.PersistDatabase
-  , module Model
-  , getDeployment
+  ( getDeployment
   , getDeploymentResources
   , getDeploymentsResources
   , getNextQueuedDeployment
@@ -16,7 +14,6 @@ import Common.PersistDatabase
 import Deployments.Database.Build
 import Deployments.Database.Environment
 import Deployments.Domain.Deployment
-import Model
 
 getNextQueuedDeployment :: (MonadIO m) => CompanyId -> Db m (Maybe (Entity Deployment))
 getNextQueuedDeployment companyId =

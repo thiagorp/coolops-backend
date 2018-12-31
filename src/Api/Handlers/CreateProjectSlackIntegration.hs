@@ -19,18 +19,22 @@ instance FromJSON Request where
       reqChannelId <- o .: "channel_id"
       return Request {..}
 
-buildParams :: App.Entity App.Project -> Request -> App.Params
-buildParams (App.Entity projectId _) Request {..} =
-  App.Params {paramChannelId = reqChannelId, paramChannelName = reqChannelName, paramProjectId = projectId}
+buildParams' :: Entity Project -> Request -> App.Params
+buildParams' (Entity projectId _) Request {..} =
+  App.Params
+    { paramChannelId = reqChannelId
+    , paramChannelName = reqChannelName
+    , paramProjectId = projectId
+    }
 
-call :: App.UUID -> App.Entity App.User -> Handler ()
-call pId (App.Entity _ App.User {..}) = do
-  maybeProject <- DB.runDb $ DB.getProject userCompanyId pId
+call :: UUID -> Entity User -> Handler ()
+call pId (Entity _ User {..}) = do
+  maybeProject <- runAppInHandler $ DB.getProject userCompanyId pId
   case maybeProject of
     Nothing -> sendResponseStatus notFound404 ()
     Just project -> do
       request <- requireJsonBody
-      void $ App.call (buildParams project request)
+      void $ runAppInHandler $ App.call (buildParams' project request)
 
-postCreateProjectSlackIntegrationR :: App.UUID -> Handler ()
+postCreateProjectSlackIntegrationR :: UUID -> Handler ()
 postCreateProjectSlackIntegrationR projectId = userAuth (call projectId)

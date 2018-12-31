@@ -1,17 +1,16 @@
 module Slack.Database.Deployment
-  ( module Common.PersistDatabase
-  , module Model
-  , getSlackDeployment
+  ( getSlackDeployment
   ) where
 
-import RIO hiding ((^.))
+import RIO hiding ((^.), isNothing, on)
 
 import Database.Esqueleto hiding (selectFirst)
 
+import App
 import Common.PersistDatabase
 import Model
 
-getSlackDeployment :: (HasDb m) => DeploymentId -> Db m (Maybe (Entity SlackDeployment))
+getSlackDeployment :: DeploymentId -> App (Maybe (Entity SlackDeployment))
 getSlackDeployment deploymentId =
   selectFirst $
   from $ \d -> do

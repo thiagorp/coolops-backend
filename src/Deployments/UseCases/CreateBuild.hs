@@ -1,15 +1,11 @@
 module Deployments.UseCases.CreateBuild
-  ( module Common.PersistDatabase
-  , module Model
-  , Params(..)
+  ( Params(..)
   , call
   ) where
 
-import RIO
+import Import
 
 import qualified BackgroundJobs.AppJobs as Background
-import Common.PersistDatabase
-import Model
 
 data Params = Params
   { paramName :: !BuildName
@@ -18,7 +14,7 @@ data Params = Params
   , paramProject :: !(Entity Project)
   }
 
-entity :: (MonadIO m) => Params -> Db m Build
+entity :: Params -> App Build
 entity Params {..} = do
   now <- liftIO getCurrentTime
   let buildName = paramName
@@ -29,10 +25,10 @@ entity Params {..} = do
   let buildUpdatedAt = now
   return Build {..}
 
-notify :: (Background.NotifyBuildConstraint m) => Project -> Key Build -> Db m ()
+notify :: Project -> Key Build -> App ()
 notify Project {..} (BuildKey buildId) = void $ Background.notifyBuild projectCompanyId buildId
 
-call :: (MonadIO m, Background.NotifyBuildConstraint m) => Params -> Db m Build
+call :: Params -> App Build
 call params@Params {..} = do
   build <- entity params
   buildId <- insert build

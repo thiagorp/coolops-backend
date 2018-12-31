@@ -5,7 +5,7 @@ module Deployments.UseCases.CreateEnvironment
   , call
   ) where
 
-import RIO
+import Import
 
 import Deployments.Database.Environment
 import Deployments.Database.Project (getProject)
@@ -21,7 +21,7 @@ data Error
   = ProjectNotFound
   | SlugAlreadyExists
 
-build :: (MonadIO m) => ProjectId -> Params -> m Environment
+build :: ProjectId -> Params -> App Environment
 build environmentProjectId Params {..} = do
   now <- liftIO getCurrentTime
   let environmentName = paramName
@@ -32,7 +32,7 @@ build environmentProjectId Params {..} = do
   let environmentUpdatedAt = now
   return Environment {..}
 
-call_ :: (MonadIO m, HasDb m) => Entity Project -> Params -> Db m (Either Error (Entity Environment))
+call_ :: Entity Project -> Params -> App (Either Error (Entity Environment))
 call_ (Entity pId Project {..}) params@Params {..} = do
   maybeEnvironment <- getEnvironmentBySlug projectCompanyId pId paramSlug
   case maybeEnvironment of
@@ -42,10 +42,9 @@ call_ (Entity pId Project {..}) params@Params {..} = do
       envId <- insert environment
       return $ Right (Entity envId environment)
 
-call :: (MonadIO m, HasDb m) => UUID -> CompanyId -> Params -> m (Either Error (Entity Environment))
-call pId cId params =
-  runDb $ do
-    maybeProject <- getProject cId pId
-    case maybeProject of
-      Nothing -> return (Left ProjectNotFound)
-      Just project -> call_ project params
+call :: UUID -> CompanyId -> Params -> App (Either Error (Entity Environment))
+call pId cId params = do
+  maybeProject <- getProject cId pId
+  case maybeProject of
+    Nothing -> return (Left ProjectNotFound)
+    Just project -> call_ project params

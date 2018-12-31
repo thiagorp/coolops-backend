@@ -2,7 +2,7 @@
 
 module Executables.DeploymentRunner (run) where
 
-import RIO
+import Import
 import qualified RIO.ByteString as BS
 
 import Network.Connection (TLSSettings(..))
@@ -10,28 +10,24 @@ import Network.HTTP.Client.TLS
 
 import Auth.Database
 import Deployments.UseCases.RunNextDeployment as App
-import Env
-import Model
 
-type AppT = RIO Env
-
-runNextForCompany :: CompanyId -> Db AppT ()
+runNextForCompany :: CompanyId -> App ()
 runNextForCompany companyId = do
-  result <- lift $ App.call companyId
+  result <- App.call companyId
   case result of
     Right _ -> BS.putStr "Ran successfully\n"
     Left App.NoDeploymentToRun -> return ()
     Left App.FailedToRunJob -> BS.putStr "Error on kubernetes\n"
     Left App.MissingEntities -> BS.putStr "Either the Project, Environment or Build for this deployment is missing\n"
 
-app :: AppT ()
+app :: App ()
 app = do
-  companies <- runDb listCompanies
-  traverse_ (runDb . runNextForCompany . entityKey) companies
+  companies <- listCompanies
+  traverse_ (runNextForCompany . entityKey) companies
 
 loopWith :: Env -> IO ()
 loopWith env = do
-  runRIO env app
+  runApp env app
   threadDelay 1000000
   loopWith env
 

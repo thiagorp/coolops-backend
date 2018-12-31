@@ -1,13 +1,9 @@
 module Deployments.UseCases.UpdateEnvironment
-  ( module Model
-  , Params(..)
+  ( Params(..)
   , call
   ) where
 
-import RIO
-
-import Deployments.Database.Environment
-import Model
+import Import
 
 data Params = Params
   { paramEnvironmentName :: !EnvironmentName
@@ -15,7 +11,7 @@ data Params = Params
   , paramEnvironmentEnvVars :: !(HashMap Text Text)
   }
 
-call :: (HasDb m) => EnvironmentId -> Params -> m ()
+call :: EnvironmentId -> Params -> App ()
 call eId Params {..} = do
   now <- liftIO getCurrentTime
   runDb $

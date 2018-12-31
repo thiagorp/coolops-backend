@@ -1,17 +1,12 @@
 module BackgroundJobs.AppJobs
-  ( NotifyBuildConstraint
-  , NotifySlackDeployerConstraint
-  , notifySlackDeployer
+  ( notifySlackDeployer
   , notifyBuild
   , runNext
   ) where
 
-import RIO
+import Import
 
 import Data.Aeson
-
-import Common.PersistDatabase
-import Model
 
 import qualified BackgroundJobs.Handlers.NotifyBuild as NotifyBuild
 import qualified BackgroundJobs.Handlers.NotifySlackDeployer as NotifySlackDeployer
@@ -20,12 +15,6 @@ import qualified BackgroundJobs.Runner as Runner
 data Job
   = NotifyBuild NotifyBuild.Params
   | NotifySlackDeployer NotifySlackDeployer.Params
-
-type NotifyBuildConstraint m = NotifyBuild.CallConstraint m
-
-type NotifySlackDeployerConstraint m = NotifySlackDeployer.CallConstraint m
-
-type JobMonad m = (NotifyBuild.CallConstraint m, NotifySlackDeployer.CallConstraint m)
 
 encode' :: FromJSON a => Value -> Maybe a
 encode' value =
@@ -46,23 +35,23 @@ serialize job =
     NotifyBuild params -> ("NotifyBuild", toJSON params)
     NotifySlackDeployer params -> ("NotifySlackDeployer", toJSON params)
 
-run :: (JobMonad m) => Int -> Job -> m Runner.JobReturnType
+run :: Int -> Job -> App Runner.JobReturnType
 run _ job =
   case job of
     NotifyBuild params -> NotifyBuild.call params
     NotifySlackDeployer params -> NotifySlackDeployer.call params
 
-config :: (JobMonad m) => Runner.JobConfig m Job
+config :: Runner.JobConfig Job
 config = Runner.JobConfig deserialize serialize run
 
-queue :: (JobMonad m) => Job -> Db m BackgroundJobId
+queue :: Job -> App BackgroundJobId
 queue = Runner.queue config
 
-runNext :: (JobMonad m) => m ()
+runNext :: App ()
 runNext = Runner.runNext config
 
-notifyBuild :: (JobMonad m) => CompanyId -> UUID -> Db m BackgroundJobId
+notifyBuild :: CompanyId -> UUID -> App BackgroundJobId
 notifyBuild cId bId = queue . NotifyBuild $ NotifyBuild.Params cId bId
 
-notifySlackDeployer :: (JobMonad m) => CompanyId -> UUID -> Db m BackgroundJobId
+notifySlackDeployer :: CompanyId -> UUID -> App BackgroundJobId
 notifySlackDeployer cId bId = queue . NotifySlackDeployer $ NotifySlackDeployer.Params cId bId

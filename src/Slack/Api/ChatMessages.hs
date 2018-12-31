@@ -1,10 +1,9 @@
 module Slack.Api.ChatMessages
-  ( SlackClientMonad
-  , postMessage
+  ( postMessage
   , updateMessage
   ) where
 
-import RIO
+import Import
 
 import Data.Aeson
 import Network.HTTP.Client hiding (Response)
@@ -23,7 +22,7 @@ instance FromJSON Response where
       responseTs <- o .: "ts"
       return Response {..}
 
-postMessage :: SlackClientMonad m => Text -> Text -> Message -> m (Maybe Text)
+postMessage :: Text -> Text -> Message -> App (Maybe Text)
 postMessage token channel message = do
   response <- slackRequest (PostMessageAsBot params)
   case statusCode (responseStatus response) of
@@ -32,7 +31,7 @@ postMessage token channel message = do
   where
     params = ChatPostMessageAsBot token channel message
 
-updateMessage :: SlackClientMonad m => Text -> Text -> Text -> Message -> m ()
+updateMessage :: Text -> Text -> Text -> Message -> App ()
 updateMessage token channel ts message =
   void $ slackRequest (UpdateMessage params)
   where

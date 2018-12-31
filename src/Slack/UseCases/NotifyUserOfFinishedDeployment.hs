@@ -1,14 +1,12 @@
 module Slack.UseCases.NotifyUserOfFinishedDeployment
   ( module Database.Queries.SlackDeploymentMessageData
-  , CallConstraint
   , Error(..)
   , call
   ) where
 
-import RIO
+import Import
 
 import Control.Monad.Except
-import Data.Time
 
 import Common.Config (frontendBaseUrl)
 import Database.Queries.SlackDeploymentMessageData
@@ -19,21 +17,19 @@ import Util.FrontendEndpoints (logsPage)
 data Error =
   DataNotFound
 
-type CallConstraint m = (HasDb m, SlackClientMonad m, HasEnv m)
-
-handleEntity :: (MonadIO m) => Error -> Db m (Maybe a) -> ExceptT Error (Db m) a
+handleEntity :: Error -> App (Maybe a) -> ExceptT Error App a
 handleEntity e wrappedEntity = do
   entity <- lift wrappedEntity
   case entity of
     Nothing -> throwError e
     Just a -> return a
 
-getMessageData_ :: HasDb m => CompanyId -> UUID -> ExceptT Error (Db m) MessageData
+getMessageData_ :: CompanyId -> UUID -> ExceptT Error App MessageData
 getMessageData_ companyId deploymentId =
   handleEntity DataNotFound (getSlackDeploymentMessageData companyId deploymentId)
 
-sendMessage :: (SlackClientMonad m) => (Text, Text) -> Message -> ExceptT Error (Db m) ()
-sendMessage (userId, accessToken) message = void $ lift $ lift $ postMessage accessToken userId message
+sendMessage :: (Text, Text) -> Message -> ExceptT Error App ()
+sendMessage (userId, accessToken) message = void $ lift $ postMessage accessToken userId message
 
 colorOf :: DeploymentStatus -> Maybe Text
 colorOf status =
@@ -69,7 +65,7 @@ buildMessage appBaseUrl MessageData {..} =
       getValue environmentName <>
       "* has finished"
 
-call_ :: (CallConstraint m) => CompanyId -> UUID -> ExceptT Error (Db m) ()
+call_ :: CompanyId -> UUID -> ExceptT Error App ()
 call_ companyId deploymentId = do
   appBaseUrl <- frontendBaseUrl
   messageData <- getMessageData_ companyId deploymentId
@@ -78,5 +74,5 @@ call_ companyId deploymentId = do
       Entity _ SlackAccessToken {..} = dataSlackAccessToken messageData
   sendMessage (slackDeploymentSlackUserId, slackAccessTokenBotAccessToken) message
 
-call :: (CallConstraint m) => CompanyId -> UUID -> m (Either Error ())
-call companyId deploymentId = runDb $ runExceptT $ call_ companyId deploymentId
+call :: CompanyId -> UUID -> App (Either Error ())
+call companyId deploymentId = runExceptT $ call_ companyId deploymentId

@@ -1,13 +1,9 @@
 module Deployments.UseCases.UpdateProject
-  ( module Model
-  , Params(..)
+  ( Params(..)
   , call
   ) where
 
-import RIO
-
-import Deployments.Database.Project
-import Model
+import Import
 
 data Params = Params
   { paramProjectName :: !ProjectName
@@ -15,7 +11,7 @@ data Params = Params
   , paramProjectDeploymentImage :: !DockerImage
   }
 
-call :: (HasDb m) => ProjectId -> Params -> m ()
+call :: ProjectId -> Params -> App ()
 call projectId Params {..} = do
   now <- liftIO getCurrentTime
   runDb $

@@ -1,21 +1,16 @@
 module Deployments.Gateway.Kubernetes
-  ( GetDeploymentLogsMonad
-  , RunDeploymentMonad
-  , getDeploymentLogs
+  ( getDeploymentLogs
   , runDeployment
   ) where
 
-import RIO
+import Import
 import qualified RIO.ByteString.Lazy as LBS
 
 import Deployments.Domain.Deployment
-import qualified Kubernetes.ClientBase as K8s
 import qualified Kubernetes.Job as K8s
 import qualified Kubernetes.Pod as K8s
 
-type GetDeploymentLogsMonad m = (K8s.KubernetesMonad m, K8s.GetLogsMonad m)
-
-getDeploymentLogs :: (GetDeploymentLogsMonad m) => Maybe Int -> DeploymentId -> m (Maybe LBS.ByteString)
+getDeploymentLogs :: Maybe Int -> DeploymentId -> App (Maybe LBS.ByteString)
 getDeploymentLogs nLines (DeploymentKey deploymentId) = do
   maybePod <- K8s.getPodForJob (uuidToText deploymentId)
   case maybePod of
@@ -26,9 +21,7 @@ getDeploymentLogs nLines (DeploymentKey deploymentId) = do
         Just (K8s.Waiting _) -> return Nothing
         _ -> K8s.getLogs nLines podName
 
-type RunDeploymentMonad m = K8s.KubernetesMonad m
-
-runDeployment :: (RunDeploymentMonad m) => Entity Deployment -> DeploymentResources -> m Bool
+runDeployment :: Entity Deployment -> DeploymentResources -> App Bool
 runDeployment (Entity deploymentId Deployment {..}) DeploymentResources {..} = K8s.createJob jobDescription
   where
     (Entity _ project) = deploymentProject

@@ -1,6 +1,5 @@
 module Deployments.Database.Environment
-  ( module Common.PersistDatabase
-  , getEnvironment
+  ( getEnvironment
   , getEnvironmentBySlug
   , listEnvironments
   , listProjectEnvironments

@@ -8,16 +8,11 @@ import Network.Connection (TLSSettings(..))
 import Network.HTTP.Client.TLS
 
 import qualified BackgroundJobs.AppJobs as Jobs
-import Env
-
-type AppT = RIO Env
-
-app :: AppT ()
-app = Jobs.runNext
+import App
 
 loopWith :: Env -> IO ()
 loopWith env = do
-  runRIO env app
+  runApp env Jobs.runNext
   threadDelay 1000000
   loopWith env
 

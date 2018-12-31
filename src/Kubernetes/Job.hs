@@ -9,14 +9,12 @@ module Kubernetes.Job
   , GetJobError
   ) where
 
-import RIO
+import Import hiding (DeploymentStatus(..), buildEnv)
 import qualified RIO.ByteString.Lazy as LBS
 import qualified RIO.HashMap as HashMap
 
 import qualified Data.Aeson as JSON
-import Data.Time
 import Data.Yaml
-import Model hiding (DeploymentStatus(..))
 import Network.HTTP.Client
 import Network.HTTP.Types
 
@@ -69,7 +67,7 @@ instance ToJSON JobDescription where
     where
       (DeploymentKey deploymentId) = name
 
-createJob :: (KubernetesMonad m) => JobDescription -> m Bool
+createJob :: JobDescription -> App Bool
 createJob jobDescription = do
   response <- kubernetesRequest (CreateJob $ encode jobDescription)
   case statusCode (responseStatus response) of
@@ -101,9 +99,7 @@ data GetJobError
 
 instance Exception GetJobError
 
-type GetJobMonad m = (KubernetesMonad m, MonadThrow m)
-
-getJob :: (GetJobMonad m) => Text -> m (Maybe Job)
+getJob :: Text -> App (Maybe Job)
 getJob jobName = do
   response <- kubernetesRequest (GetJob (encodeUtf8 jobName))
   case statusCode (responseStatus response) of

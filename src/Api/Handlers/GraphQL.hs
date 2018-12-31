@@ -5,7 +5,21 @@ module Api.Handlers.GraphQL
   ( postGraphQLR
   ) where
 
-import Api.Import hiding (Enum, Handler, Object)
+import Api.Import hiding
+  ( App
+  , Build
+  , Company
+  , Deployment
+  , Environment
+  , Enum
+  , Handler
+  , Object
+  , Project
+  , SlackAccessToken
+  , SlackProjectIntegration
+  , User
+  , UUID
+  )
 import qualified Api.Import as Api
 
 import qualified RIO.HashMap as HashMap

@@ -7,7 +7,7 @@ module Slack.Api.ClientBase
   , slackRequest
   ) where
 
-import RIO
+import Import
 
 import Data.Aeson
 import qualified RIO.ByteString.Lazy as LBS
@@ -16,7 +16,6 @@ import qualified RIO.Text as Text
 import Network.HTTP.Client
 import Network.HTTP.Types
 
-import Env
 import Http.Classes
 import Slack.Api.Message (Message(..))
 
@@ -53,7 +52,7 @@ data Action
 
 type SlackClientMonad m = (HasEnv m, MonadIO m, MonadThrow m)
 
-slackRequest :: (SlackClientMonad m) => Action -> m (Response LBS.ByteString)
+slackRequest :: Action -> App (Response LBS.ByteString)
 slackRequest action = do
   settings <- slackSettings <$> getEnv
   request <- baseRequest

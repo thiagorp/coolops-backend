@@ -1,15 +1,12 @@
 module Auth.UseCases.Signup
-  ( module Model
-  , Params(..)
+  ( Params(..)
   , SignupError(..)
-  , SignupMonad
   , signup
   ) where
 
-import RIO
+import Import
 
 import Auth.Database
-import Model
 
 data Params = Params
   { signupUserFirstName :: !UserName
@@ -22,7 +19,7 @@ data Params = Params
 data SignupError =
   UserAlreadyExists
 
-signupToUser :: (MonadIO m) => CompanyId -> Params -> m User
+signupToUser :: CompanyId -> Params -> App User
 signupToUser userCompanyId p = do
   userPassword <- protectPassword $ signupUserPassword p
   userAccessToken <- genAccessToken
@@ -34,7 +31,7 @@ signupToUser userCompanyId p = do
   let userUpdatedAt = now
   return User {..}
 
-signupToCompany :: (MonadIO m) => Params -> m Company
+signupToCompany :: Params -> App Company
 signupToCompany p = do
   companyAccessToken <- genAccessToken
   now <- liftIO getCurrentTime
@@ -43,17 +40,14 @@ signupToCompany p = do
   let companyUpdatedAt = now
   return Company {..}
 
-type SignupMonad m = (MonadIO m, HasDb m)
-
-signup :: SignupMonad m => Params -> m (Either SignupError (Entity User, Entity Company))
-signup params =
-  runDb $ do
-    existingUser <- findUserByEmail (signupUserEmail params)
-    case existingUser of
-      Just _ -> return $ Left UserAlreadyExists
-      Nothing -> do
-        c <- signupToCompany params
-        cId <- insert c
-        u <- signupToUser cId params
-        uId <- insert u
-        return $ Right (Entity uId u, Entity cId c)
+signup :: Params -> App (Either SignupError (Entity User, Entity Company))
+signup params = do
+  existingUser <- findUserByEmail (signupUserEmail params)
+  case existingUser of
+    Just _ -> return $ Left UserAlreadyExists
+    Nothing -> do
+      c <- signupToCompany params
+      cId <- insert c
+      u <- signupToUser cId params
+      uId <- insert u
+      return $ Right (Entity uId u, Entity cId c)

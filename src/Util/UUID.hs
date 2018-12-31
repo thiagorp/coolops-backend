@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Util.UUID
-  ( module UUID
+  ( module ExposedUUID
   , genUUID
   , textToUUID
   , uuidToText
@@ -12,6 +12,7 @@ import qualified RIO.Text as Text
 
 import Data.ByteString.Char8 as B8
 import Data.UUID as UUID
+import Data.UUID as ExposedUUID (UUID)
 import Data.UUID.V4 as UUID (nextRandom)
 import Database.Persist.Sql
 import Yesod.Core.Dispatch

@@ -1,14 +1,12 @@
 module Auth.UseCases.Login
-  ( module Model
-  , Params(..)
+  ( Params(..)
   , login
   ) where
 
-import RIO
+import Import
 
 import Auth.Database
 import Auth.Domain
-import Model
 
 data Params = Params
   { paramEmail :: !EmailAddress
@@ -21,7 +19,7 @@ verify password user =
     then Just user
     else Nothing
 
-login :: (HasDb m) => Params -> m (Maybe User)
+login :: Params -> App (Maybe User)
 login Params {..} = do
   maybeUser <- runDb $ findUserByEmail paramEmail
   case maybeUser of

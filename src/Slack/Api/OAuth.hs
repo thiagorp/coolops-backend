@@ -6,7 +6,7 @@ module Slack.Api.OAuth
   , revokeToken
   ) where
 
-import RIO
+import Import
 import qualified RIO.ByteString.Lazy as LBS
 import qualified RIO.Text as Text
 
@@ -52,12 +52,12 @@ parseResponse response =
         Right r -> Right r
     _ -> Left $ UnexpectedHttpStatusError $ statusCode $ responseStatus response
 
-getToken :: (SlackClientMonad m) => Text -> m (Either SlackClientError OAuthTokenResponse)
+getToken :: Text -> App (Either SlackClientError OAuthTokenResponse)
 getToken code = do
   response <- slackRequest (GetOAuthToken $ Text.encodeUtf8 code)
   return $ parseResponse response
 
-revokeToken :: (SlackClientMonad m) => Text -> m (Either SlackClientError ())
+revokeToken :: Text -> App (Either SlackClientError ())
 revokeToken token = do
   response <- slackRequest (RevokeToken $ Text.encodeUtf8 token)
   case statusCode (responseStatus response) of

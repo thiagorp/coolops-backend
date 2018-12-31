@@ -1,10 +1,9 @@
 module BackgroundJobs.Handlers.NotifyBuild
   ( Params(..)
-  , CallConstraint
   , call
   ) where
 
-import RIO
+import Import
 
 import Data.Aeson
 
@@ -12,9 +11,7 @@ import BackgroundJobs.Runner
 import Slack.UseCases.NotifyNewBuild hiding (call)
 import qualified Slack.UseCases.NotifyNewBuild as App (call)
 
-data Params =
-  Params CompanyId
-         UUID
+data Params = Params CompanyId UUID
 
 instance FromJSON Params where
   parseJSON = withObject "" $ \o -> Params <$> o .: "company_id" <*> o .: "build_id"
@@ -22,7 +19,7 @@ instance FromJSON Params where
 instance ToJSON Params where
   toJSON (Params cId bId) = object ["company_id" .= cId, "build_id" .= bId]
 
-call :: (CallConstraint m) => Params -> m JobReturnType
+call :: Params -> App JobReturnType
 call (Params cId bId) = do
   r <- App.call cId bId
   case r of

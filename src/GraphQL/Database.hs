@@ -16,6 +16,8 @@ module GraphQL.Database
   , run
   ) where
 
+import qualified App
+
 import RIO
 import qualified RIO.List as List
 
@@ -23,7 +25,6 @@ import Data.Aeson (toJSON)
 import Data.Hashable
 import Haxl.Core
 
-import qualified Env as App
 import qualified GraphQL.Api.Calls as Api
 import qualified GraphQL.Database.Queries as Q
 
@@ -33,13 +34,6 @@ data AppEnv = AppEnv
   { currentUser :: !Q.User
   , appEnv :: !App.Env
   }
-
-newtype Db a =
-  Db (ReaderT App.Env IO a)
-  deriving (Applicative, Functor, App.HasEnv, Monad, MonadIO, MonadReader App.Env, MonadUnliftIO, MonadThrow)
-
-runDb :: App.Env -> Db a -> IO a
-runDb e (Db m) = runReaderT m e
 
 -- Util
 run :: Env AppEnv -> App a -> IO a
@@ -133,7 +127,7 @@ instance DataSourceName DatabaseQuery where
 instance DataSource AppEnv DatabaseQuery where
   fetch _ _ e =
     SyncFetch $ \blockedFetches ->
-      runDb (appEnv e) $ do
+      App.runApp (appEnv e) $ do
         listSlackChannels_ e blockedFetches
         getBuild_ e blockedFetches
         getCompany_ e blockedFetches
@@ -147,51 +141,51 @@ instance DataSource AppEnv DatabaseQuery where
         listBuilds_ e blockedFetches
         listEnvironments_ e blockedFetches
 
-getBuild_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+getBuild_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> App.App ()
 getBuild_ AppEnv {..} blockedFetches = runFetchById requests (Q.listBuildsById currentCompanyId (map fst requests))
   where
     currentCompanyId = Q.userCompanyId currentUser
     requests = [(id_, r) | BlockedFetch (GetBuild id_) r <- blockedFetches]
 
-getCompany_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+getCompany_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> App.App ()
 getCompany_ AppEnv {..} blockedFetches =
   unless (null requests) $ do
-    company <- Q.runDb $ Q.getCompany currentCompanyId
+    company <- Q.getCompany currentCompanyId
     traverse_ (liftIO . flip putSuccess company) requests
   where
     currentCompanyId = Q.userCompanyId currentUser
     requests = [r | BlockedFetch GetCompany r <- blockedFetches]
 
-getEnvironment_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+getEnvironment_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> App.App ()
 getEnvironment_ AppEnv {..} blockedFetches =
   runFetchById requests (Q.listEnvironmentsById currentCompanyId (map fst requests))
   where
     currentCompanyId = Q.userCompanyId currentUser
     requests = [(id_, r) | BlockedFetch (GetEnvironment id_) r <- blockedFetches]
 
-getEnvLastDeployment_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+getEnvLastDeployment_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> App.App ()
 getEnvLastDeployment_ AppEnv {..} blockedFetches =
   runFetchByFk requests Q.deploymentEnvironmentId (Q.listEnvsLastDeployments currentCompanyId (map fst requests))
   where
     currentCompanyId = Q.userCompanyId currentUser
     requests = [(eId, r) | BlockedFetch (GetEnvLastDeployment eId) r <- blockedFetches]
 
-getProject_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+getProject_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> App.App ()
 getProject_ AppEnv {..} blockedFetches = runFetchById requests (Q.listProjectsById currentCompanyId (map fst requests))
   where
     currentCompanyId = Q.userCompanyId currentUser
     requests = [(pId, r) | BlockedFetch (GetProject pId) r <- blockedFetches]
 
-getSlackAccessToken_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+getSlackAccessToken_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> App.App ()
 getSlackAccessToken_ AppEnv {..} blockedFetches =
   unless (null requests) $ do
-    company <- Q.runDb $ Q.getSlackAccessToken currentCompanyId
+    company <- Q.getSlackAccessToken currentCompanyId
     traverse_ (liftIO . flip putSuccess company) requests
   where
     currentCompanyId = Q.userCompanyId currentUser
     requests = [r | BlockedFetch GetSlackAccessToken r <- blockedFetches]
 
-getSlackProjectIntegration_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+getSlackProjectIntegration_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> App.App ()
 getSlackProjectIntegration_ AppEnv {..} blockedFetches =
   runFetchByFk
     requests
@@ -201,15 +195,15 @@ getSlackProjectIntegration_ AppEnv {..} blockedFetches =
     currentCompanyId = Q.userCompanyId currentUser
     requests = [(id_, r) | BlockedFetch (GetSlackProjectIntegration id_) r <- blockedFetches]
 
-getUser_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+getUser_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> App.App ()
 getUser_ AppEnv {..} blockedFetches = runFetchById requests (Q.listUsersById currentCompanyId (map fst requests))
   where
     currentCompanyId = Q.userCompanyId currentUser
     requests = [(id_, r) | BlockedFetch (GetUser id_) r <- blockedFetches]
 
-listEnvironments_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+listEnvironments_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> App.App ()
 listEnvironments_ AppEnv {..} blockedFetches = do
-  results <- Q.runDb $ Q.listEnvironments currentCompanyId (map fst requests)
+  results <- Q.listEnvironments currentCompanyId (map fst requests)
   traverse_
     (\(pId, request) ->
        liftIO $ putSuccess request (List.filter (\(Q.Entity _ e) -> Q.environmentProjectId e == pId) results))
@@ -218,24 +212,24 @@ listEnvironments_ AppEnv {..} blockedFetches = do
     currentCompanyId = Q.userCompanyId currentUser
     requests = [(pId, r) | BlockedFetch (ListEnvironments pId) r <- blockedFetches]
 
-listBuilds_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+listBuilds_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> App.App ()
 listBuilds_ e blockedFetches = traverse_ (paginatedListBuilds_ e) requests
   where
     requests = [(pagination, projectId, r) | BlockedFetch (ListBuilds pagination projectId) r <- blockedFetches]
 
-paginatedListBuilds_ :: AppEnv -> ((Int64, Int64), Maybe Q.ProjectId, ResultVar [Q.Entity Q.Build]) -> Db ()
+paginatedListBuilds_ :: AppEnv -> ((Int64, Int64), Maybe Q.ProjectId, ResultVar [Q.Entity Q.Build]) -> App.App ()
 paginatedListBuilds_ AppEnv {..} ((page, pageSize), projectId, request) =
   runFetchAll [request] (Q.listBuilds (pageSize, (page - 1) * pageSize) projectId currentCompanyId)
   where
     currentCompanyId = Q.userCompanyId currentUser
 
-listProjects_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+listProjects_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> App.App ()
 listProjects_ AppEnv {..} blockedFetches = runFetchAll requests (Q.listProjects currentCompanyId)
   where
     requests = [r | BlockedFetch ListProjects r <- blockedFetches]
     currentCompanyId = Q.userCompanyId currentUser
 
-listSlackChannels_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> Db ()
+listSlackChannels_ :: AppEnv -> [BlockedFetch DatabaseQuery] -> App.App ()
 listSlackChannels_ AppEnv {..} blockedFetches = do
   results <- Api.listSlackConversations (map fst requests)
   traverse_
@@ -245,24 +239,24 @@ listSlackChannels_ AppEnv {..} blockedFetches = do
     requests = [(token, r) | BlockedFetch (ListSlackChannels token) r <- blockedFetches]
 
 runFetchByFk ::
-     (Eq (Q.Key b)) => [(Q.Key b, ResultVar (Maybe (Q.Entity a)))] -> (a -> Q.Key b) -> Q.Db Db [Q.Entity a] -> Db ()
+     (Eq (Q.Key b)) => [(Q.Key b, ResultVar (Maybe (Q.Entity a)))] -> (a -> Q.Key b) -> App.App [Q.Entity a] -> App.App ()
 runFetchByFk requests fk m =
   unless (null requests) $ do
-    results <- Q.runDb m
+    results <- m
     traverse_
       (\(id_, request) -> liftIO $ putSuccess request (List.find (\(Q.Entity _ e) -> fk e == id_) results))
       requests
 
-runFetchById :: (Eq (Q.Key a)) => [(Q.Key a, ResultVar (Maybe (Q.Entity a)))] -> Q.Db Db [Q.Entity a] -> Db ()
+runFetchById :: (Eq (Q.Key a)) => [(Q.Key a, ResultVar (Maybe (Q.Entity a)))] -> App.App [Q.Entity a] -> App.App ()
 runFetchById requests m =
   unless (null requests) $ do
-    results <- Q.runDb m
+    results <- m
     traverse_
       (\(id_, request) -> liftIO $ putSuccess request (List.find (\(Q.Entity resultId _) -> resultId == id_) results))
       requests
 
-runFetchAll :: [ResultVar a] -> Q.Db Db a -> Db ()
+runFetchAll :: [ResultVar a] -> App.App a -> App.App ()
 runFetchAll requests m =
   unless (null requests) $ do
-    results <- Q.runDb m
+    results <- m
     traverse_ (liftIO . flip putSuccess results) requests

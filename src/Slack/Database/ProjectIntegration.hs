@@ -1,6 +1,5 @@
 module Slack.Database.ProjectIntegration
-  ( module Common.PersistDatabase
-  , findByProjectId
+  ( findByProjectId
   ) where
 
 import RIO hiding ((^.))

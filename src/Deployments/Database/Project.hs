@@ -1,6 +1,5 @@
 module Deployments.Database.Project
-  ( module Common.PersistDatabase
-  , findProjectByAccessToken
+  ( findProjectByAccessToken
   , getProject
   , getProjectBySlug
   , getProjectForBuild

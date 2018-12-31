@@ -1,26 +1,25 @@
 module Deployments.UseCases.CreateDeployment
   ( module Deployments.Database.Deployment
   , Params(..)
-  , CallMonad
   , Error(..)
   , call
   ) where
 
-import RIO
+import Import
 
 import Deployments.Database.Deployment
+import qualified Deployments.UseCases.LockEnvironment as LockEnvironment
 
 data Params = Params
   { build :: !(Entity Build)
   , environment :: !(Entity Environment)
+  , userId :: !Text
   }
 
 data Error =
   ProjectsDontMatch
 
-type CallMonad m = (MonadIO m, HasDb m)
-
-entity :: (MonadIO m) => Params -> m Deployment
+entity :: Params -> App Deployment
 entity Params {..} = do
   now <- liftIO getCurrentTime
   let (Entity buildId _) = build
@@ -34,13 +33,23 @@ entity Params {..} = do
   let deploymentUpdatedAt = now
   return Deployment {..}
 
-create :: (CallMonad m) => Params -> m (Entity Deployment)
+
+lockEnvironment :: Params -> App ()
+lockEnvironment Params {..} =
+  let (Entity environmentId Environment {..}) = environment
+   in when environmentLockOnDeployment $
+        void (LockEnvironment.call environmentId userId)
+
+
+create :: Params -> App (Entity Deployment)
 create params = do
   deployment <- entity params
   deploymentId <- runDb $ insert deployment
+  lockEnvironment params
   return (Entity deploymentId deployment)
 
-call :: (CallMonad m) => Params -> m (Either Error (Entity Deployment))
+
+call :: Params -> App (Either Error (Entity Deployment))
 call params@Params {..} =
   let (Entity _ Build {..}) = build
       (Entity _ Environment {..}) = environment

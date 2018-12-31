@@ -4,7 +4,7 @@ module Slack.UseCases.CreateProjectIntegration
   , call
   ) where
 
-import RIO
+import Import
 
 import Model
 import Slack.Database.ProjectIntegration
@@ -15,7 +15,7 @@ data Params = Params
   , paramProjectId :: !ProjectId
   }
 
-build :: (MonadIO m) => Params -> m SlackProjectIntegration
+build :: Params -> App SlackProjectIntegration
 build Params {..} = do
   now <- liftIO getCurrentTime
   let slackProjectIntegrationChannelId = paramChannelId
@@ -25,21 +25,20 @@ build Params {..} = do
   let slackProjectIntegrationUpdatedAt = now
   return SlackProjectIntegration {..}
 
-create :: (MonadIO m) => Params -> Db m ()
+create :: Params -> App ()
 create params = do
   entity <- build params
   void $ insert entity
 
-update_ :: (MonadIO m) => Params -> Entity SlackProjectIntegration -> Db m ()
+update_ :: Params -> Entity SlackProjectIntegration -> App ()
 update_ Params {..} (Entity integrationId _) =
   update
     integrationId
     [SlackProjectIntegrationChannelId =. paramChannelId, SlackProjectIntegrationChannelName =. paramChannelName]
 
-call :: (HasDb m) => Params -> m ()
-call params@Params {..} =
-  runDb $ do
-    maybeIntegration <- findByProjectId paramProjectId
-    case maybeIntegration of
-      Nothing -> create params
-      Just integration -> update_ params integration
+call :: Params -> App ()
+call params@Params {..} = do
+  maybeIntegration <- findByProjectId paramProjectId
+  case maybeIntegration of
+    Nothing -> create params
+    Just integration -> update_ params integration

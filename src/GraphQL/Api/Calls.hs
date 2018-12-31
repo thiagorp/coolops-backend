@@ -3,15 +3,15 @@ module GraphQL.Api.Calls
   , listSlackConversations
   ) where
 
-import RIO
+import Import
 
 import GraphQL.Api.Types
 import qualified Slack.Api.Conversations as Api
 
-listSlackConversations :: (Api.SlackClientMonad m) => [Text] -> m [(Text, [SlackChannel])]
+listSlackConversations :: [Text] -> App [(Text, [SlackChannel])]
 listSlackConversations = traverse listSlackConversationsForToken
 
-listSlackConversationsForToken :: (Api.SlackClientMonad m) => Text -> m (Text, [SlackChannel])
+listSlackConversationsForToken :: Text -> App (Text, [SlackChannel])
 listSlackConversationsForToken token = (,) token . map mapSlackConversation . Api.conversations <$> Api.list token
 
 mapSlackConversation :: Api.Conversation -> SlackChannel

@@ -1,14 +1,12 @@
 module Kubernetes.Pod
   ( ContainerState(..)
-  , GetLogsMonad
-  , GetPodMonad
   , Pod(..)
   , getLogs
   , getPodForJob
   , getPodContainerState
   ) where
 
-import RIO
+import Import hiding (DeploymentStatus(..))
 import qualified RIO.ByteString.Lazy as LBS
 import qualified RIO.HashMap as HashMap
 import qualified RIO.List as List
@@ -48,9 +46,7 @@ data GetPodError
 
 instance Exception GetPodError
 
-type GetPodMonad m = (KubernetesMonad m, MonadThrow m)
-
-getPodForJob :: (GetPodMonad m) => Text -> m (Maybe Pod)
+getPodForJob :: Text -> App (Maybe Pod)
 getPodForJob jobName = do
   response <- kubernetesRequest $ GetPodForJob (encodeUtf8 jobName)
   case statusCode (responseStatus response) of
@@ -113,9 +109,7 @@ parseWaitingState stateHash = do
   reason <- maybe (return "NoReasonOnStateHash") parseJSON maybeReason
   return $ Waiting reason
 
-type GetLogsMonad m = (KubernetesMonad m, MonadThrow m)
-
-getLogs :: (GetPodMonad m) => Maybe Int -> Text -> m (Maybe LBS.ByteString)
+getLogs :: Maybe Int -> Text -> App (Maybe LBS.ByteString)
 getLogs nLines name = do
   response <- kubernetesRequest (GetPodLogs nLines (encodeUtf8 name))
   case statusCode (responseStatus response) of

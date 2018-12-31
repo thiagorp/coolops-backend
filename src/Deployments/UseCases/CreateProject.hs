@@ -1,15 +1,13 @@
 module Deployments.UseCases.CreateProject
-  ( module Model
-  , module Deployments.Database.Project
+  ( module Deployments.Database.Project
   , Params(..)
   , Error(..)
   , call
   ) where
 
-import RIO
+import Import
 
 import Deployments.Database.Project
-import Model
 
 data Error =
   SlugAlreadyExists
@@ -21,7 +19,7 @@ data Params = Params
   , paramCompanyId :: !CompanyId
   }
 
-build :: (MonadIO m) => Params -> Db m Project
+build :: Params -> App Project
 build Params {..} = do
   projectAccessToken <- genAccessToken
   now <- liftIO getCurrentTime
@@ -33,7 +31,7 @@ build Params {..} = do
   let projectUpdatedAt = now
   return Project {..}
 
-call :: (MonadIO m, HasDb m) => Params -> Db m (Either Error (Entity Project))
+call :: Params -> App (Either Error (Entity Project))
 call params@Params {..} = do
   maybeProject <- getProjectBySlug paramCompanyId paramSlug
   case maybeProject of

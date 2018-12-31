@@ -1,6 +1,7 @@
 module BackgroundJobs.Database
-  ( module Common.PersistDatabase
+  ( module App
   , module Model
+  , Entity(..)
   , getNextJob
   ) where
 
@@ -8,6 +9,7 @@ import RIO hiding ((^.), isNothing, on)
 
 import Database.Esqueleto hiding (selectFirst)
 
+import App
 import Common.PersistDatabase
 import Model
 

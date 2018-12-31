@@ -9,14 +9,14 @@ import Deployments.Gateway.Kubernetes
 
 getDeployment_ :: UUID -> Handler (Entity Deployment)
 getDeployment_ deploymentId = do
-  maybeDeployment <- runDb $ getDeployment deploymentId
+  maybeDeployment <- runAppInHandler $ getDeployment deploymentId
   case maybeDeployment of
     Nothing -> sendResponseStatus notFound404 ()
     Just deployment -> return deployment
 
 getDeploymentLogs_ :: Entity Deployment -> Handler Text
 getDeploymentLogs_ (Entity deploymentId _) = do
-  maybeLogs <- getDeploymentLogs Nothing deploymentId
+  maybeLogs <- runAppInHandler $ getDeploymentLogs Nothing deploymentId
   case maybeLogs of
     Nothing -> return ""
     Just logs -> return $ decodeUtf8Lenient $ toStrictBytes logs

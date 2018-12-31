@@ -20,7 +20,7 @@ import Api.Handler
 
 import Common.Config (appPort)
 import Common.Database
-import Env
+import App
 
 exceptionHandler :: Maybe Request -> SomeException -> IO ()
 exceptionHandler r e = do

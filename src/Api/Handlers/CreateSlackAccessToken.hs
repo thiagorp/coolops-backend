@@ -16,13 +16,13 @@ instance FromJSON Request where
       reqCode <- o .: "code"
       return Request {..}
 
-mapRequest :: App.User -> Request -> App.Params
-mapRequest App.User {..} Request {..} = App.Params userCompanyId reqCode
+mapRequest :: User -> Request -> App.Params
+mapRequest User {..} Request {..} = App.Params userCompanyId reqCode
 
-call :: App.Entity App.User -> Handler ()
-call (App.Entity _ user) = do
+call :: Entity User -> Handler ()
+call (Entity _ user) = do
   appParams <- mapRequest user <$> requireJsonBody
-  result <- App.call appParams
+  result <- runAppInHandler $ App.call appParams
   case result of
     Right _ -> sendResponseStatus created201 ()
     Left App.CouldNotExchangeCode -> sendResponseStatus internalServerError500 ()

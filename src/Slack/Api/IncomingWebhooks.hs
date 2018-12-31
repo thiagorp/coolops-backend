@@ -3,11 +3,11 @@ module Slack.Api.IncomingWebhooks
   , sendIncomingWebhook
   ) where
 
-import RIO
+import Import
 
 import Slack.Api.ClientBase
 import Slack.Api.Message
 
-sendIncomingWebhook :: (SlackClientMonad m) => Text -> Message -> m ()
+sendIncomingWebhook :: Text -> Message -> App ()
 sendIncomingWebhook url message =
   void $ slackRequest (IncomingWebhook url message)
