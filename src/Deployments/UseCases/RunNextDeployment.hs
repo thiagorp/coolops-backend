@@ -22,10 +22,10 @@ data Error
 type RunMonad = ExceptT Error App
 
 
-lockEnvironment :: DeploymentResources -> App ()
-lockEnvironment DeploymentResources {..} =
+lockEnvironment :: Deployment -> DeploymentResources -> App ()
+lockEnvironment Deployment {..} DeploymentResources {..} =
   let (Entity environmentId Environment {..}) = deploymentEnvironment
-      userId = deploymentUserId
+      userId = deploymentDeployerExternalId
    in when environmentLockOnDeployment $
         void (LockEnvironment.call environmentId userId)
 
@@ -34,7 +34,7 @@ runNext :: Entity Deployment -> DeploymentResources -> RunMonad ()
 runNext deployment resources = do
   result <- lift $ runDeployment deployment resources
   now <- liftIO getCurrentTime
-  lift $ lockEnvironment resources
+  lift $ lockEnvironment (entityVal deployment) resources
   lift $
     update
       (entityKey deployment)

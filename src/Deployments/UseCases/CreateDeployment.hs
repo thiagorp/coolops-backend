@@ -25,6 +25,7 @@ entity Params {..} = do
   let (Entity buildId _) = build
   let (Entity environmentId _) = environment
   let deploymentBuildId = buildId
+  let deploymentDeployerExternalId = userId
   let deploymentEnvironmentId = environmentId
   let deploymentStatus = Queued
   let deploymentStartedAt = Nothing

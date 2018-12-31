@@ -14,7 +14,6 @@ data DeploymentResources = DeploymentResources
   { deploymentProject :: !(Entity Project)
   , deploymentEnvironment :: !(Entity Environment)
   , deploymentBuild :: !(Entity Build)
-  , deploymentUserId :: !Text
   }
 
 finish :: (MonadIO m) => DeploymentStatus -> Deployment -> m Deployment

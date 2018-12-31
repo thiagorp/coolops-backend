@@ -61,6 +61,7 @@ Company sql=companies
 Deployment sql=deployments
   Id UUID default=uuid_generate_v4()
   buildId BuildId
+  deployerExternalId Text
   environmentId EnvironmentId
   status DeploymentStatus sqltype=varchar(255)
   startedAt UTCTime Maybe sql=deployment_started_at

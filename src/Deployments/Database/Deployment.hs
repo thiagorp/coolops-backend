@@ -46,38 +46,36 @@ getNextQueuedDeployment companyId =
         query d e
 
 getDeploymentsResources :: (MonadIO m) => Entity Deployment -> Db m (Maybe DeploymentResources)
-getDeploymentsResources (Entity deploymentId _) =
-  deploymentResourcesQuery $ \d _ ->
-    where_ $ d ^. DeploymentId ==. val deploymentId
+getDeploymentsResources (Entity _ Deployment {..}) =
+  deploymentResourcesQuery $ \e _ _ ->
+    where_ $ e ^. EnvironmentId ==. val deploymentEnvironmentId
 
 getDeploymentResources :: (MonadIO m) => CompanyId -> UUID -> UUID -> Db m (Maybe DeploymentResources)
 getDeploymentResources cId eId bId =
-  deploymentResourcesQuery $ \d p -> do
+  deploymentResourcesQuery $ \e b p -> do
     where_ $ p ^. ProjectCompanyId ==. val cId
-    where_ $ d ^. DeploymentEnvironmentId ==. val (EnvironmentKey eId)
-    where_ $ d ^. DeploymentBuildId ==. val (BuildKey bId)
+    where_ $ e ^. EnvironmentId ==. val (EnvironmentKey eId)
+    where_ $ b ^. BuildId ==. val (BuildKey bId)
 
 deploymentResourcesQuery ::
   (MonadIO m) =>
-  (SqlExpr (Entity Deployment) -> SqlExpr (Entity Project) -> SqlQuery ()) ->
+  (SqlExpr (Entity Environment) -> SqlExpr (Entity Build) -> SqlExpr (Entity Project) -> SqlQuery ()) ->
   Db m (Maybe DeploymentResources)
 deploymentResourcesQuery condition = do
   maybeResources <-
     selectFirst $
-      from $ \(d `InnerJoin` e `InnerJoin` p `InnerJoin` b `InnerJoin` sd) -> do
-        on $ (sd ^. SlackDeploymentDeploymentId) ==. (d ^. DeploymentId)
+      from $ \(e `InnerJoin` p `InnerJoin` b) -> do
         on $ (b ^. BuildProjectId) ==. (p ^. ProjectId)
         on $ (p ^. ProjectId) ==. (e ^. EnvironmentProjectId)
-        on $ (e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId)
-        condition d p
-        return (p, e, b, sd ^. SlackDeploymentSlackUserId)
+        condition e b p
+        return (p, e, b)
 
   case maybeResources of
     Nothing ->
       return Nothing
 
-    Just (project, environment, build, Value userId) ->
-      return $ Just (DeploymentResources project environment build userId)
+    Just (project, environment, build) ->
+      return $ Just (DeploymentResources project environment build)
 
 listAllRunningDeployments :: (MonadIO m) => Db m [(CompanyId, Entity Deployment)]
 listAllRunningDeployments = do
