@@ -11,8 +11,6 @@ import RIO hiding ((^.), isNothing, on)
 import Database.Esqueleto hiding (selectFirst)
 
 import Common.PersistDatabase
-import Deployments.Database.Build
-import Deployments.Database.Environment
 import Deployments.Domain.Deployment
 
 getNextQueuedDeployment :: (MonadIO m) => CompanyId -> Db m (Maybe (Entity Deployment))
@@ -48,34 +46,44 @@ getNextQueuedDeployment companyId =
         query d e
 
 getDeploymentsResources :: (MonadIO m) => Entity Deployment -> Db m (Maybe DeploymentResources)
-getDeploymentsResources (Entity _ Deployment {..}) = do
-  maybeEnvironment <- get deploymentEnvironmentId
-  maybeBuild <- get deploymentBuildId
-  case (,) <$> maybeEnvironment <*> maybeBuild of
-    Nothing -> return Nothing
-    Just (environment, build@Build {..}) -> do
-      maybeProject <- get buildProjectId
-      case maybeProject of
-        Nothing -> return Nothing
-        Just project ->
-          return $
-          Just $
-          DeploymentResources
-            (Entity buildProjectId project)
-            (Entity deploymentEnvironmentId environment)
-            (Entity deploymentBuildId build)
+getDeploymentsResources (Entity deploymentId _) = do
+  maybeResources <-
+    selectFirst $
+      from $ \(d `InnerJoin` e `InnerJoin` p `InnerJoin` b `InnerJoin` sd) -> do
+        on $ (sd ^. SlackDeploymentDeploymentId) ==. (d ^. DeploymentId)
+        on $ (b ^. BuildProjectId) ==. (p ^. ProjectId)
+        on $ (p ^. ProjectId) ==. (e ^. EnvironmentProjectId)
+        on $ (e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId)
+        where_ $ d ^. DeploymentId ==. val deploymentId
+        return (p, e, b, sd ^. SlackDeploymentSlackUserId)
+
+  case maybeResources of
+    Nothing ->
+      return Nothing
+
+    Just (project, environment, build, Value userId) ->
+      return $ Just (DeploymentResources project environment build userId)
 
 getDeploymentResources :: (MonadIO m) => CompanyId -> UUID -> UUID -> Db m (Maybe DeploymentResources)
 getDeploymentResources cId eId bId = do
-  maybeEnvironment <- getEnvironment cId eId
-  maybeBuild <- getBuild cId bId
-  case (,) <$> maybeEnvironment <*> maybeBuild of
-    Nothing -> return Nothing
-    Just (environment, build@(Entity _ Build {..})) -> do
-      maybeProject <- get buildProjectId
-      case maybeProject of
-        Nothing -> return Nothing
-        Just project -> return $ Just $ DeploymentResources (Entity buildProjectId project) environment build
+  maybeResources <-
+    selectFirst $
+      from $ \(d `InnerJoin` e `InnerJoin` p `InnerJoin` b `InnerJoin` sd) -> do
+        on $ (sd ^. SlackDeploymentDeploymentId) ==. (d ^. DeploymentId)
+        on $ (b ^. BuildProjectId) ==. (p ^. ProjectId)
+        on $ (p ^. ProjectId) ==. (e ^. EnvironmentProjectId)
+        on $ (e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId)
+        where_ $ p ^. ProjectCompanyId ==. val cId
+        where_ $ d ^. DeploymentEnvironmentId ==. val (EnvironmentKey eId)
+        where_ $ d ^. DeploymentBuildId ==. val (BuildKey bId)
+        return (p, e, b, sd ^. SlackDeploymentSlackUserId)
+
+  case maybeResources of
+    Nothing ->
+      return Nothing
+
+    Just (project, environment, build, Value userId) ->
+      return $ Just (DeploymentResources project environment build userId)
 
 listAllRunningDeployments :: (MonadIO m) => Db m [(CompanyId, Entity Deployment)]
 listAllRunningDeployments = do

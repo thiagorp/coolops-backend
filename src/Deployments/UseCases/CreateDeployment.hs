@@ -8,7 +8,6 @@ module Deployments.UseCases.CreateDeployment
 import Import
 
 import Deployments.Database.Deployment
-import qualified Deployments.UseCases.LockEnvironment as LockEnvironment
 
 data Params = Params
   { build :: !(Entity Build)
@@ -18,6 +17,7 @@ data Params = Params
 
 data Error =
   ProjectsDontMatch
+
 
 entity :: Params -> App Deployment
 entity Params {..} = do
@@ -34,18 +34,10 @@ entity Params {..} = do
   return Deployment {..}
 
 
-lockEnvironment :: Params -> App ()
-lockEnvironment Params {..} =
-  let (Entity environmentId Environment {..}) = environment
-   in when environmentLockOnDeployment $
-        void (LockEnvironment.call environmentId userId)
-
-
 create :: Params -> App (Entity Deployment)
 create params = do
   deployment <- entity params
   deploymentId <- insert deployment
-  lockEnvironment params
   return (Entity deploymentId deployment)
 
 
