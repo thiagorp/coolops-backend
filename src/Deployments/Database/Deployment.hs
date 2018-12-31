@@ -6,7 +6,7 @@ module Deployments.Database.Deployment
   , listAllRunningDeployments
   ) where
 
-import RIO hiding ((^.), on)
+import RIO hiding ((^.), isNothing, on)
 
 import Database.Esqueleto hiding (selectFirst)
 
@@ -30,10 +30,10 @@ getNextQueuedDeployment companyId =
       from $ \(e `InnerJoin` p) -> do
         on $ (p ^. ProjectId) ==. (e ^. EnvironmentProjectId)
         where_ $ p ^. ProjectCompanyId ==. val companyId
-        where_ $ notExists $
+        where_ $ exists $
           from $ \l -> do
             where_ $ (l ^. EnvironmentLockEnvironmentId) ==. (e ^. EnvironmentId)
-            where_ $ l ^. EnvironmentLockReleasedAt ==. val Nothing
+            where_ $ isNothing $ l ^. EnvironmentLockReleasedAt
         return $ e ^. EnvironmentId
 
     runningEnvironmentIds = fromDeployments companyId $ \d e -> do
