@@ -21,7 +21,7 @@ verify password user =
 
 login :: Params -> App (Maybe User)
 login Params {..} = do
-  maybeUser <- runDb $ findUserByEmail paramEmail
+  maybeUser <- findUserByEmail paramEmail
   case maybeUser of
     Nothing -> return Nothing
     Just (Entity _ user) -> return $ verify paramPassword user

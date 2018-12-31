@@ -14,11 +14,10 @@ data Params = Params
 call :: ProjectId -> Params -> App ()
 call projectId Params {..} = do
   now <- liftIO getCurrentTime
-  runDb $
-    update
-      projectId
-      [ ProjectName =. paramProjectName
-      , ProjectSlug =. paramProjectSlug
-      , ProjectDeploymentImage =. paramProjectDeploymentImage
-      , ProjectUpdatedAt =. now
-      ]
+  update
+    projectId
+    [ ProjectName =. paramProjectName
+    , ProjectSlug =. paramProjectSlug
+    , ProjectDeploymentImage =. paramProjectDeploymentImage
+    , ProjectUpdatedAt =. now
+    ]

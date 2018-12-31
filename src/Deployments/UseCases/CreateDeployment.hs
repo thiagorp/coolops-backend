@@ -44,7 +44,7 @@ lockEnvironment Params {..} =
 create :: Params -> App (Entity Deployment)
 create params = do
   deployment <- entity params
-  deploymentId <- runDb $ insert deployment
+  deploymentId <- insert deployment
   lockEnvironment params
   return (Entity deploymentId deployment)
 

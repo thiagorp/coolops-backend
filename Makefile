@@ -30,6 +30,10 @@ deployment-runner:
 	ghcid --command "stack ghci coolops-api:lib" --test "Executables.DeploymentRunner.run"
 
 
+background-jobs:
+	ghcid --command "stack ghci coolops-api:lib" --test "Executables.BackgroundJobRunner.run"
+
+
 run-tests:
 	ghcid --command "stack ghci coolops-api:lib coolops-api:test:api-test" --test "main"
 

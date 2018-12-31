@@ -14,11 +14,10 @@ data Params = Params
 call :: EnvironmentId -> Params -> App ()
 call eId Params {..} = do
   now <- liftIO getCurrentTime
-  runDb $
-    update
-      eId
-      [ EnvironmentName =. paramEnvironmentName
-      , EnvironmentEnvVars =. paramEnvironmentEnvVars
-      , EnvironmentSlug =. paramEnvironmentSlug
-      , EnvironmentUpdatedAt =. now
-      ]
+  update
+    eId
+    [ EnvironmentName =. paramEnvironmentName
+    , EnvironmentEnvVars =. paramEnvironmentEnvVars
+    , EnvironmentSlug =. paramEnvironmentSlug
+    , EnvironmentUpdatedAt =. now
+    ]

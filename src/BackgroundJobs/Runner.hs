@@ -58,7 +58,7 @@ queue JobConfig {..} job = do
 
 runNext :: JobConfig job -> App ()
 runNext config = do
-  maybeJob <- runDb getNextJob
+  maybeJob <- getNextJob
   forM_ maybeJob (runNext' config)
 
 runNext' :: JobConfig job -> Entity BackgroundJob -> App ()
@@ -80,15 +80,14 @@ update' (Entity jobId BackgroundJob {..}) r = do
   newNextRetry <- nextRetryFromReturn r
   newFinishedAt <- finishedFromReturn r
   let newFailureReason = failureReasonFromReturn r
-  runDb $
-    update
-      jobId
-      [ BackgroundJobRetryCount =. newRetryCount
-      , BackgroundJobNextRetry =. newNextRetry
-      , BackgroundJobFinishedAt =. newFinishedAt
-      , BackgroundJobFailureReason =. newFailureReason
-      , BackgroundJobUpdatedAt =. now
-      ]
+  update
+    jobId
+    [ BackgroundJobRetryCount =. newRetryCount
+    , BackgroundJobNextRetry =. newNextRetry
+    , BackgroundJobFinishedAt =. newFinishedAt
+    , BackgroundJobFailureReason =. newFailureReason
+    , BackgroundJobUpdatedAt =. now
+    ]
 
 failureReasonFromReturn :: JobReturnType -> Maybe Text
 failureReasonFromReturn job =
