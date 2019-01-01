@@ -85,7 +85,7 @@ EnvironmentLock sql=environment_locks
   Id UUID default=uuid_generate_v4()
   environmentId EnvironmentId
   createdBy Text
-  releasedAt Bool Maybe
+  releasedAt UTCTime Maybe
   createdAt UTCTime
   updatedAt UTCTime
 
