@@ -27,6 +27,7 @@ buildLock envId creatorId = do
     { environmentLockEnvironmentId = envId
     , environmentLockCreatedBy = creatorId
     , environmentLockReleasedAt = Nothing
+    , environmentLockReleasedBy = Nothing
     , environmentLockCreatedAt = now
     , environmentLockUpdatedAt = now
     }

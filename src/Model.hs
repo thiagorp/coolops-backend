@@ -86,6 +86,7 @@ EnvironmentLock sql=environment_locks
   environmentId EnvironmentId
   createdBy Text
   releasedAt UTCTime Maybe
+  releasedBy Text Maybe
   createdAt UTCTime
   updatedAt UTCTime
 

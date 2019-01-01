@@ -1,1 +1,3 @@
-alter table environment_locks alter column released_at type timestamp with time zone;
+alter table environment_locks drop column released_at;
+
+alter table environment_locks add column released_at timestamp with time zone;
