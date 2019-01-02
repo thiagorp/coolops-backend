@@ -92,7 +92,7 @@ buildMessage (Entity (EnvironmentLockKey lockKey) EnvironmentLock {..}, Entity _
     releaseLockButton =
       slackAction
         { actionName = "release_lock|" <> uuidToText lockKey
-        , actionText = "Release it"
+        , actionText = "Unlock"
         , actionType = "button"
         }
 
