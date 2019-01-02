@@ -90,23 +90,28 @@ buildMessage appBaseUrl MessageData {..} =
     }
   where
     (Entity (BuildKey buildId) Build {..}, Entity _ Project {..}, _) = dataBuildInfo
+
     messageText = "*" <> getValue projectName <> "* has a new build: *" <> getValue buildName <> "*"
+
     attachments =
       [ deploymentButtons
       , buildMetadataRow (HashMap.toList buildMetadata)
       ]
         <> map buildDeploymentRow dataDeployments
+
     deploymentButtons =
       slackAttachment
         { attachmentCallbackId = Just $ "deploy_build|" <> toText buildId
         , attachmentType = Just "default"
         , attachmentActions = Just $ map buildAction dataEnvironments
         }
+
     buildMetadataRow fields =
       slackAttachment
         { attachmentMarkdown = Just ["fields"]
         , attachmentFields = Just $ map (\(t, v) -> slackField {fieldValue = v, fieldTitle = t}) fields
         }
+
     buildDeploymentRow (Entity _ SlackDeployment {..}, Entity _ Environment {..}, Entity (DeploymentKey deploymentId) Deployment {..}) =
       slackAttachment
         { attachmentText =
@@ -118,17 +123,16 @@ buildMessage appBaseUrl MessageData {..} =
                 Running -> "<@" <> slackDeploymentSlackUserId <> "> has a running deployment to *" <> getValue environmentName <> "*"
         , attachmentFooter =
             Just $
-            "<!date^" <> Text.pack (formatTime defaultTimeLocale "%s" slackDeploymentDeployedAt) <>
-            "^{date_pretty} - {time}|Deployment time conversion failed> | " <>
-            "<" <>
-            appBaseUrl <>
-            logsPage (uuidToText deploymentId) <>
-            "|See logs>"
+              "<!date^"
+              <> Text.pack (formatTime defaultTimeLocale "%s" slackDeploymentDeployedAt)
+              <> "^{date_pretty} - {time}|Deployment time conversion failed> | "
+              <> "<" <> appBaseUrl <> logsPage (uuidToText deploymentId) <> "|See logs>"
         , attachmentColor = colorOf deploymentStatus
         }
+
     buildAction (Entity (EnvironmentKey environmentId) Environment {..}) =
       slackAction
-        { actionName = "environment"
+        { actionName = "deploy_build|" <> toText buildId <> "|" <> toText environmentId
         , actionText = "Deploy to " <> getValue environmentName
         , actionType = "button"
         , actionValue = toText environmentId
