@@ -80,7 +80,7 @@ buildMessage (Entity (EnvironmentLockKey lockKey) EnvironmentLock {..}, Entity _
 
     releasedTextAttachment releasedBy =
       slackAttachment
-        { attachmentText = Just ("Released by <@" <> releasedBy <> ">")
+        { attachmentText = Just ("<@" <> releasedBy <> "> unlocked it")
         }
 
     releaseButtonAttachment =
