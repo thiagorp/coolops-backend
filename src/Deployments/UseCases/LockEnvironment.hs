@@ -9,6 +9,7 @@ import Import
 import Control.Monad.Except
 
 import qualified Deployments.Database.EnvironmentLock as Lock
+import qualified BackgroundJobs.AppJobs as Background
 
 data Error
   = EnvironmentAlreadyLocked
@@ -32,8 +33,10 @@ buildLock envId creatorId = do
     , environmentLockUpdatedAt = now
     }
 
-call :: EnvironmentId -> Text -> App (Either Error EnvironmentLockId)
-call envId creatorId = runExceptT $ do
+call :: CompanyId -> EnvironmentId -> Text -> App (Either Error EnvironmentLockId)
+call cId envId creatorId = runExceptT $ do
   verifyExistingLock envId
   lock <- buildLock envId creatorId
-  lift $ insert lock
+  lockId <- lift $ insert lock
+  _ <- lift $ Background.notifyNewEnvironmentLock cId lockId
+  return lockId

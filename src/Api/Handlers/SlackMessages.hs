@@ -5,6 +5,7 @@ module Api.Handlers.SlackMessages
 import Api.Import
 
 import qualified Api.Handlers.SlackMessageButtons.DeployBuild as DeployBuild
+import qualified Api.Handlers.SlackMessageButtons.ReleaseEnvironmentLock as ReleaseEnvironmentLock
 import Slack.MessageButtons
 
 data Request = Request
@@ -44,7 +45,11 @@ verifyToken token = do
 handleMessage :: Request -> Handler ()
 handleMessage Request {..} =
   case reqMessageType of
-    DeployBuild buildId -> DeployBuild.call reqActionValue buildId reqTeamId (reqSenderId, reqSenderName)
+    DeployBuild buildId ->
+      DeployBuild.call reqActionValue buildId reqTeamId (reqSenderId, reqSenderName)
+    
+    ReleaseEnvironmentLock lockId ->
+      ReleaseEnvironmentLock.call reqSenderId lockId
 
 process :: Request -> Handler ()
 process req@Request {..} = do

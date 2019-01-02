@@ -25,9 +25,9 @@ type RunMonad = ExceptT Error App
 lockEnvironment :: Deployment -> DeploymentResources -> App ()
 lockEnvironment Deployment {..} DeploymentResources {..} =
   let (Entity environmentId Environment {..}) = deploymentEnvironment
-      userId = deploymentDeployerExternalId
+      (Entity _ Project {..}) = deploymentProject
    in when environmentLockOnDeployment $
-        void (LockEnvironment.call environmentId userId)
+        void (LockEnvironment.call projectCompanyId environmentId deploymentDeployerExternalId)
 
 
 runNext :: Entity Deployment -> DeploymentResources -> RunMonad ()

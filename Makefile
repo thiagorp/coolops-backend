@@ -34,6 +34,10 @@ background-jobs:
 	ghcid --command "stack ghci coolops-api:lib" --test "Executables.BackgroundJobRunner.run"
 
 
+job-status-checker:
+	ghcid --command "stack ghci coolops-api:lib" --test "Executables.JobStatusChecker.run"
+
+
 run-tests:
 	ghcid --command "stack ghci coolops-api:lib coolops-api:test:api-test" --test "main"
 

@@ -133,6 +133,14 @@ SlackDeployment sql=slack_deployments
   updatedAt UTCTime
   deriving (Show)
 
+SlackEnvironmentLockMessage sql=slack_environment_lock_messages
+  Id UUID default=uuid_generate_v4()
+  environmentLockId EnvironmentLockId
+  slackMessageId Text
+  createdAt UTCTime
+  updatedAt UTCTime
+  deriving (Show)
+
 SlackProjectIntegration sql=slack_project_integrations
   Id UUID default=uuid_generate_v4()
   projectId ProjectId
