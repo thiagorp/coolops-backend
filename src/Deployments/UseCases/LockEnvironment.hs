@@ -21,8 +21,8 @@ verifyExistingLock envId = do
     Nothing -> return ()
     Just _ -> throwError EnvironmentAlreadyLocked
 
-buildLock :: (MonadIO m) => EnvironmentId -> Text -> m EnvironmentLock
-buildLock envId creatorId = do
+mkLock :: (MonadIO m) => EnvironmentId -> Text -> m EnvironmentLock
+mkLock envId creatorId = do
   now <- liftIO getCurrentTime
   return $ EnvironmentLock
     { environmentLockEnvironmentId = envId
@@ -33,10 +33,27 @@ buildLock envId creatorId = do
     , environmentLockUpdatedAt = now
     }
 
-call :: CompanyId -> EnvironmentId -> Text -> App (Either Error EnvironmentLockId)
-call cId envId creatorId = runExceptT $ do
+attachBuildToLock :: EnvironmentLockId -> BuildId -> App ()
+attachBuildToLock elId bId = do
+  now <- liftIO getCurrentTime
+  void $ insert $
+    BuildLock
+      { buildLockBuildId = bId
+      , buildLockEnvironmentLockId = elId
+      , buildLockCreatedAt = now
+      , buildLockUpdatedAt = now
+      }
+
+call ::
+  CompanyId
+  -> EnvironmentId
+  -> Maybe BuildId
+  -> Text
+  -> App (Either Error EnvironmentLockId)
+call cId envId maybeBuildId creatorId = runExceptT $ do
   verifyExistingLock envId
-  lock <- buildLock envId creatorId
+  lock <- mkLock envId creatorId
   lockId <- lift $ insert lock
+  lift $ traverse_ (attachBuildToLock lockId) maybeBuildId
   _ <- lift $ Background.notifyNewEnvironmentLock cId lockId
   return lockId

@@ -34,6 +34,7 @@ getSlackDeploymentMessageData cId dId = do
       where_ (p ^. ProjectCompanyId ==. val cId)
       where_ (d ^. DeploymentId ==. val (DeploymentKey dId))
       where_ (d ^. DeploymentStatus `notIn` valList [Running, Queued])
+      limit 1
       return (b, e, p, d, sd, sa)
   case maybeData of
     Nothing -> return Nothing

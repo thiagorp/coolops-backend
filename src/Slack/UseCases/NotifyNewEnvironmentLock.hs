@@ -29,13 +29,13 @@ saveSlackEnvironmentLockMessage lockId slackMessageId = do
 
 
 createMessage :: MessageData -> Message -> App ()
-createMessage (Entity lockId _, _, _, Entity _ SlackProjectIntegration {..}, Entity _ SlackAccessToken {..}, _) m = do
+createMessage (Entity lockId _, _, _, _, Entity _ SlackProjectIntegration {..}, Entity _ SlackAccessToken {..}, _) m = do
   maybeResponseTs <- Slack.postMessage slackAccessTokenBotAccessToken slackProjectIntegrationChannelId m
   traverse_ (saveSlackEnvironmentLockMessage lockId) maybeResponseTs
 
 
 updateMessage :: Text -> MessageData -> Message -> App ()
-updateMessage slackMessageId (_, _, _, Entity _ SlackProjectIntegration {..}, Entity _ SlackAccessToken {..}, _) =
+updateMessage slackMessageId (_, _, _, _, Entity _ SlackProjectIntegration {..}, Entity _ SlackAccessToken {..}, _) =
   Slack.updateMessage
     slackAccessTokenBotAccessToken
     slackProjectIntegrationChannelId
@@ -43,7 +43,7 @@ updateMessage slackMessageId (_, _, _, Entity _ SlackProjectIntegration {..}, En
 
 
 sendMessage :: MessageData -> Message -> App ()
-sendMessage messageData@(_, _, _, _, _, maybeExsistingMessage) m =
+sendMessage messageData@(_, _, _, _, _, _, maybeExsistingMessage) m =
   case maybeExsistingMessage of
     Nothing ->
       createMessage messageData m
@@ -63,13 +63,21 @@ getMessageData_ :: CompanyId -> EnvironmentLockId -> ExceptT Error App MessageDa
 getMessageData_ cId lId = handleEntity MessageDataNotFound (getEnvironmentLockMessageData cId lId)
 
 buildMessage :: MessageData -> Message
-buildMessage (Entity lockId EnvironmentLock {..}, Entity _ Environment {..}, Entity _ Project {..}, _, _, _) =
+buildMessage (Entity lockId EnvironmentLock {..}, Entity _ Environment {..}, maybeBuild, Entity _ Project {..}, _, _, _) =
   slackMessage
     { messageText = Just messageText
     , messageAttachments = Just [ releaseLineAttachment ]
     }
   where
-    messageText = "<@" <> environmentLockCreatedBy <> "> locked *" <> getValue projectName <> " - " <> getValue environmentName <> "*"
+    messageText = "<@" <> environmentLockCreatedBy <> "> locked *" <> getValue projectName <> " - " <> getValue environmentName <> "*" <> buildInformation
+
+    buildInformation =
+      case maybeBuild of
+        Nothing ->
+          ""
+
+        Just (Entity _ Build {..}) ->
+          " for *" <> getValue buildName <> "*"
 
     releaseLineAttachment =
       case environmentLockReleasedBy of

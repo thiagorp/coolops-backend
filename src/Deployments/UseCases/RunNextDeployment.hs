@@ -26,8 +26,9 @@ lockEnvironment :: Deployment -> DeploymentResources -> App ()
 lockEnvironment Deployment {..} DeploymentResources {..} =
   let (Entity environmentId Environment {..}) = deploymentEnvironment
       (Entity _ Project {..}) = deploymentProject
+      (Entity buildId _) = deploymentBuild
    in when environmentLockOnDeployment $
-        void (LockEnvironment.call projectCompanyId environmentId deploymentDeployerExternalId)
+        void (LockEnvironment.call projectCompanyId environmentId (Just buildId) deploymentDeployerExternalId)
 
 
 runNext :: Entity Deployment -> DeploymentResources -> RunMonad ()

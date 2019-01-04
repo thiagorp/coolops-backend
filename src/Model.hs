@@ -50,6 +50,15 @@ Build sql=builds
   updatedAt UTCTime
   deriving (Show)
 
+BuildLock sql=build_locks
+  Id UUID default=uuid_generate_v4()
+  buildId BuildId
+  environmentLockId EnvironmentLockId
+  BuildEnvironmentLock buildId environmentLockId
+  createdAt UTCTime
+  updatedAt UTCTime
+  deriving (Show)
+
 Company sql=companies
   Id UUID default=uuid_generate_v4()
   name CompanyName sqltype=varchar(255)

@@ -12,7 +12,7 @@ type Db m = ReaderT SqlBackend m
 
 selectFirst :: (MonadIO m, SqlSelect a r) => SqlQuery a -> SqlReadT m (Maybe r)
 selectFirst query = do
-  res <- select query
+  res <- select (limit 1 >> query)
   case res of
     (x:_) -> return (Just x)
     _ -> return Nothing

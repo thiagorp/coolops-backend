@@ -50,7 +50,7 @@ instance HasEnv (Db (RIO Env)) where
 acquirePersistPool :: Int -> IO Persist.ConnectionPool
 acquirePersistPool size = do
   s <- Environment.pgSettings
-  runNoLoggingT $ Persist.createPostgresqlPool (Environment.pgUrl s) size
+  runStdoutLoggingT $ Persist.createPostgresqlPool (Environment.pgUrl s) size
 
 buildEnv :: Int -> Http.Manager -> IO Env
 buildEnv poolSize reqManager = do

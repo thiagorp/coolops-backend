@@ -13,6 +13,7 @@ import Model
 type MessageData =
   ( Entity EnvironmentLock
   , Entity Environment
+  , Maybe (Entity Build)
   , Entity Project
   , Entity SlackProjectIntegration
   , Entity SlackAccessToken
@@ -26,7 +27,9 @@ getEnvironmentLockMessageData ::
   Db m (Maybe MessageData)
 getEnvironmentLockMessageData cId lId =
   selectFirst $
-    from $ \(el `InnerJoin` e `InnerJoin` p `InnerJoin` spi `InnerJoin` sat `LeftOuterJoin` selm) -> do
+    from $ \(el `InnerJoin` e `InnerJoin` p `InnerJoin` spi `InnerJoin` sat `LeftOuterJoin` selm `LeftOuterJoin` bl `LeftOuterJoin` b) -> do
+      on $ (b ?. BuildId) ==. (bl ?. BuildLockBuildId)
+      on $ (bl ?. BuildLockEnvironmentLockId) ==. just (el ^. EnvironmentLockId)
       on $ (selm ?. SlackEnvironmentLockMessageEnvironmentLockId) ==. just (el ^. EnvironmentLockId)
       on $ (sat ^. SlackAccessTokenCompanyId) ==. (p ^. ProjectCompanyId)
       on $ (spi ^. SlackProjectIntegrationProjectId) ==. (p ^. ProjectId)
@@ -34,4 +37,5 @@ getEnvironmentLockMessageData cId lId =
       on $ (e ^. EnvironmentId) ==. (el ^. EnvironmentLockEnvironmentId)
       where_ $ p ^. ProjectCompanyId ==. val cId
       where_ $ el ^. EnvironmentLockId ==. val lId
-      return (el, e, p, spi, sat, selm)
+      limit 1
+      return (el, e, b, p, spi, sat, selm)
