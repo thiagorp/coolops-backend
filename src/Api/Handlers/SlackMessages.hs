@@ -28,7 +28,7 @@ instance FromJSON Request where
       reqSenderId <- userO .: "id"
       reqSenderName <- userO .: "name"
       reqVerificationToken <- o .: "token"
-      actionValues <- mapM (.: "value") actions
+      actionValues <- traverse (.: "value") actions
       reqActionValue <-
         case actionValues of
           [] -> fail "No action provided"
@@ -45,8 +45,16 @@ verifyToken token = do
 handleMessage :: Request -> Handler ()
 handleMessage Request {..} =
   case reqMessageType of
-    DeployBuild buildId ->
-      DeployBuild.call reqActionValue buildId reqTeamId (reqSenderId, reqSenderName)
+    DeployBuild bId eId ->
+      DeployBuild.call eId bId reqTeamId (reqSenderId, reqSenderName)
+
+    OldDeployBuildFromCallbackId buildId ->
+      case textToUUID reqActionValue of
+        Nothing ->
+          sendResponseStatus status400 ("Invalid request" :: Text)
+
+        Just environmentId ->
+          DeployBuild.call (EnvironmentKey environmentId) buildId reqTeamId (reqSenderId, reqSenderName)
     
     ReleaseEnvironmentLock lockId ->
       ReleaseEnvironmentLock.call reqSenderId lockId

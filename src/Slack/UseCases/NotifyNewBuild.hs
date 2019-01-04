@@ -20,6 +20,7 @@ import Slack.Api.Message
 import qualified Slack.Database.AccessToken as AT
 import Slack.Database.BuildMessage (getSlackBuildMessage)
 import qualified Slack.Database.ProjectIntegration as PI
+import qualified Slack.MessageButtons as Button
 import Util.FrontendEndpoints (logsPage)
 
 data Error
@@ -89,7 +90,7 @@ buildMessage appBaseUrl MessageData {..} =
     , messageAttachments = Just attachments
     }
   where
-    (Entity (BuildKey buildId) Build {..}, Entity _ Project {..}, _) = dataBuildInfo
+    (Entity buildId Build {..}, Entity _ Project {..}, _) = dataBuildInfo
 
     messageText = "*" <> getValue projectName <> "* has a new build: *" <> getValue buildName <> "*"
 
@@ -101,7 +102,7 @@ buildMessage appBaseUrl MessageData {..} =
 
     deploymentButtons =
       slackAttachment
-        { attachmentCallbackId = Just $ "deploy_build|" <> toText buildId
+        { attachmentCallbackId = Just $ Button.actionToText (Button.OldDeployBuildFromCallbackId buildId)
         , attachmentType = Just "default"
         , attachmentActions = Just $ map buildAction dataEnvironments
         }
@@ -132,7 +133,7 @@ buildMessage appBaseUrl MessageData {..} =
 
     buildAction (Entity (EnvironmentKey environmentId) Environment {..}) =
       slackAction
-        { actionName = "deploy_build|" <> toText buildId <> "|" <> toText environmentId
+        { actionName = Button.actionToText (Button.DeployBuild buildId (EnvironmentKey environmentId))
         , actionText = "Deploy to " <> getValue environmentName
         , actionType = "button"
         , actionValue = toText environmentId

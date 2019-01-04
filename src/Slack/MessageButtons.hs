@@ -1,4 +1,7 @@
-module Slack.MessageButtons where
+module Slack.MessageButtons
+  ( MessageButtonAction(..)
+  , actionToText
+  ) where
 
 import Import
 import qualified RIO.Text as Text
@@ -7,9 +10,13 @@ import Data.Aeson
 import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
 
+
+
 data MessageButtonAction
-  = DeployBuild Text
+  = OldDeployBuildFromCallbackId BuildId
+  | DeployBuild BuildId EnvironmentId
   | ReleaseEnvironmentLock EnvironmentLockId
+
 
 instance FromJSON MessageButtonAction where
   parseJSON =
@@ -18,18 +25,44 @@ instance FromJSON MessageButtonAction where
         Just m -> return m
         Nothing -> fail "Wrong message type"
 
+
+actionToText :: MessageButtonAction -> Text
+actionToText action =
+  case action of
+    DeployBuild (BuildKey bId) (EnvironmentKey eId) ->
+      "deploy_build|" <> uuidToText bId <> "|" <> uuidToText eId
+
+    OldDeployBuildFromCallbackId (BuildKey bId) ->
+      "deploy_build|" <> uuidToText bId
+
+    ReleaseEnvironmentLock (EnvironmentLockKey lId) ->
+      "release_lock|" <> uuidToText lId
+
+
 parseAction :: Text -> Maybe MessageButtonAction
 parseAction =
   P.parseMaybe $
     deployBuildParser
+    <|> oldDeployBuildParser
     <|> releaseEnvironmentLockParser
+
 
 deployBuildParser :: P.Parsec Void Text MessageButtonAction
 deployBuildParser = do
   _ <- P.string "deploy_build|"
-  buildId <- Text.pack <$> P.many (P.alphaNumChar P.<|> P.char '-')
+  buildId <- BuildKey <$> uuidParser
+  _ <- P.char '|'
+  environmentId <- EnvironmentKey <$> uuidParser
+  return $ DeployBuild buildId environmentId
+
+
+oldDeployBuildParser :: P.Parsec Void Text MessageButtonAction
+oldDeployBuildParser = do
+  _ <- P.string "deploy_build|"
+  buildId <- BuildKey <$> uuidParser
   P.eof
-  return $ DeployBuild buildId
+  return $ OldDeployBuildFromCallbackId buildId
+
 
 releaseEnvironmentLockParser :: P.Parsec Void Text MessageButtonAction
 releaseEnvironmentLockParser = do
@@ -37,6 +70,7 @@ releaseEnvironmentLockParser = do
   lockId <- uuidParser
   P.eof
   return $ ReleaseEnvironmentLock (EnvironmentLockKey lockId)
+
 
 uuidParser :: P.Parsec Void Text UUID
 uuidParser = do

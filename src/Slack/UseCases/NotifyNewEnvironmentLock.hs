@@ -10,6 +10,7 @@ import Control.Monad.Except
 import Database.Queries.EnvironmentLockMessageData
 import qualified Slack.Api.ChatMessages as Slack
 import Slack.Api.Message
+import qualified Slack.MessageButtons as Button
 
 data Error
   = MessageDataNotFound
@@ -62,7 +63,7 @@ getMessageData_ :: CompanyId -> EnvironmentLockId -> ExceptT Error App MessageDa
 getMessageData_ cId lId = handleEntity MessageDataNotFound (getEnvironmentLockMessageData cId lId)
 
 buildMessage :: MessageData -> Message
-buildMessage (Entity (EnvironmentLockKey lockKey) EnvironmentLock {..}, Entity _ Environment {..}, Entity _ Project {..}, _, _, _) =
+buildMessage (Entity lockId EnvironmentLock {..}, Entity _ Environment {..}, Entity _ Project {..}, _, _, _) =
   slackMessage
     { messageText = Just messageText
     , messageAttachments = Just [ releaseLineAttachment ]
@@ -86,12 +87,12 @@ buildMessage (Entity (EnvironmentLockKey lockKey) EnvironmentLock {..}, Entity _
     releaseButtonAttachment =
       slackAttachment
         { attachmentActions = Just [ releaseLockButton ]
-        , attachmentCallbackId = Just ("release_lock|" <> uuidToText lockKey)
+        , attachmentCallbackId = Just (Button.actionToText (Button.ReleaseEnvironmentLock lockId))
         }
 
     releaseLockButton =
       slackAction
-        { actionName = "release_lock|" <> uuidToText lockKey
+        { actionName = Button.actionToText (Button.ReleaseEnvironmentLock lockId)
         , actionText = "Unlock"
         , actionType = "button"
         }

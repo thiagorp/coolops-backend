@@ -32,10 +32,10 @@ run DeploymentResources {..} (slackUserId, slackUserName) = do
     Entity _ project = deploymentProject
     appParams = Params deploymentBuild deploymentEnvironment (projectCompanyId project) slackUserId slackUserName
 
-getDeploymentResources_ :: UUID -> UUID -> CompanyId -> Handler (Maybe DeploymentResources)
+getDeploymentResources_ :: EnvironmentId -> BuildId -> CompanyId -> Handler (Maybe DeploymentResources)
 getDeploymentResources_ eId bId cId = runAppInHandler $ getDeploymentResources cId eId bId
 
-getResources_ :: [CompanyId] -> UUID -> UUID -> Handler DeploymentResources
+getResources_ :: [CompanyId] -> EnvironmentId -> BuildId -> Handler DeploymentResources
 getResources_ cId eId bId = do
   maybeResources <- traverse (getDeploymentResources_ eId bId) cId
   case catMaybes maybeResources of
@@ -49,16 +49,8 @@ getCompanyId_ teamId = do
     [] -> sendResponse integrationMissing
     _ -> return (map (slackAccessTokenCompanyId . entityVal) accessTokens)
 
-readUUID_ :: Text -> Handler UUID
-readUUID_ t =
-  case textToUUID t of
-    Nothing -> invalidArgs []
-    Just u -> return u
-
-call :: Text -> Text -> Text -> (Text, Text) -> Handler ()
-call environmentTextId buildTextId teamId slackUser = do
-  environmentId <- readUUID_ environmentTextId
-  buildId <- readUUID_ buildTextId
+call :: EnvironmentId -> BuildId -> Text -> (Text, Text) -> Handler ()
+call environmentId buildId teamId slackUser = do
   companyId <- getCompanyId_ teamId
   resources <- getResources_ companyId environmentId buildId
   run resources slackUser

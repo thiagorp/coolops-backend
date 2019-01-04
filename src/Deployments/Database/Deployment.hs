@@ -51,12 +51,12 @@ getDeploymentsResources (Entity _ Deployment {..}) =
     where_ $ e ^. EnvironmentId ==. val deploymentEnvironmentId
     where_ $ b ^. BuildId ==. val deploymentBuildId
 
-getDeploymentResources :: (MonadIO m) => CompanyId -> UUID -> UUID -> Db m (Maybe DeploymentResources)
+getDeploymentResources :: (MonadIO m) => CompanyId -> EnvironmentId -> BuildId -> Db m (Maybe DeploymentResources)
 getDeploymentResources cId eId bId =
   deploymentResourcesQuery $ \e b p -> do
     where_ $ p ^. ProjectCompanyId ==. val cId
-    where_ $ e ^. EnvironmentId ==. val (EnvironmentKey eId)
-    where_ $ b ^. BuildId ==. val (BuildKey bId)
+    where_ $ e ^. EnvironmentId ==. val eId
+    where_ $ b ^. BuildId ==. val bId
 
 deploymentResourcesQuery ::
   (MonadIO m) =>
