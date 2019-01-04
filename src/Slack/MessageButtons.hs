@@ -16,12 +16,13 @@ data MessageButtonAction
   = OldDeployBuildFromCallbackId BuildId
   | DeployBuild BuildId EnvironmentId
   | ReleaseEnvironmentLock EnvironmentLockId
+  deriving (Show)
 
 
 instance FromJSON MessageButtonAction where
   parseJSON =
     withText "message_action" $ \t ->
-      case parseAction t of
+      case P.parseMaybe parseAction t of
         Just m -> return m
         Nothing -> fail "Wrong message type"
 
@@ -39,12 +40,11 @@ actionToText action =
       "release_lock|" <> uuidToText lId
 
 
-parseAction :: Text -> Maybe MessageButtonAction
+parseAction :: P.Parsec Void Text MessageButtonAction
 parseAction =
-  P.parseMaybe $
-    deployBuildParser
-    <|> oldDeployBuildParser
-    <|> releaseEnvironmentLockParser
+  P.try deployBuildParser
+    P.<|> P.try oldDeployBuildParser
+    P.<|> releaseEnvironmentLockParser
 
 
 deployBuildParser :: P.Parsec Void Text MessageButtonAction
@@ -53,6 +53,7 @@ deployBuildParser = do
   buildId <- BuildKey <$> uuidParser
   _ <- P.char '|'
   environmentId <- EnvironmentKey <$> uuidParser
+  P.eof
   return $ DeployBuild buildId environmentId
 
 
@@ -74,7 +75,7 @@ releaseEnvironmentLockParser = do
 
 uuidParser :: P.Parsec Void Text UUID
 uuidParser = do
-  s <- P.many (P.alphaNumChar <|> P.char '-')
+  s <- P.many (P.alphaNumChar P.<|> P.char '-')
   case textToUUID (Text.pack s) of
     Nothing -> fail "invalid uuid"
     Just u -> return u

@@ -4,6 +4,8 @@ module Api.Handlers.SlackMessages
 
 import Api.Import
 
+import Data.Aeson.Types (Parser)
+
 import qualified Api.Handlers.SlackMessageButtons.DeployBuild as DeployBuild
 import qualified Api.Handlers.SlackMessageButtons.ReleaseEnvironmentLock as ReleaseEnvironmentLock
 import Slack.MessageButtons
@@ -16,11 +18,16 @@ data Request = Request
   , reqSenderId :: !Text
   , reqSenderName :: !Text
   }
+  deriving (Show)
+
+actionNameParser :: [Object] -> Parser MessageButtonAction
+actionNameParser [] = fail "No action provided"
+actionNameParser [n] = n .: "name"
+actionNameParser _ = fail "Only one action is supported"
 
 instance FromJSON Request where
   parseJSON =
     withObject "" $ \o -> do
-      reqMessageType <- o .: "callback_id"
       actions <- o .: "actions"
       teamO <- o .: "team"
       userO <- o .: "user"
@@ -34,6 +41,7 @@ instance FromJSON Request where
           [] -> fail "No action provided"
           [e] -> return e
           _ -> fail "Only one action is supported"
+      reqMessageType <- actionNameParser actions <|> o .: "callback_id"
       return Request {..}
 
 verifyToken :: Text -> Handler ()
@@ -51,7 +59,7 @@ handleMessage Request {..} =
     OldDeployBuildFromCallbackId buildId ->
       case textToUUID reqActionValue of
         Nothing ->
-          sendResponseStatus status400 ("Invalid request" :: Text)
+          sendResponseStatus status400 ("Invalid requests" :: Text)
 
         Just environmentId ->
           DeployBuild.call (EnvironmentKey environmentId) buildId reqTeamId (reqSenderId, reqSenderName)
