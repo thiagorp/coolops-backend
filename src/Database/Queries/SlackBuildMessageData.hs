@@ -5,7 +5,7 @@ module Database.Queries.SlackBuildMessageData
   , getSlackBuildMessageData
   ) where
 
-import RIO hiding ((^.), on)
+import RIO hiding ((^.), isNothing, on)
 
 import Database.Esqueleto hiding (selectFirst)
 
@@ -14,7 +14,7 @@ import Model
 
 type MessageBuildInfo = (Entity Build, Entity Project, Maybe (Entity SlackBuildMessage))
 
-type MessageDeployment = (Entity SlackDeployment, Entity Environment, Entity Deployment)
+type MessageDeployment = (Entity SlackDeployment, Entity Environment, Entity Deployment, Maybe (Entity EnvironmentLock))
 
 data MessageData = MessageData
   { dataBuildInfo :: !MessageBuildInfo
@@ -30,17 +30,22 @@ getSlackBuildMessageData cId bId = do
     Just info -> do
       deployments <- getDeployments info
       environments <- getEnvironments info
-      return $ Just $ MessageData {dataBuildInfo = info, dataDeployments = deployments, dataEnvironments = environments}
+      return $
+        Just $ MessageData
+          { dataBuildInfo = info
+          , dataDeployments = deployments
+          , dataEnvironments = environments
+          }
 
 getBuildInfo :: (MonadIO m) => CompanyId -> UUID -> Db m (Maybe MessageBuildInfo)
 getBuildInfo cId bId =
   selectFirst $
-  from $ \(b `InnerJoin` p `LeftOuterJoin` sbm) -> do
-    on (just (b ^. BuildId) ==. (sbm ?. SlackBuildMessageBuildId)) -- Add the maybe because is a LeftOuterJoin
-    on ((p ^. ProjectId) ==. (b ^. BuildProjectId))
-    where_ (p ^. ProjectCompanyId ==. val cId)
-    where_ (b ^. BuildId ==. val (BuildKey bId))
-    return (b, p, sbm)
+    from $ \(b `InnerJoin` p `LeftOuterJoin` sbm) -> do
+      on $ just (b ^. BuildId) ==. (sbm ?. SlackBuildMessageBuildId)
+      on $ (p ^. ProjectId) ==. (b ^. BuildProjectId)
+      where_ $ p ^. ProjectCompanyId ==. val cId
+      where_ $ b ^. BuildId ==. val (BuildKey bId)
+      return (b, p, sbm)
 
 getDeployments :: (MonadIO m) => MessageBuildInfo -> Db m [MessageDeployment]
 getDeployments (_, _, maybeSlackBuildMessage) =
@@ -48,16 +53,18 @@ getDeployments (_, _, maybeSlackBuildMessage) =
     Nothing -> return []
     Just (Entity sbmId _) ->
       select $
-      from $ \(sd `InnerJoin` d `InnerJoin` e) -> do
-        on ((e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId))
-        on ((d ^. DeploymentId) ==. (sd ^. SlackDeploymentDeploymentId))
-        where_ (sd ^. SlackDeploymentBuildMessageId ==. val sbmId)
-        orderBy [asc (d ^. DeploymentCreatedAt)]
-        return (sd, e, d)
+        from $ \(sd `InnerJoin` d `InnerJoin` e `LeftOuterJoin` el) -> do
+          on $ (el ?. EnvironmentLockEnvironmentId) ==. just (e ^. EnvironmentId)
+          on $ (e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId)
+          on $ (d ^. DeploymentId) ==. (sd ^. SlackDeploymentDeploymentId)
+          where_ $ sd ^. SlackDeploymentBuildMessageId ==. val sbmId
+          where_ $ isNothing (el ?. EnvironmentLockReleasedAt)
+          orderBy [asc (d ^. DeploymentCreatedAt)]
+          return (sd, e, d, el)
 
 getEnvironments :: (MonadIO m) => MessageBuildInfo -> Db m [Entity Environment]
 getEnvironments (_, Entity pId _, _) =
   select $
-  from $ \e -> do
-    where_ (e ^. EnvironmentProjectId ==. val pId)
-    return e
+    from $ \e -> do
+      where_ $ e ^. EnvironmentProjectId ==. val pId
+      return e
