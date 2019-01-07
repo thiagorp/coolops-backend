@@ -49,8 +49,9 @@ getCompanyId_ teamId = do
     [] -> sendResponse integrationMissing
     _ -> return (map (slackAccessTokenCompanyId . entityVal) accessTokens)
 
-call :: EnvironmentId -> BuildId -> Text -> (Text, Text) -> Handler ()
+call :: EnvironmentId -> BuildId -> Text -> (Text, Text) -> Handler (Maybe a)
 call environmentId buildId teamId slackUser = do
   companyId <- getCompanyId_ teamId
   resources <- getResources_ companyId environmentId buildId
   run resources slackUser
+  return Nothing

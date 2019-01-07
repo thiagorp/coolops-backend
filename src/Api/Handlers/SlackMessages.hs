@@ -8,6 +8,7 @@ import Data.Aeson.Types (Parser)
 
 import qualified Api.Handlers.SlackMessageButtons.DeployBuild as DeployBuild
 import qualified Api.Handlers.SlackMessageButtons.ReleaseEnvironmentLock as ReleaseEnvironmentLock
+import Slack.Api.Message
 import Slack.MessageButtons
 
 data Request = Request
@@ -50,7 +51,7 @@ verifyToken token = do
   let configToken = slackVerificationToken settings
   unless (token == configToken) notAuthenticated
 
-handleMessage :: Request -> Handler ()
+handleMessage :: Request -> Handler (Maybe Message)
 handleMessage Request {..} =
   case reqMessageType of
     DeployBuild bId eId ->
@@ -67,12 +68,18 @@ handleMessage Request {..} =
     ReleaseEnvironmentLock lockId ->
       ReleaseEnvironmentLock.call reqSenderId lockId
 
-process :: Request -> Handler ()
+process :: Request -> Handler Value
 process req@Request {..} = do
   verifyToken reqVerificationToken
-  handleMessage req
+  response <- handleMessage req
+  case response of
+    Nothing ->
+      sendResponse ()
 
-postSlackMessagesR :: Handler ()
+    Just message ->
+      return $ toJSON message
+
+postSlackMessagesR :: Handler Value
 postSlackMessagesR = do
   maybeRequest <- lookupPostParam "payload"
   case encodeUtf8 <$> maybeRequest >>= decodeStrict of

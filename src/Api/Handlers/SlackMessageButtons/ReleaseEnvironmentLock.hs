@@ -28,6 +28,7 @@ app userId lockId = do
       release lockId userId
       void $ Background.notifyNewEnvironmentLock companyId lockId
 
-call :: Text -> EnvironmentLockId -> Handler ()
-call userId lockId =
+call :: Text -> EnvironmentLockId -> Handler (Maybe a)
+call userId lockId = do
   runAppInHandler $ app userId lockId
+  return Nothing
