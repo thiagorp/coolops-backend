@@ -25,17 +25,16 @@ getSlackDeploymentMessageData :: (MonadIO m) => CompanyId -> UUID -> Db m (Maybe
 getSlackDeploymentMessageData cId dId = do
   maybeData <-
     selectFirst $
-    from $ \(d `InnerJoin` b `InnerJoin` e `InnerJoin` p `InnerJoin` sd `InnerJoin` sa) -> do
-      on ((p ^. ProjectCompanyId) ==. (sa ^. SlackAccessTokenCompanyId))
-      on ((d ^. DeploymentId) ==. (sd ^. SlackDeploymentDeploymentId))
-      on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
-      on ((e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId))
-      on ((b ^. BuildId) ==. (d ^. DeploymentBuildId))
-      where_ (p ^. ProjectCompanyId ==. val cId)
-      where_ (d ^. DeploymentId ==. val (DeploymentKey dId))
-      where_ (d ^. DeploymentStatus `notIn` valList [Running, Queued])
-      limit 1
-      return (b, e, p, d, sd, sa)
+      from $ \(d `InnerJoin` b `InnerJoin` e `InnerJoin` p `InnerJoin` sd `InnerJoin` sa) -> do
+        on ((p ^. ProjectCompanyId) ==. (sa ^. SlackAccessTokenCompanyId))
+        on ((d ^. DeploymentId) ==. (sd ^. SlackDeploymentDeploymentId))
+        on ((p ^. ProjectId) ==. (e ^. EnvironmentProjectId))
+        on ((e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId))
+        on ((b ^. BuildId) ==. (d ^. DeploymentBuildId))
+        where_ (p ^. ProjectCompanyId ==. val cId)
+        where_ (d ^. DeploymentId ==. val (DeploymentKey dId))
+        where_ (d ^. DeploymentStatus `notIn` valList [Running, Queued])
+        return (b, e, p, d, sd, sa)
   case maybeData of
     Nothing -> return Nothing
     Just (dataBuild, dataEnvironment, dataProject, dataDeployment, dataSlackDeployment, dataSlackAccessToken) ->

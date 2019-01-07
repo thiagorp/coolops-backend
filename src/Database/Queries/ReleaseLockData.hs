@@ -17,7 +17,6 @@ getReleaseLockData lockId = do
         on $ (p ^. ProjectId) ==. (e ^. EnvironmentProjectId)
         on $ (e ^. EnvironmentId) ==. (el ^. EnvironmentLockEnvironmentId)
         where_ $ el ^. EnvironmentLockId ==. val lockId
-        limit 1
         return (p ^. ProjectCompanyId, el)
 
   return $ (\(Value cId, el) -> (cId, el)) <$> result

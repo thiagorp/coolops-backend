@@ -37,5 +37,4 @@ getEnvironmentLockMessageData cId lId =
       on $ (e ^. EnvironmentId) ==. (el ^. EnvironmentLockEnvironmentId)
       where_ $ p ^. ProjectCompanyId ==. val cId
       where_ $ el ^. EnvironmentLockId ==. val lId
-      limit 1
       return (el, e, b, p, spi, sat, selm)
