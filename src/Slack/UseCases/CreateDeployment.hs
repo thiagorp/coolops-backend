@@ -26,6 +26,22 @@ data Error =
   ProjectsDontMatch
 
 
+notifyIfEnvironmentIsLocked_ :: Entity Deployment -> Text -> App ()
+notifyIfEnvironmentIsLocked_ (Entity deploymentId Deployment {..}) userId = do
+  maybeActiveLock <-
+    selectFirst
+      [ EnvironmentLockEnvironmentId ==. deploymentEnvironmentId
+      , EnvironmentLockReleasedAt ==. Nothing
+      ]
+      []
+  case maybeActiveLock of
+    Nothing ->
+      return ()
+
+    Just (Entity environmentLockId _) ->
+      void $ Background.notifyDeploymentQueuedByLock deploymentId environmentLockId userId
+
+
 createSlackDeployment_ :: Params -> Entity Deployment -> App ()
 createSlackDeployment_ Params {..} deployment = do
   let (Entity buildId@(BuildKey buildKey) Build {..}) = build
@@ -51,4 +67,7 @@ call params@Params {..} = do
   result <- App.call $ App.Params build environment slackUserId
   case result of
     Left App.ProjectsDontMatch -> return $ Left ProjectsDontMatch
-    Right d -> createSlackDeployment_ params d >> return (Right d)
+    Right d -> do
+      createSlackDeployment_ params d
+      notifyIfEnvironmentIsLocked_ d slackUserId
+      return (Right d)

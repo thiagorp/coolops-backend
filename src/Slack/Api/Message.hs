@@ -4,9 +4,14 @@ import RIO
 
 import Data.Aeson
 
+data MessageResponseType
+  = EphemeralResponse
+  | InChannelResponse
+
 data Message = Message
   { messageText :: !(Maybe Text)
   , messageAttachments :: !(Maybe [Attachment])
+  , messageResponseType :: !(Maybe MessageResponseType)
   }
 
 data Attachment = Attachment
@@ -35,7 +40,7 @@ data Field = Field
   }
 
 slackMessage :: Message
-slackMessage = Message Nothing Nothing
+slackMessage = Message Nothing Nothing Nothing
 
 slackAttachment :: Attachment
 slackAttachment =
@@ -58,9 +63,17 @@ slackAction =
 slackField :: Field
 slackField = Field {fieldValue = "", fieldTitle = ""}
 
+instance ToJSON MessageResponseType where
+  toJSON EphemeralResponse = "ephemeral"
+  toJSON InChannelResponse = "in_channel"
+
 instance ToJSON Message where
   toJSON Message {..} =
-    object ["text" .= messageText, "attachments" .= messageAttachments]
+    object
+      [ "text" .= messageText
+      , "attachments" .= messageAttachments
+      , "response_type" .= messageResponseType
+      ]
 
 instance ToJSON Attachment where
   toJSON Attachment {..} =

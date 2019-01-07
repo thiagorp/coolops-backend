@@ -1,5 +1,6 @@
 module Slack.Api.ChatMessages
   ( postMessage
+  , postEphemeral
   , updateMessage
   ) where
 
@@ -30,6 +31,15 @@ postMessage token channel message = do
     _ -> return Nothing
   where
     params = ChatPostMessageAsBot token channel message
+
+postEphemeral :: Text -> Text -> Text -> Message -> App (Maybe Text)
+postEphemeral token channel toUserId message = do
+  response <- slackRequest (PostEphemeral token params)
+  case statusCode (responseStatus response) of
+    200 -> return $ fmap responseTs $ decode $ responseBody response
+    _ -> return Nothing
+  where
+    params = ChatPostEphemeralMessage channel toUserId message
 
 updateMessage :: Text -> Text -> Text -> Message -> App ()
 updateMessage token channel ts message =

@@ -23,14 +23,21 @@ integrationMissing :: TL.Text
 integrationMissing = "Something wrong happened and we can't find your Slack integration"
 
 run :: DeploymentResources -> (Text, Text) -> Handler ()
-run DeploymentResources {..} (slackUserId, slackUserName) = do
+run DeploymentResources {..} (userId, userName) = do
   result <- runAppInHandler $ App.call appParams
   case result of
     Right _ -> return ()
     Left ProjectsDontMatch -> sendResponse projectsDontMatch
   where
     Entity _ project = deploymentProject
-    appParams = Params deploymentBuild deploymentEnvironment (projectCompanyId project) slackUserId slackUserName
+    appParams =
+      Params
+        { build = deploymentBuild
+        , environment = deploymentEnvironment
+        , companyId = projectCompanyId project
+        , slackUserId = userId
+        , slackUserName = userName
+        }
 
 getDeploymentResources_ :: EnvironmentId -> BuildId -> CompanyId -> Handler (Maybe DeploymentResources)
 getDeploymentResources_ eId bId cId = runAppInHandler $ getDeploymentResources cId eId bId
