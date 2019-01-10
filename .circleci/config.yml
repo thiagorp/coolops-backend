@@ -25,5 +25,4 @@ workflows:
       - deploy:
           requires:
             - build
-            - lint
 
