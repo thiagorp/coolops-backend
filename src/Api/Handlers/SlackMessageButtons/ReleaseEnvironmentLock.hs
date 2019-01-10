@@ -4,31 +4,9 @@ module Api.Handlers.SlackMessageButtons.ReleaseEnvironmentLock
 
 import Api.Import
 
-import qualified BackgroundJobs.AppJobs as Background
-import Database.Queries.ReleaseLockData (getReleaseLockData)
-
-release :: EnvironmentLockId -> Text -> App ()
-release lockId userId = do
-  now <- liftIO getCurrentTime
-  update
-    lockId
-    [ EnvironmentLockUpdatedAt =. now
-      , EnvironmentLockReleasedAt =. Just now
-      , EnvironmentLockReleasedBy =. Just userId
-    ]
-
-app :: Text -> EnvironmentLockId -> App ()
-app userId lockId = do
-  maybeLock <- getReleaseLockData lockId
-  case maybeLock of
-    Nothing ->
-      return ()
-
-    Just (companyId, _) -> do
-      release lockId userId
-      void $ Background.notifyNewEnvironmentLock companyId lockId
+import qualified Deployments.UseCases.ReleaseEnvironmentLock as App
 
 call :: Text -> EnvironmentLockId -> Handler (Maybe a)
 call userId lockId = do
-  runAppInHandler $ app userId lockId
+  runAppInHandler $ App.call userId lockId
   return Nothing

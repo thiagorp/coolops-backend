@@ -1,0 +1,33 @@
+version: 2
+
+jobs:
+  lint:
+    docker:
+      - image: coolopsio/api-buildbase:latest
+    steps:
+      - checkout
+      - run: hlint .
+  build:
+    docker:
+      - image: coolopsio/api-buildbase:latest
+    steps:
+      - checkout
+      - run: make build
+      - run: make push
+  deploy:
+    docker:
+      - image: coolopsio/api-buildbase:latest
+    steps:
+      - run: make notify_coolops
+
+workflows:
+  version: 2
+  build_and_deploy:
+    jobs:
+      - build
+      - lint
+      - test:
+          requires:
+            - build
+            - lint
+

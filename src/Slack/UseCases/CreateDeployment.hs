@@ -7,6 +7,7 @@ module Slack.UseCases.CreateDeployment
 
 import Import
 
+import qualified Deployments.UseCases.ReleaseEnvironmentLock as ReleaseLock
 import qualified BackgroundJobs.AppJobs as Background
 import qualified Deployments.UseCases.CreateDeployment as App
 import Model
@@ -26,8 +27,8 @@ data Error =
   ProjectsDontMatch
 
 
-notifyIfEnvironmentIsLocked_ :: Entity Deployment -> Text -> App ()
-notifyIfEnvironmentIsLocked_ (Entity deploymentId Deployment {..}) userId = do
+handleActiveLock_ :: Entity Deployment -> Text -> App ()
+handleActiveLock_ (Entity deploymentId Deployment {..}) userId = do
   maybeActiveLock <-
     selectFirst
       [ EnvironmentLockEnvironmentId ==. deploymentEnvironmentId
@@ -38,8 +39,10 @@ notifyIfEnvironmentIsLocked_ (Entity deploymentId Deployment {..}) userId = do
     Nothing ->
       return ()
 
-    Just (Entity environmentLockId _) ->
-      void $ Background.notifyDeploymentQueuedByLock deploymentId environmentLockId userId
+    Just (Entity environmentLockId EnvironmentLock {..}) ->
+      if environmentLockCreatedBy == userId
+         then ReleaseLock.call userId environmentLockId
+         else void $ Background.notifyDeploymentQueuedByLock deploymentId environmentLockId userId
 
 
 createSlackDeployment_ :: Params -> Entity Deployment -> App ()
@@ -69,5 +72,5 @@ call params@Params {..} = do
     Left App.ProjectsDontMatch -> return $ Left ProjectsDontMatch
     Right d -> do
       createSlackDeployment_ params d
-      notifyIfEnvironmentIsLocked_ d slackUserId
+      handleActiveLock_ d slackUserId
       return (Right d)

@@ -19,7 +19,7 @@ push: auth_container_registry
 
 notify_coolops:
 	curl -L https://github.com/coolopsio/coolops/releases/download/v0.1.0/install.sh | sh
-	coolops build:new ${BUILD_NAME} -t ${COOLOPS_PRODUCTION_API_TOKEN} -p DOCKER_IMAGE=${RELEASE_DOCKER_IMG} -m "Job url"="${JOB_URL}"
+	coolops build:new:circleci -p DOCKER_IMAGE=${RELEASE_DOCKER_IMAGE}
 
 
 dev:
