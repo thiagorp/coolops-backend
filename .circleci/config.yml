@@ -1,12 +1,6 @@
 version: 2
 
 jobs:
-  lint:
-    docker:
-      - image: coolopsio/api-buildbase:latest
-    steps:
-      - checkout
-      - run: hlint .
   build:
     docker:
       - image: coolopsio/api-buildbase:latest
@@ -14,6 +8,7 @@ jobs:
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
+      - run: hlint .
       - run: VERSION=$(echo $CIRCLE_BRANCH | tr "/" "-")-${CIRCLE_SHA1} make build
       - run: VERSION=$(echo $CIRCLE_BRANCH | tr "/" "-")-${CIRCLE_SHA1} make push
   deploy:
@@ -27,7 +22,6 @@ workflows:
   build_and_deploy:
     jobs:
       - build
-      - lint
       - test:
           requires:
             - build
