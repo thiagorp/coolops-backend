@@ -12,8 +12,8 @@ jobs:
       - run: VERSION=$(echo $CIRCLE_BRANCH | tr "/" "-")-${CIRCLE_SHA1} make build
       - run: VERSION=$(echo $CIRCLE_BRANCH | tr "/" "-")-${CIRCLE_SHA1} make push
   deploy:
-    docker:
-      - image: coolopsio/api-buildbase:latest
+    machine:
+      image: circleci/classic:latest
     steps:
       - run: VERSION=$(echo $CIRCLE_BRANCH | tr "/" "-")-${CIRCLE_SHA1} make notify_coolops
 
