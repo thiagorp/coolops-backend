@@ -12,13 +12,13 @@ jobs:
       - image: coolopsio/api-buildbase:latest
     steps:
       - checkout
-      - run: make build
-      - run: make push
+      - run: VERSION=$(echo $CIRCLE_BRANCH | tr "/" "-")-${CIRCLE_SHA1} make build
+      - run: VERSION=$(echo $CIRCLE_BRANCH | tr "/" "-")-${CIRCLE_SHA1} make push
   deploy:
     docker:
       - image: coolopsio/api-buildbase:latest
     steps:
-      - run: make notify_coolops
+      - run: VERSION=$(echo $CIRCLE_BRANCH | tr "/" "-")-${CIRCLE_SHA1} make notify_coolops
 
 workflows:
   version: 2
