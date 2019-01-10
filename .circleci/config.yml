@@ -15,6 +15,7 @@ jobs:
     machine:
       image: circleci/classic:latest
     steps:
+      - checkout
       - run: VERSION=$(echo $CIRCLE_BRANCH | tr "/" "-")-${CIRCLE_SHA1} make notify_coolops
 
 workflows:
