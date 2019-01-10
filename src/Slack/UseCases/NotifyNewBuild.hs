@@ -113,7 +113,7 @@ buildMessage appBaseUrl MessageData {..} =
         , attachmentFields = Just $ map (\(t, v) -> slackField {fieldValue = v, fieldTitle = t}) fields
         }
 
-    buildDeploymentRow (Entity _ SlackDeployment {..}, Entity _ Environment {..}, Entity (DeploymentKey deploymentId) Deployment {..}, maybeLock) =
+    buildDeploymentRow (Entity _ SlackDeployment {..}, Entity _ Environment {..}, Entity (DeploymentKey deploymentId) Deployment {..}) =
       slackAttachment
         { attachmentText =
             Just $
@@ -125,9 +125,7 @@ buildMessage appBaseUrl MessageData {..} =
                   "<@" <> slackDeploymentSlackUserId <> "> deployed to *" <> getValue environmentName <> "*"
 
                 Queued ->
-                  if isJust maybeLock
-                     then "<@" <> slackDeploymentSlackUserId <> "> has a deployment to *" <> getValue environmentName <> "* waiting for the lock"
-                     else "<@" <> slackDeploymentSlackUserId <> "> has a queued deployment to *" <> getValue environmentName <> "*"
+                  "<@" <> slackDeploymentSlackUserId <> "> has a queued deployment to *" <> getValue environmentName <> "*"
 
                 Running ->
                   "<@" <> slackDeploymentSlackUserId <> "> has a running deployment to *" <> getValue environmentName <> "*"

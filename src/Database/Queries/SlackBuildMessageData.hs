@@ -14,7 +14,7 @@ import Model
 
 type MessageBuildInfo = (Entity Build, Entity Project, Maybe (Entity SlackBuildMessage))
 
-type MessageDeployment = (Entity SlackDeployment, Entity Environment, Entity Deployment, Maybe (Entity EnvironmentLock))
+type MessageDeployment = (Entity SlackDeployment, Entity Environment, Entity Deployment)
 
 data MessageData = MessageData
   { dataBuildInfo :: !MessageBuildInfo
@@ -53,14 +53,12 @@ getDeployments (_, _, maybeSlackBuildMessage) =
     Nothing -> return []
     Just (Entity sbmId _) ->
       select $
-        from $ \(sd `InnerJoin` d `InnerJoin` e `LeftOuterJoin` el) -> do
-          on $ (el ?. EnvironmentLockEnvironmentId) ==. just (e ^. EnvironmentId)
+        from $ \(sd `InnerJoin` d `InnerJoin` e) -> do
           on $ (e ^. EnvironmentId) ==. (d ^. DeploymentEnvironmentId)
           on $ (d ^. DeploymentId) ==. (sd ^. SlackDeploymentDeploymentId)
           where_ $ sd ^. SlackDeploymentBuildMessageId ==. val sbmId
-          where_ $ isNothing (el ?. EnvironmentLockReleasedAt)
           orderBy [asc (d ^. DeploymentCreatedAt)]
-          return (sd, e, d, el)
+          return (sd, e, d)
 
 getEnvironments :: (MonadIO m) => MessageBuildInfo -> Db m [Entity Environment]
 getEnvironments (_, Entity pId _, _) =
