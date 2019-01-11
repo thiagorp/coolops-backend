@@ -50,7 +50,18 @@ instance HasAnnotatedType ProjectBuild where
   getAnnotatedType = getAnnotatedType @Int
 
 type Project
-   = Object "Project" '[] '[ Field "id" DB.ProjectId, Field "name" DB.ProjectName, Field "slug" DB.Slug, Field "deploymentImage" DB.DockerImage, Field "accessToken" DB.AccessToken, Field "environments" (List Environment), Argument "page" (Maybe Int64) :> Argument "pageSize" (Maybe Int64) :> Field "builds" (List ProjectBuild), Field "slackIntegration" (Maybe SlackProjectIntegration), Field "createdAt" DB.UTCTime, Field "updatedAt" DB.UTCTime]
+   = Object "Project" '[]
+   '[ Field "id" DB.ProjectId
+    , Field "name" DB.ProjectName
+    , Field "slug" DB.Slug
+    , Field "deploymentImage" DB.DockerImage
+    , Field "accessToken" DB.AccessToken
+    , Field "environments" (List Environment)
+    , Argument "page" (Maybe Int64) :> Argument "pageSize" (Maybe Int64) :> Field "builds" (List ProjectBuild)
+    , Field "slackIntegration" (Maybe SlackProjectIntegration)
+    , Field "createdAt" DB.UTCTime
+    , Field "updatedAt" DB.UTCTime
+    ]
 
 newtype EnvironmentProjectD m =
   EnvironmentProjectD (Handler m Project)
@@ -65,13 +76,35 @@ instance HasAnnotatedType EnvironmentProject where
   getAnnotatedType = getAnnotatedType @Int
 
 type Environment
-   = Object "Environment" '[] '[ Field "id" DB.EnvironmentId, Field "name" DB.EnvironmentName, Field "slug" DB.Slug, Field "environmentVariables" (List Param), Field "lastDeployment" (Maybe Deployment), Field "project" EnvironmentProject, Field "createdAt" DB.UTCTime, Field "updatedAt" DB.UTCTime]
+   = Object "Environment" '[]
+   '[ Field "id" DB.EnvironmentId
+    , Field "name" DB.EnvironmentName
+    , Field "slug" DB.Slug
+    , Field "environmentVariables" (List Param)
+    , Field "lastDeployment" (Maybe Deployment)
+    , Field "project" EnvironmentProject
+    , Field "createdAt" DB.UTCTime
+    , Field "updatedAt" DB.UTCTime
+    ]
 
 type Build
-   = Object "Build" '[] '[ Field "id" DB.BuildId, Field "name" DB.BuildName, Field "project" Project, Field "params" (List Param), Field "metadata" (List Param), Field "createdAt" DB.UTCTime, Field "updatedAt" DB.UTCTime]
+   = Object "Build" '[]
+   '[ Field "id" DB.BuildId
+    , Field "name" DB.BuildName
+    , Field "project" Project
+    , Field "params" (List Param)
+    , Field "metadata" (List Param)
+    , Field "createdAt" DB.UTCTime
+    , Field "updatedAt" DB.UTCTime
+    ]
 
 type Company
-   = Object "Company" '[] '[ Field "id" DB.CompanyId, Field "name" DB.CompanyName, Field "createdAt" DB.UTCTime, Field "updatedAt" DB.UTCTime]
+   = Object "Company" '[]
+   '[ Field "id" DB.CompanyId
+    , Field "name" DB.CompanyName
+    , Field "createdAt" DB.UTCTime
+    , Field "updatedAt" DB.UTCTime
+    ]
 
 newtype DeploymentBuildD m =
   DeploymentBuildD (Handler m Build)
@@ -86,23 +119,62 @@ instance HasAnnotatedType DeploymentBuild where
   getAnnotatedType = getAnnotatedType @Int
 
 type Deployment
-   = Object "Deployment" '[] '[ Field "id" DB.DeploymentId, Field "startedAt" (Maybe DB.UTCTime), Field "status" (Enum "DeploymentStatus" DB.DeploymentStatus), Field "build" DeploymentBuild, Field "createdAt" DB.UTCTime, Field "updatedAt" DB.UTCTime]
+   = Object "Deployment" '[]
+   '[ Field "id" DB.DeploymentId
+    , Field "startedAt" (Maybe DB.UTCTime)
+    , Field "status" (Enum "DeploymentStatus" DB.DeploymentStatus)
+    , Field "build" DeploymentBuild
+    , Field "createdAt" DB.UTCTime
+    , Field "updatedAt" DB.UTCTime
+    ]
 
-type Param = Object "Param" '[] '[ Field "key" Text, Field "value" Text]
+type Param
+  = Object "Param" '[]
+  '[ Field "key" Text
+   , Field "value" Text
+   ]
 
 type SlackConfiguration = Object "SlackConfiguration" '[] '[ Field "clientId" Text]
 
-type SlackChannel = Object "SlackChannel" '[] '[ Field "id" Text, Field "name" Text]
+type SlackChannel
+  = Object "SlackChannel" '[]
+  '[ Field "id" Text
+   , Field "name" Text
+   ]
 
-type SlackAccessToken = Object "SlackAccessToken" '[] '[ Field "teamName" Text, Field "channels" (List SlackChannel)]
+type SlackAccessToken
+  = Object "SlackAccessToken" '[]
+  '[ Field "teamName" Text
+   , Field "channels" (List SlackChannel)
+   ]
 
-type SlackProjectIntegration = Object "SlackProjectIntegration" '[] '[ Field "channelName" Text, Field "channelId" Text]
+type SlackProjectIntegration
+  = Object "SlackProjectIntegration" '[]
+  '[ Field "channelName" Text
+   , Field "channelId" Text
+   ]
 
 type User
-   = Object "User" '[] '[ Field "id" DB.UserId, Field "firstName" DB.UserName, Field "lastName" DB.UserName, Field "email" DB.EmailAddress, Field "company" Company, Field "createdAt" DB.UTCTime, Field "updatedAt" DB.UTCTime]
+   = Object "User" '[]
+   '[ Field "id" DB.UserId
+    , Field "firstName" DB.UserName
+    , Field "lastName" DB.UserName
+    , Field "email" DB.EmailAddress
+    , Field "company" Company
+    , Field "createdAt" DB.UTCTime
+    , Field "updatedAt" DB.UTCTime
+    ]
 
 type Query
-   = Object "Query" '[] '[ Argument "id" UUID :> Field "environment" (Maybe Environment), Field "projects" (List Project), Argument "page" (Maybe Int64) :> Argument "pageSize" (Maybe Int64) :> Field "builds" (List Build), Argument "id" UUID :> Field "project" (Maybe Project), Field "slackAccessToken" (Maybe SlackAccessToken), Field "slackConfiguration" SlackConfiguration, Field "me" User]
+   = Object "Query" '[]
+   '[ Argument "id" UUID :> Field "environment" (Maybe Environment)
+    , Field "projects" (List Project)
+    , Argument "page" (Maybe Int64) :> Argument "pageSize" (Maybe Int64) :> Field "builds" (List Build)
+    , Argument "id" UUID :> Field "project" (Maybe Project)
+    , Field "slackAccessToken" (Maybe SlackAccessToken)
+    , Field "slackConfiguration" SlackConfiguration
+    , Field "me" User
+    ]
 
 -- Datasource
 getBuild_ :: DB.BuildId -> Handler App Build
