@@ -259,68 +259,104 @@ listSlackChannels token = map slackChannelHandler <$> DB.listSlackChannels token
 -- Handlers
 companyHandler :: DB.Entity DB.Company -> Handler App Company
 companyHandler (DB.Entity companyId DB.Company {..}) =
-  pure $ pure companyId :<> pure companyName :<> pure companyCreatedAt :<> pure companyUpdatedAt
+  pure $
+    pure companyId
+    :<> pure companyName
+    :<> pure companyCreatedAt
+    :<> pure companyUpdatedAt
 
 deploymentHandler :: DB.Entity DB.Deployment -> Handler App Deployment
 deploymentHandler (DB.Entity deploymentId DB.Deployment {..}) =
-  pure $ pure deploymentId :<> pure (pure <$> deploymentStartedAt) :<> pure deploymentStatus :<>
-  (DeploymentBuildD $ getBuild_ deploymentBuildId) :<>
-  pure deploymentCreatedAt :<>
-  pure deploymentUpdatedAt
+  pure $
+    pure deploymentId
+    :<> pure (pure <$> deploymentStartedAt)
+    :<> pure deploymentStatus
+    :<> (DeploymentBuildD $ getBuild_ deploymentBuildId)
+    :<> pure deploymentCreatedAt
+    :<> pure deploymentUpdatedAt
 
 environmentHandler :: DB.Entity DB.Environment -> Handler App Environment
 environmentHandler (DB.Entity environmentId DB.Environment {..}) =
-  pure $ pure environmentId :<> pure environmentName :<> pure environmentSlug :<>
-  pure (map paramHandler (HashMap.toList environmentEnvVars)) :<>
-  getEnvLastDeployment environmentId :<>
-  (EnvironmentProjectD $ getProject_ environmentProjectId) :<>
-  pure environmentCreatedAt :<>
-  pure environmentUpdatedAt
+  pure $
+    pure environmentId
+    :<> pure environmentName
+    :<> pure environmentSlug
+    :<> pure (map paramHandler (HashMap.toList environmentEnvVars))
+    :<> getEnvLastDeployment environmentId
+    :<> (EnvironmentProjectD $ getProject_ environmentProjectId)
+    :<> pure environmentCreatedAt
+    :<> pure environmentUpdatedAt
 
 paramHandler :: (Text, Text) -> Handler App Param
-paramHandler (key, value) = pure $ pure key :<> pure value
+paramHandler (key, value) =
+  pure $
+    pure key
+    :<> pure value
 
 projectHandler :: DB.Entity DB.Project -> Handler App Project
 projectHandler (DB.Entity projectId DB.Project {..}) =
-  pure $ pure projectId :<> pure projectName :<> pure projectSlug :<> pure projectDeploymentImage :<>
-  pure projectAccessToken :<>
-  listEnvironments projectId :<>
-  (\x y -> map ProjectBuildD <$> listBuilds (Just projectId) x y) :<>
-  getSlackProjectIntegration projectId :<>
-  pure projectCreatedAt :<>
-  pure projectUpdatedAt
+  pure $
+    pure projectId
+    :<> pure projectName
+    :<> pure projectSlug
+    :<> pure projectDeploymentImage
+    :<> pure projectAccessToken
+    :<> listEnvironments projectId
+    :<> (\x y -> map ProjectBuildD <$> listBuilds (Just projectId) x y)
+    :<> getSlackProjectIntegration projectId
+    :<> pure projectCreatedAt
+    :<> pure projectUpdatedAt
 
 buildHandler :: DB.Entity DB.Build -> Handler App Build
 buildHandler (DB.Entity buildId DB.Build {..}) =
-  pure $ pure buildId :<> pure buildName :<> getProject_ buildProjectId :<>
-  pure (map paramHandler (HashMap.toList buildParams)) :<>
-  pure (map paramHandler (HashMap.toList buildMetadata)) :<>
-  pure buildCreatedAt :<>
-  pure buildUpdatedAt
+  pure $
+    pure buildId
+    :<> pure buildName
+    :<> getProject_ buildProjectId
+    :<> pure (map paramHandler (HashMap.toList buildParams))
+    :<> pure (map paramHandler (HashMap.toList buildMetadata))
+    :<> pure buildCreatedAt
+    :<> pure buildUpdatedAt
 
 slackAccessTokenHandler :: DB.Entity DB.SlackAccessToken -> Handler App SlackAccessToken
 slackAccessTokenHandler (DB.Entity _ DB.SlackAccessToken {..}) =
-  pure $ pure slackAccessTokenTeamName :<> listSlackChannels slackAccessTokenBotAccessToken
+  pure $
+    pure slackAccessTokenTeamName
+    :<> listSlackChannels slackAccessTokenBotAccessToken
 
 slackChannelHandler :: Api.SlackChannel -> Handler App SlackChannel
-slackChannelHandler Api.SlackChannel {..} = pure $ pure slackChannelId :<> pure slackChannelName
+slackChannelHandler Api.SlackChannel {..} =
+  pure $
+    pure slackChannelId
+    :<> pure slackChannelName
 
 slackProjectIntegrationHandler :: DB.Entity DB.SlackProjectIntegration -> Handler App SlackProjectIntegration
 slackProjectIntegrationHandler (DB.Entity _ DB.SlackProjectIntegration {..}) =
-  pure $ pure slackProjectIntegrationChannelName :<> pure slackProjectIntegrationChannelId
+  pure $
+    pure slackProjectIntegrationChannelName
+    :<> pure slackProjectIntegrationChannelId
 
 userHandler :: DB.Entity DB.User -> Handler App User
 userHandler (DB.Entity userId DB.User {..}) =
-  pure $ pure userId :<> pure userFirstName :<> pure userLastName :<> pure userEmail :<> getCompany_ :<>
-  pure userCreatedAt :<>
-  pure userUpdatedAt
+  pure $
+    pure userId
+    :<> pure userFirstName
+    :<> pure userLastName
+    :<> pure userEmail
+    :<> getCompany_
+    :<> pure userCreatedAt
+    :<> pure userUpdatedAt
 
 handler :: DB.Entity DB.User -> Env -> Handler App Query
 handler user Env {..} =
-  pure $ getEnvironment . DB.EnvironmentKey :<> listProjects :<> listBuilds Nothing :<> getProject . DB.ProjectKey :<>
-  getSlackAccessToken :<>
-  getSlackConfiguration slackSettings :<>
-  getUser_ (DB.entityKey user)
+  pure $
+    getEnvironment . DB.EnvironmentKey
+    :<> listProjects
+    :<> listBuilds Nothing
+    :<> getProject . DB.ProjectKey
+    :<> getSlackAccessToken
+    :<> getSlackConfiguration slackSettings
+    :<> getUser_ (DB.entityKey user)
 
 newtype Request = Request
   { reqQuery :: Text
