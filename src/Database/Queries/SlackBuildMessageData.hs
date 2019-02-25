@@ -65,4 +65,5 @@ getEnvironments (_, Entity pId _, _) =
   select $
     from $ \e -> do
       where_ $ e ^. EnvironmentProjectId ==. val pId
+      orderBy [asc (e ^. EnvironmentName)]
       return e
