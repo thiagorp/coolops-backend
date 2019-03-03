@@ -56,7 +56,7 @@ buildResponse (Entity userId User {..}, Entity companyId Company {..}) = do
 
 postSignupR :: Handler Value
 postSignupR = do
-  requestData <- mapRequest <$> requireJsonBody
+  requestData <- mapRequest <$> requireCheckJsonBody
   result <- runAppInHandler $ App.signup requestData
   case result of
     Left App.UserAlreadyExists -> sendResponseStatus status409 ("User already exists" :: Text)

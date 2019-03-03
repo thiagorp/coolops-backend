@@ -45,4 +45,4 @@ handleEvent event =
 
 
 postSlackEventsR :: Handler Value
-postSlackEventsR = requireJsonBody >>= handleEvent
+postSlackEventsR = requireCheckJsonBody >>= handleEvent

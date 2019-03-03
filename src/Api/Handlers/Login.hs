@@ -36,7 +36,7 @@ buildResponse User {..} = Response {resAccessToken = userAccessToken}
 
 postTokensR :: Handler Value
 postTokensR = do
-  requestData <- mapParams <$> requireJsonBody
+  requestData <- mapParams <$> requireCheckJsonBody
   result <- runAppInHandler $ App.login requestData
   case result of
     Just u -> return $ toJSON $ buildResponse u

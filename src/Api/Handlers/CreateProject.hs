@@ -28,7 +28,7 @@ mapRequest User {..} Request {..} = App.Params reqProjectName reqProjectSlug req
 
 call :: Entity User -> Handler Value
 call (Entity _ user) = do
-  requestData <- mapRequest user <$> requireJsonBody
+  requestData <- mapRequest user <$> requireCheckJsonBody
   result <- runAppInHandler $ App.call requestData
   case result of
     Left App.SlugAlreadyExists -> sendResponseStatus conflict409 ()

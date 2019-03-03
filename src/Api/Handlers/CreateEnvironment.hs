@@ -28,7 +28,7 @@ mapRequest Request {..} = App.Params reqEnvironmentName reqEnvironmentEnvVars re
 
 call :: UUID -> Entity User -> Handler Value
 call projectId (Entity _ User {..}) = do
-  requestData <- mapRequest <$> requireJsonBody
+  requestData <- mapRequest <$> requireCheckJsonBody
   maybeProject <- runAppInHandler $ App.call projectId userCompanyId requestData
   case maybeProject of
     Left App.ProjectNotFound -> notFound

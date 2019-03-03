@@ -36,7 +36,7 @@ call pId (Entity _ User {..}) = do
   case maybeProject of
     Nothing -> sendResponseStatus notFound404 ()
     Just project -> do
-      request <- requireJsonBody
+      request <- requireCheckJsonBody
       void $ runAppInHandler $ App.call (buildParams' project request)
 
 postCreateProjectSlackIntegrationR :: UUID -> Handler ()

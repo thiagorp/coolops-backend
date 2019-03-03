@@ -378,7 +378,7 @@ instance FromJSON Request where
 
 call :: DB.Entity DB.User -> Api.Handler Api.Value
 call user = do
-  Request {..} <- requireJsonBody
+  Request {..} <- requireCheckJsonBody
   appEnv <- getYesod
   env <- DB.buildEnv user appEnv
   liftIO $ toJSON <$> DB.run env (interpretQuery @Query (handler user appEnv) reqQuery Nothing Map.empty)
