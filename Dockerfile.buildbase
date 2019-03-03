@@ -1,4 +1,4 @@
-FROM haskell:8.4.4
+FROM haskell:8.6.3
 
 RUN apt-get update && apt-get install -y curl lsb-release
 RUN echo "deb http://packages.cloud.google.com/apt cloud-sdk-$(lsb_release -c -s) main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list

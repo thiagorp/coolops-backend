@@ -24,7 +24,7 @@ mapRequest User {..} Request {..} = App.Params userCompanyId reqCode
 
 call :: Entity User -> Handler ()
 call (Entity _ user) = do
-  appParams <- mapRequest user <$> requireJsonBody
+  appParams <- mapRequest user <$> requireCheckJsonBody
   result <- runAppInHandler $ App.call appParams
   case result of
     Right _ -> sendResponseStatus created201 ()

@@ -29,7 +29,7 @@ mapRequest Request {..} = App.Params reqEnvironmentName reqEnvironmentSlug reqEn
 
 call_ :: Entity Environment -> Handler ()
 call_ (Entity environmentId _) = do
-  requestData <- mapRequest <$> requireJsonBody
+  requestData <- mapRequest <$> requireCheckJsonBody
   runAppInHandler $ App.call environmentId requestData
 
 call :: UUID -> Entity User -> Handler ()

@@ -29,7 +29,7 @@ mapRequest Request {..} = App.Params reqProjectName reqProjectSlug reqProjectDep
 
 call_ :: Entity Project -> Handler ()
 call_ (Entity projectId _) = do
-  requestData <- mapRequest <$> requireJsonBody
+  requestData <- mapRequest <$> requireCheckJsonBody
   runAppInHandler $ App.call projectId requestData
 
 call :: UUID -> Entity User -> Handler ()
