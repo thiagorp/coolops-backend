@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module BackgroundJobs.Handlers.NotifyBuild
   ( Params(..)
   , call

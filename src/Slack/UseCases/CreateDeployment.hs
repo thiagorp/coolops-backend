@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Slack.UseCases.CreateDeployment
   ( module Model
   , Error(..)

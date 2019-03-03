@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Slack.UseCases.CreateProjectIntegration
   ( module Model
   , Params(..)

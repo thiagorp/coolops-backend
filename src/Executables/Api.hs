@@ -1,4 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Executables.Api (run) where
 
@@ -48,8 +49,8 @@ mkApp env = do
 run :: IO ()
 run = do
   migrateDb
-  requestManager <- newTlsManagerWith (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
-  env <- buildEnv 10 requestManager
+  reqManager <- newTlsManagerWith (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
+  env <- buildEnv 10 reqManager
   port <- appPort
   app <- mkApp env
   Warp.runSettings (settings port) app

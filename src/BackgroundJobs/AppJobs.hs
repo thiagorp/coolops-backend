@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module BackgroundJobs.AppJobs
   ( notifySlackDeployer
   , notifyDeploymentQueuedByLock

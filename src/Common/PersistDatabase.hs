@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE Rank2Types #-}
+
 module Common.PersistDatabase
   ( module Common.PersistDatabase
   , module Database.Esqueleto

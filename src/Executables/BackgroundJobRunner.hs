@@ -18,6 +18,6 @@ loopWith env = do
 
 run :: IO ()
 run = do
-  requestManager <- newTlsManagerWith (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
-  env <- buildEnv 1 requestManager
+  reqManager <- newTlsManagerWith (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
+  env <- buildEnv 1 reqManager
   loopWith env

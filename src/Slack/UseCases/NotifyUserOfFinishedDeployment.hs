@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Slack.UseCases.NotifyUserOfFinishedDeployment
   ( module Database.Queries.SlackDeploymentMessageData
   , Error(..)

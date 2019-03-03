@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Deployments.UseCases.UpdateEnvironment
   ( Params(..)
   , call

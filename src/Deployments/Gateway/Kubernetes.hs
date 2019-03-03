@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Deployments.Gateway.Kubernetes
   ( getDeploymentLogs
   , runDeployment

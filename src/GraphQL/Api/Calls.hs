@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module GraphQL.Api.Calls
   ( module GraphQL.Api.Types
   , listSlackConversations

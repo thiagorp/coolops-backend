@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Slack.Database.Deployment
   ( getSlackDeployment
   ) where

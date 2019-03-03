@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Api.Handlers.SlackMessageButtons.DeployBuild
   ( call
   ) where

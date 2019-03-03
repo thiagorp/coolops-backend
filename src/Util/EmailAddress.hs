@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Util.EmailAddress
   ( EmailAddress(..)
   , emailAddressToText
