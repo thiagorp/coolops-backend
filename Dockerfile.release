@@ -1,7 +1,7 @@
-FROM debian:stretch
+FROM alpine:latest
 
-RUN apt-get update && \
-    apt-get install -y postgresql-client ca-certificates
+RUN apk upgrade --update-cache --available
+RUN apk add postgresql-client ca-certificates
 
 COPY application /application
 
