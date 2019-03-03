@@ -31,7 +31,7 @@ mapRequest project Request {..} = Params reqBuildName reqBuildParams (fromMaybe 
 
 call :: Entity Project -> Handler ()
 call project = do
-  requestData <- mapRequest project <$> requireCheckJsonBody
+  requestData <- mapRequest project <$> requireInsecureJsonBody
   _ <- runAppInHandler $ App.call requestData
   sendResponseStatus created201 ()
 
