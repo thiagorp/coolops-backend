@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Database.Queries.SlackDeploymentMessageData
   ( module Common.PersistDatabase
   , module Model

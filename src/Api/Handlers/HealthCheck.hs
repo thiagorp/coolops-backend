@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Api.Handlers.HealthCheck
   ( getHealthR
   ) where

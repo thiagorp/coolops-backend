@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Slack.MessageButtons
   ( MessageButtonAction(..)
   , actionToText

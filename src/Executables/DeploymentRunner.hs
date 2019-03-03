@@ -1,4 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Executables.DeploymentRunner (run) where
 
@@ -33,7 +34,7 @@ loopWith env = do
 
 run :: IO ()
 run = do
-  requestManager <- newTlsManagerWith (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
-  env <- buildEnv 2 requestManager
+  reqManager <- newTlsManagerWith (mkManagerSettings (TLSSettingsSimple True False False) Nothing)
+  env <- buildEnv 2 reqManager
   loopWith env
 

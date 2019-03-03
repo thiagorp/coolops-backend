@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Deployments.UseCases.RunNextDeployment
   ( Error(..)
   , call

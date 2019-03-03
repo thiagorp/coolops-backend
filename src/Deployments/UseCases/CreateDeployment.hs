@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Deployments.UseCases.CreateDeployment
   ( module Deployments.Database.Deployment
   , Params(..)

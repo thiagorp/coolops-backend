@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Auth.UseCases.Login
   ( Params(..)
   , login

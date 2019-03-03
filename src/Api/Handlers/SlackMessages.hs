@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Api.Handlers.SlackMessages
   ( postSlackMessagesR
   ) where

@@ -1,3 +1,7 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Slack.Api.ClientBase
   ( Action(..)
   , ChatPostEphemeralMessage(..)

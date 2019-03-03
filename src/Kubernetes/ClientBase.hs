@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Kubernetes.ClientBase
   ( Action(..)
   , kubernetesRequest
@@ -48,8 +50,8 @@ baseRequest :: App Request
 baseRequest = do
   settings <- kubernetesSettings <$> getEnv
   let token = k8sToken settings
-  let host = k8sHost settings
-  return $ (parseRequest_ (Text.unpack host)) {requestHeaders = defaultHeaders token}
+  let h = k8sHost settings
+  return $ (parseRequest_ (Text.unpack h)) {requestHeaders = defaultHeaders token}
 
 defaultHeaders :: ByteString -> [Header]
 defaultHeaders token = [(hContentType, "application/yaml"), (hAuthorization, "Bearer " <> token)]

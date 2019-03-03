@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Deployments.Database.Project
   ( findProjectByAccessToken
   , getProject

@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Deployments.UseCases.FinishDeployment
   ( call
   ) where

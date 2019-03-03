@@ -40,52 +40,15 @@ dependencies:
 - wai-extra
 - warp
 
+default-extensions:
+- NoImplicitPrelude
+
 ghc-options:
 - -Wall
 - -Wcompat
 - -Wincomplete-record-updates
 - -Wincomplete-uni-patterns
 - -Wredundant-constraints
-
-default-extensions:
-- AutoDeriveTypeable
-- BangPatterns
-- BinaryLiterals
-- ConstraintKinds
-- DataKinds
-- DefaultSignatures
-- DeriveDataTypeable
-- DeriveFoldable
-- DeriveFunctor
-- DeriveGeneric
-- DeriveTraversable
-- DoAndIfThenElse
-- EmptyDataDecls
-- ExistentialQuantification
-- FlexibleContexts
-- FlexibleInstances
-- FunctionalDependencies
-- GADTs
-- GeneralizedNewtypeDeriving
-- InstanceSigs
-- KindSignatures
-- LambdaCase
-- MultiParamTypeClasses
-- MultiWayIf
-- NamedFieldPuns
-- NoImplicitPrelude
-- OverloadedStrings
-- PartialTypeSignatures
-- PatternGuards
-- PolyKinds
-- RankNTypes
-- RecordWildCards
-- ScopedTypeVariables
-- StandaloneDeriving
-- TupleSections
-- TypeFamilies
-- TypeSynonymInstances
-- ViewPatterns
 
 library:
   source-dirs: src
