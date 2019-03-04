@@ -64,6 +64,8 @@ executables:
     - -main-is Api
     ld-options:
     - -static
+    - -I/usr/include/postgresql
+    - -lpq
     dependencies:
     - coolops-api
 
@@ -90,6 +92,8 @@ executables:
     - -main-is DeploymentRunner
     ld-options:
     - -static
+    - -I/usr/include/postgresql
+    - -lpq
     dependencies:
     - coolops-api
 
@@ -103,6 +107,8 @@ executables:
     - -main-is JobStatusChecker
     ld-options:
     - -static
+    - -I/usr/include/postgresql
+    - -lpq
     dependencies:
     - coolops-api
 
@@ -116,6 +122,8 @@ executables:
     - -main-is PrintMigrations
     ld-options:
     - -static
+    - -I/usr/include/postgresql
+    - -lpq
     dependencies:
     - coolops-api
 
