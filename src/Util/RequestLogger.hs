@@ -13,8 +13,8 @@ import Network.Wai.Middleware.RequestLogger
 import Network.Wai.Middleware.RequestLogger.JSON
 
 jsonLogger :: OutputFormatterWithDetails
-jsonLogger date req status responseSize duration reqBody response =
-  formatAsJSON date req status responseSize duration (removeSensitiveInformation reqBody) response
+jsonLogger date req status responseSize duration reqBody =
+  formatAsJSON date req status responseSize duration (removeSensitiveInformation reqBody)
 
 removeSensitiveInformation :: [ByteString] -> [ByteString]
 removeSensitiveInformation body = [ removePassword . BS.concat $ body ]
