@@ -69,7 +69,7 @@ createSlackDeployment_ Params {..} deployment = do
 
 call :: Params -> App (Either Error (Entity Deployment))
 call params@Params {..} = do
-  result <- App.call $ App.Params build environment slackUserId
+  result <- App.call $ App.Params build environment (Just slackUserName) slackUserId
   case result of
     Left App.ProjectsDontMatch -> return $ Left ProjectsDontMatch
     Right d -> do

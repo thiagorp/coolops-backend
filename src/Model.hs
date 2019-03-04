@@ -75,6 +75,7 @@ Deployment sql=deployments
   buildId BuildId
   deployerExternalId Text
   environmentId EnvironmentId
+  userName Text Maybe
   status DeploymentStatus sqltype=varchar(255)
   startedAt UTCTime Maybe sql=deployment_started_at
   finishedAt UTCTime Maybe sql=deployment_finished_at
