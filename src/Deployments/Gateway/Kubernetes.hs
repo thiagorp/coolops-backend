@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Deployments.Gateway.Kubernetes
@@ -7,6 +8,7 @@ module Deployments.Gateway.Kubernetes
 
 import Import
 import qualified RIO.ByteString.Lazy as LBS
+import qualified RIO.HashMap as HashMap
 
 import Deployments.Domain.Deployment
 import qualified Kubernetes.Job as K8s
@@ -32,6 +34,7 @@ runDeployment (Entity deploymentId Deployment {..}) DeploymentResources {..} = K
     jobDescription =
       K8s.JobDescription
         { K8s.dockerImage = projectDeploymentImage project
-        , K8s.envVars = environmentEnvVars environment <> buildParams build
+        , K8s.envVars = environmentEnvVars environment <> buildParams build <> deployerParams
         , K8s.name = deploymentId
         }
+    deployerParams = HashMap.fromList [("COOLOPS_DEPLOYER_NAME", fromMaybe "" deploymentUserName), ("COOLOPS_DEPLOYER_EXTERNAL_ID", deploymentDeployerExternalId)]
