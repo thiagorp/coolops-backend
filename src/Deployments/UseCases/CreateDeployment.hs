@@ -14,6 +14,7 @@ import Deployments.Database.Deployment
 data Params = Params
   { build :: !(Entity Build)
   , environment :: !(Entity Environment)
+  , userName :: !(Maybe Text)
   , userId :: !Text
   }
 
@@ -29,6 +30,7 @@ entity Params {..} = do
   let deploymentBuildId = buildId
   let deploymentDeployerExternalId = userId
   let deploymentEnvironmentId = environmentId
+  let deploymentUserName = userName
   let deploymentStatus = Queued
   let deploymentStartedAt = Nothing
   let deploymentFinishedAt = Nothing
