@@ -15,13 +15,13 @@ import qualified Network.Wai.Handler.Warp as Warp
 import Network.Wai.Middleware.Cors
 import Network.Wai.Middleware.Gzip
 import Network.Wai.Middleware.RequestLogger
-import Network.Wai.Middleware.RequestLogger.JSON
 
 import Api.Handler
 
+import App
 import Common.Config (appPort)
 import Common.Database
-import App
+import Util.RequestLogger
 
 exceptionHandler :: Maybe Request -> SomeException -> IO ()
 exceptionHandler r e = do
@@ -42,7 +42,7 @@ corsMiddleware = cors $ const (Just policy)
 
 mkApp :: Env -> IO Application
 mkApp env = do
-  logger <- mkRequestLogger def {outputFormat = CustomOutputFormatWithDetails formatAsJSON}
+  logger <- mkRequestLogger def {outputFormat = CustomOutputFormatWithDetails jsonLogger}
   appPlain <- toWaiAppPlain env
   return $ gzip def $ corsMiddleware $ logger appPlain
 
